@@ -178,19 +178,17 @@ Instructions/Scoring sheet structure — independent of whether any scores exist
 - [ ] T034 [P] [US2] Implement `src/features/reviewer-forms/GenerateAllFormsButton.tsx`:
       "download all forms" batch action, looping `generateWorkbook.ts` once per reviewer so
       the single and batch paths can never drift out of sync (FR-019)
-- [ ] T035 [US2] Write the round-trip contract test in
-      `tests/integration/excel-roundtrip.test.ts`: generate → parse recovers every row
-      correctly; an out-of-scale Score value and a corrupted hidden-ID cell each produce a
-      `failed` row, not a thrown exception (per `contracts/reviewer-workbook.md`'s mandated
-      test — depends on T031 and T037's `parseWorkbook.ts`)
-- [ ] T036 [US2] Perform and record the manual real-Excel verification step (quickstart
+- [ ] T035 [US2] Perform and record the manual real-Excel verification step (quickstart
       Scenario 2) in `specs/001-consultant-selection-scoring/qa-signoff.md`: open a
       generated workbook in real Excel and confirm the Score dropdown, locked columns, and
       hidden ID columns all behave as intended — an automated test alone cannot satisfy this
       (`research.md` §2)
 
-**Checkpoint**: User Stories 1 AND 2 both work independently — quickstart.md Scenario 2
-passes end-to-end (including the manual Excel check).
+**Checkpoint**: User Story 2's generation direction works independently — quickstart.md
+Scenario 2 passes via structural inspection plus the manual real-Excel check (T035). Full
+bidirectional round-trip *correctness* (generate → parse) is not claimed yet: it's confirmed
+in Phase 5 once `parseWorkbook.ts` (T036) exists and the round-trip contract test (T037) can
+actually run both directions.
 
 ---
 
@@ -204,11 +202,18 @@ results.
 workbooks, importing them updates scores correctly and the Dashboard immediately reflects
 new rankings and completion status, independent of whether every reviewer has responded.
 
-- [ ] T037 [US3] Implement `src/lib/excel/parseWorkbook.ts`: read hidden ID columns (never
+- [ ] T036 [US3] Implement `src/lib/excel/parseWorkbook.ts`: read hidden ID columns (never
       visible text) to match rows, validate each row's Score against the *current*
       project's scale and its IDs against the *current* project's entities, and produce a
       per-row `added`/`failed` result plus a per-file summary, per
       `contracts/reviewer-workbook.md` (FR-020, FR-021, FR-022)
+- [ ] T037 [P] [US3] Write the round-trip contract test in
+      `tests/integration/excel-roundtrip.test.ts`: generate (T031, Phase 4) → parse (T036,
+      above) recovers every row correctly; an out-of-scale Score value and a corrupted
+      hidden-ID cell each produce a `failed` row, not a thrown exception (per
+      `contracts/reviewer-workbook.md`'s mandated test). This is the task that actually
+      confirms the Excel round trip end-to-end — it lives here, not in Phase 4, because it
+      needs both directions of the contract to exist first (see Phase 4's checkpoint note)
 - [ ] T038 [P] [US3] Implement `src/features/reviewer-forms/ImportScoresPanel.tsx`:
       single/multi-file picker, per-file before/after summary display, and a commit step
       that upserts `added` rows into `project.scores` (overwriting existing entries for the
@@ -235,7 +240,9 @@ new rankings and completion status, independent of whether every reviewer has re
       (FR-036, FR-037)
 
 **Checkpoint**: User Stories 1–3 form a complete usable round trip — quickstart.md Scenario
-3 passes end-to-end (configure → generate → score → import → view → export PDF/JSON).
+3 passes end-to-end (configure → generate → score → import → view → export PDF/JSON). This
+is also where the Excel round-trip contract (T037) closes: Phase 4 verified generation
+alone, and this phase's T036 + T037 verify both directions together.
 
 ---
 
@@ -271,7 +278,7 @@ would produce.
 
 - [ ] T047 [US5] Implement `src/features/reviewer-forms/ManualEntryGrid.tsx`: firms ×
       criteria grid for a selected reviewer, score + optional comment per cell, applying the
-      same scale-value validation as `parseWorkbook.ts` (T037) (FR-024)
+      same scale-value validation as `parseWorkbook.ts` (T036) (FR-024)
 - [ ] T048 [US5] Wire the manual entry grid's commit path through the same upsert logic
       `ImportScoresPanel.tsx` (T038) uses for `project.scores`, so a later workbook import
       for the same reviewer/firm/criterion cells correctly overwrites manually entered
@@ -327,6 +334,14 @@ scenario set passes.
   - **US5** (P3): depends on **US1** only (a configured project); independent of US2.
 - **Polish (Phase 8)**: Depends on all desired user stories being complete.
 
+**Excel round-trip test placement**: `generateWorkbook.ts` (T031, Phase 4/US2) and
+`parseWorkbook.ts` (T036, Phase 5/US3) are the two directions of one contract
+(`contracts/reviewer-workbook.md`), but they belong to different user stories and different
+phases. The round-trip contract test (T037) needs *both* to exist, so it lives in Phase 5,
+immediately after T036 — not in Phase 4 alongside generation. Phase 4's checkpoint reflects
+this: it claims only structural + manual verification of generation (T035), not full
+round-trip correctness; that claim is deferred to Phase 5's checkpoint, where it belongs.
+
 ### Parallel Opportunities
 
 - Setup: T004, T005 in parallel once T001–T003 land.
@@ -335,8 +350,9 @@ scenario set passes.
 - US1: T024–T028 (the five editors) are all independent files, parallelizable once T023
   exists.
 - US2: T033, T034 in parallel once T031 exists.
-- US3: T038–T041 (import panel + three dashboard views) are independent files,
-  parallelizable once T037 exists.
+- US3: T037 (round-trip test) can run in parallel with T038–T041 once T036 exists — it
+  touches only `tests/integration/`, no shared file with the UI tasks. T038–T041 (import
+  panel + three dashboard views) are independent files, parallelizable once T036 exists.
 - Polish: T049, T050, T052 in parallel; T051 and T053 are sequential manual verification
   steps best run last.
 
@@ -383,7 +399,7 @@ Task: "Implement src/theme/fonts.ts Google Fonts loading"
 - [P] tasks touch different files with no unmet dependencies.
 - Commit after each task or logical group.
 - Stop at any checkpoint to validate a story independently before continuing.
-- The calculation engine (T009) and the Excel contract (T031/T037) are this feature's
+- The calculation engine (T009) and the Excel contract (T031/T036) are this feature's
   highest-risk-of-bugs modules — per the original requirements brief, these are worth a
   second look (e.g. a fresh pair of eyes, or `/code-review`) before considering Phases 3–5
   done, even though they already carry dedicated unit/integration tests.

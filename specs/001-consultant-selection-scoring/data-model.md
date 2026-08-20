@@ -89,12 +89,12 @@ interface Firm {
 ```
 
 **Deletion rule** (FR-007): removing a `Firm` that has any `Score` entries referencing its
-`id` requires handler confirmation first. Unlike Criterion deletion, the spec does not ask
-for an "orphan and exclude" behavior here — a deleted Firm's scores become orphaned in the
-same structural sense (filtered out because `firmId` no longer resolves), which is
-consistent behavior even though the spec states it only explicitly for criteria; no separate
-rule is needed since the calculation engine already only operates over live `firms`/
-`criteria` joins (see Score below).
+`id` requires handler confirmation first. FR-007 itself doesn't spell out the
+orphan-and-exclude behavior the way FR-039 (Criterion) and FR-041 (Reviewer) do, but the
+same behavior applies here too — a deleted Firm's scores become orphaned in the same
+structural sense (filtered out because `firmId` no longer resolves) — no separate rule is
+needed since the calculation engine already only operates over live `firms`/`criteria`
+joins (see Score below).
 
 ## Reviewer
 
@@ -108,6 +108,12 @@ interface Reviewer {
                             // used by the app to send anything)
 }
 ```
+
+**Deletion rule** (FR-041): removing a `Reviewer` that has any `Score` entries referencing
+its `id` requires handler confirmation first — the same pattern as Firm (FR-007) and
+Criterion (FR-039) deletion. If confirmed, the reviewer is removed from `reviewers`, and
+its orphaned `Score` entries are retained in `scores` but excluded from every calculation
+in `lib/calculations.ts`.
 
 ## Score
 

@@ -80,6 +80,10 @@ no separate deploy command or workflow run to wait on.
 7. Export the final `project.json`; confirm `scores` now contains both entries and the file
    re-imports cleanly (upload it fresh and confirm it routes straight to the Dashboard,
    validating FR-002 and User Story 4).
+8. **Timing check for SC-009**: add a 3rd reviewer to the project, generate and fill their
+   form too, then select all 3 completed workbooks in a single multi-file import action
+   (not three separate imports). Stopwatch from confirming the file selection to the
+   Dashboard finishing its update, and confirm it's under one minute.
 
 ## Scenario 4 — Schema-version and validation edge cases (validates FR-004, FR-038, FR-039)
 
@@ -98,9 +102,34 @@ no separate deploy command or workflow run to wait on.
    omits them entirely — implementation's choice, as long as they don't silently affect a
    live number).
 
+## Scenario 5 — Flexibility check: a materially different-shaped project (validates FR-012, SC-006)
+
+The previous four scenarios all use the same small 2-firm/2-reviewer/2-criteria shape
+throughout — on its own that proves nothing about FR-012's "no hardcoded assumptions about
+count" claim or SC-006's "at least two materially different shapes" requirement. This
+scenario exists specifically to catch a hardcoded count/scale assumption the first four
+scenarios would never surface.
+
+1. Starting a **second, separate** project (not the one from Scenarios 1–4), configure it
+   with a deliberately different shape: 15 firms (mark most `submitted = true`), 1 criterion
+   (weight `1.0`), and a 7-point scoring scale (values 1–7, each with a distinct label).
+2. Confirm every configuration screen (firms list, criteria/weights, scoring scale) renders
+   and behaves correctly at this size/shape — no truncation, no layout assumption breaking,
+   no off-by-one in the weight-sum check.
+3. Generate a reviewer form and confirm the Scoring sheet has exactly 15 rows (15 firms × 1
+   criterion) and the Score dropdown offers all 7 configured values.
+4. Fill and import that one workbook; confirm the Dashboard renders 15 ranked firm cards
+   correctly, and the "show calculations" view shows the 7-point scale's raw values without
+   any assumption baked in from the earlier 3-point-scale project.
+5. This scenario, together with `tests/unit/calculations.test.ts`'s second fixture (added
+   alongside this scenario — see `tasks.md` T054), is what actually satisfies SC-006's
+   "without any code change" claim: the same running app instance handles both this and the
+   Scenario 1–4 project shape correctly.
+
 ## Definition of done for this feature
 
-- All four scenarios above pass, including the real-Excel manual check in Scenario 2.
+- All five scenarios above pass, including the real-Excel manual check in Scenario 2 and
+  the flexibility check in Scenario 5.
 - `npm run test` passes (unit: calculations + schema; integration: Excel round-trip per
   `contracts/reviewer-workbook.md`'s round-trip contract test).
 - `npm run build` succeeds and the built `/docs` serves correctly under the GitHub Pages

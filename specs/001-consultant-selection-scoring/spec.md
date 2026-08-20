@@ -42,14 +42,14 @@ they name themselves.
 **Why this priority**: Nothing else in the app — form generation, scoring, dashboards — can
 happen without a configured project. This is the foundation every other story depends on.
 
-**Independent Test**: Starting from the Load/Start screen, a handler can walk through every
+**Independent Test**: Starting from the Load screen, a handler can walk through every
 configuration field, see live validation (e.g., criterion weights summing to 1.0), and
 successfully download a `project.json` file whose contents match everything they entered —
 with no scores yet — without needing any other part of the app to exist.
 
 **Acceptance Scenarios**:
 
-1. **Given** the Load/Start screen, **When** the handler chooses "Start a new project,"
+1. **Given** the Load screen, **When** the handler chooses "Start a new project,"
    **Then** they are taken to the Configuration area with empty project info, firms,
    reviewers, criteria, and scoring scale.
 2. **Given** a project with three criteria weighted 0.5, 0.3, and 0.3, **When** the handler
@@ -66,6 +66,10 @@ with no scores yet — without needing any other part of the app to exist.
 5. **Given** a firm that already has one or more scores recorded against it, **When** the
    handler attempts to remove that firm, **Then** the app asks for confirmation before
    deleting it.
+6. **Given** the handler had unsaved in-progress changes when the browser tab was reloaded,
+   **When** they return to the Load screen, **Then** the app offers to restore the labeled
+   `sessionStorage` recovery snapshot or discard it, and never lists it as if it were a
+   saved project.
 
 ---
 
@@ -165,15 +169,15 @@ across sessions or is shared with someone else. It depends on Stories 1 and 3 ha
 produced files with configuration and/or scores to reopen.
 
 **Independent Test**: Given two sample files — one with only configuration filled in and no
-scores, one with configuration plus scores — uploading each from the Load/Start screen
+scores, one with configuration plus scores — uploading each from the Load screen
 routes to Configuration and Dashboard respectively, with no other part of the app involved.
 
 **Acceptance Scenarios**:
 
-1. **Given** the Load/Start screen, **When** a user uploads a `project.json` that contains
+1. **Given** the Load screen, **When** a user uploads a `project.json` that contains
    one or more entries in `scores`, **Then** they land directly on the Dashboard in a
    view-oriented mode.
-2. **Given** the Load/Start screen, **When** a user uploads a `project.json` with no entries
+2. **Given** the Load screen, **When** a user uploads a `project.json` with no entries
    in `scores` (regardless of how much configuration is filled in), **Then** they land on
    Configuration, pre-filled with whatever was already present in the file.
 3. **Given** a user viewing the Dashboard after uploading a scored project, **When** they
@@ -236,7 +240,7 @@ they had been imported from a workbook.
 
 **Load / entry**
 
-- **FR-001**: The app MUST present exactly two entry actions on the initial screen: "Start a
+- **FR-001**: The app MUST present exactly two entry actions on the Load screen: "Start a
   new project" and "Upload a project file," with no project list or account step.
 - **FR-002**: Uploading a project file containing one or more score entries MUST route
   directly to the Dashboard.
@@ -248,6 +252,10 @@ they had been imported from a workbook.
   On import, the app MUST accept and auto-migrate recognized older schema versions forward,
   and MUST reject with a clear error any file whose schema version is unrecognized or newer
   than the app currently supports.
+- **FR-040**: On page load, if a labeled `sessionStorage` "recover unsaved work" snapshot
+  exists from a previous in-progress session, the app MUST offer the handler a way to
+  restore it or discard it. This snapshot MUST be clearly labeled as temporary/local-only,
+  MUST be trivially clearable, and MUST NOT be presented as a saved project or project list.
 
 **Configuration**
 
@@ -259,6 +267,10 @@ they had been imported from a workbook.
   entries attached to it.
 - **FR-008**: The app MUST let the handler add, edit, and remove reviewers, each with a
   name, an explicit type of either "city" or "wfrc," and an optional email.
+- **FR-041**: The app MUST ask for confirmation before removing a reviewer that has any
+  score entries attached to it. If confirmed, the reviewer MUST be removed and its
+  associated score entries MUST be retained in the data but excluded from all future
+  calculations.
 - **FR-009**: The app MUST let the handler add, edit, and remove scoring criteria, each with
   a name, a numeric weight, and a description.
 - **FR-039**: The app MUST ask for confirmation before removing a criterion that has any
@@ -343,6 +355,13 @@ they had been imported from a workbook.
   filename-choice behavior as FR-014, including all scores collected so far.
 - **FR-037**: Viewing the Dashboard for an already-scored project MUST require no
   configuration steps.
+
+**Visual design**
+
+- **FR-042**: The UI MUST present a restrained, professional civic/government visual
+  tone — clear type hierarchy, no playful or decorative UI elements — consistent with an
+  official public-procurement record. This applies independent of, and in addition to,
+  the brand color/typography values themselves.
 
 ### Key Entities
 

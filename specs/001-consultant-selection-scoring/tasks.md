@@ -82,11 +82,11 @@ calculation engine, app-wide state, and the WFRC brand/theme layer.
       (`Very_Good_Project.json` / `untitled-project.json`) per FR-014
 - [ ] T014 Implement `src/state/ProjectContext.tsx`: React Context + `useReducer` over the
       in-memory `Project`, with actions covering every CRUD operation from FR-005–FR-011,
-      FR-023, FR-039 (no Redux/Zustand, per `research.md` §5)
+      FR-023, FR-039, FR-041 (no Redux/Zustand, per `research.md` §5)
 - [ ] T015 Implement `src/state/sessionRecovery.ts`: opt-in, clearly-labeled `sessionStorage`
       "recover unsaved work" convenience — never a substitute for export, never presented as
       a project list, and independent of the upload/import flow (constitution Principle II,
-      `contracts/project-file.md`'s compatibility note)
+      `contracts/project-file.md`'s compatibility note, FR-040)
 - [ ] T016 Create `src/theme/tokens.css`: WFRC brand values as CSS custom properties for
       light and dark mode — `wfrc-blue`, `wfrc-secondary-blue`, `wfrc-yellow`, `wfrc-gray`,
       light/dark foreground+background, light/dark headings color — using the exact fetched
@@ -136,7 +136,9 @@ entered, without any other part of the app existing yet.
       invited/submitted flags, notes, and a confirmation prompt before removing a firm with
       existing scores (FR-006, FR-007)
 - [ ] T026 [P] [US1] Implement `src/features/configuration/ReviewersEditor.tsx`: add/edit/
-      remove, name + explicit `type: "city" | "wfrc"` + optional email (FR-008)
+      remove, name + explicit `type: "city" | "wfrc"` + optional email, and a confirmation
+      prompt before removing a reviewer with existing scores (FR-008, FR-041 — mirrors
+      T025's firm-deletion and T027's criterion-deletion confirmation pattern exactly)
 - [ ] T027 [P] [US1] Implement `src/features/configuration/CriteriaEditor.tsx`: add/edit/
       remove criteria (name, weight, description), a running weight-total display with a
       non-blocking warning when it isn't 1.0 ± 0.001, and a confirmation prompt before
@@ -168,11 +170,16 @@ Instructions/Scoring sheet structure — independent of whether any scores exist
       Scoring sheet (Firm/Criterion/Description/Score/Comments), Score-column dropdown
       validation restricted to the project's scale values, locked reference columns, and
       hidden protected reviewerId/firmId/criterionId columns, per
-      `contracts/reviewer-workbook.md` (FR-015–FR-018)
-- [ ] T032 [US2] Add the pre-condition guard to `generateWorkbook.ts`'s caller: block
-      generation with a clear message when `criteria.length === 0` or there are zero
-      `submitted === true` firms (spec Edge Cases; an unresolved weight-sum warning does
-      **not** block generation, per FR-010)
+      `contracts/reviewer-workbook.md` (FR-015–FR-018). Also owns the pre-condition guard
+      (folded in here rather than left to callers, per `/speckit-analyze` finding I1):
+      `generateWorkbook.ts` itself throws/returns a typed "cannot generate" result when
+      `criteria.length === 0` or there are zero `submitted === true` firms (spec Edge
+      Cases; an unresolved weight-sum warning does **not** trigger this, per FR-010) — its
+      callers (T033/T034) just surface that result, so the guard exists in exactly one
+      place instead of being duplicated per caller
+- [ ] ~~T032~~ *(removed — the pre-condition guard now lives in T031 itself, not a
+      separate caller-side task; see T031's updated description. Left as an explicit gap
+      rather than renumbering everything after it — resolves `/speckit-analyze` finding I1.)*
 - [ ] T033 [P] [US2] Implement `src/features/reviewer-forms/GenerateFormButton.tsx`:
       single-reviewer "download form" action (FR-019)
 - [ ] T034 [P] [US2] Implement `src/features/reviewer-forms/GenerateAllFormsButton.tsx`:
@@ -228,8 +235,11 @@ new rankings and completion status, independent of whether every reviewer has re
       per-firm radar/grouped-bar chart showing scores by criterion (FR-034)
 - [ ] T042 [US3] Implement `src/features/calculations-view/CalculationsView.tsx`: the
       "show calculations" toggle view rendering every reviewer's raw score per firm per
-      criterion alongside computed averages, weights, weighted sub-totals, and totals —
-      sourced from the same `calculations.ts` functions the Dashboard uses (FR-031)
+      criterion alongside computed averages, weights, weighted sub-totals, and totals,
+      including per-criterion completion counts (not just the Dashboard's per-firm one) —
+      sourced from the same `calculations.ts` functions the Dashboard uses, so FR-030's
+      "everywhere a computed average is displayed" requirement is met here too, not just
+      on the Dashboard (FR-031, FR-030)
 - [ ] T043 [US3] Implement `src/lib/pdf/printLayout.ts` + `src/features/dashboard/
       ExportPdfButton.tsx`: react-to-print-driven print layout with a `@media print`
       stylesheet enforcing high-contrast colors (constitution Principle VII's print
@@ -294,8 +304,10 @@ scenario set passes.
 
 **Purpose**: Final verification that spans multiple stories.
 
-- [ ] T049 [P] Run the complete `quickstart.md` validation guide (all 4 scenarios) end-to-end
-      and record results in `specs/001-consultant-selection-scoring/qa-signoff.md`
+- [ ] T049 [P] Run the complete `quickstart.md` validation guide (all 5 scenarios) end-to-end
+      and record results in `specs/001-consultant-selection-scoring/qa-signoff.md` — during
+      Scenario 3 step 8, stopwatch the batch import and record the elapsed time against
+      SC-009's <1 minute target
 - [ ] T050 [P] Re-run the automated WCAG 2.1 AA contrast check (T020) against the final,
       fully-populated `tokens.css` (including any UI-driven token additions from Phases
       3–7) to confirm nothing introduced during feature work regressed contrast (spec
@@ -308,6 +320,12 @@ scenario set passes.
 - [ ] T053 Perform one real `npm run deploy` dry run: build, review the `/docs` diff, commit,
       and push to `main`; confirm GitHub Pages (Settings → Pages → Source: `main` / `/docs`)
       serves the result correctly under the project-page subpath
+- [ ] T054 [P] Verify the FR-012/SC-006 flexibility claim (`/speckit-analyze` finding G1):
+      extend `tests/unit/calculations.test.ts` with a second, materially different-shaped
+      fixture (e.g. 15 firms, 1 criterion, a 7-point scale) alongside the existing small
+      fixture, and confirm no hardcoded count/scale assumption breaks it; then execute
+      `quickstart.md` Scenario 5 (already documented there) against the real running app to
+      confirm the UI itself — not just the calculation engine — handles the different shape
 
 ---
 
@@ -353,8 +371,9 @@ round-trip correctness; that claim is deferred to Phase 5's checkpoint, where it
 - US3: T037 (round-trip test) can run in parallel with T038–T041 once T036 exists — it
   touches only `tests/integration/`, no shared file with the UI tasks. T038–T041 (import
   panel + three dashboard views) are independent files, parallelizable once T036 exists.
-- Polish: T049, T050, T052 in parallel; T051 and T053 are sequential manual verification
-  steps best run last.
+- Polish: T049, T050, T052, T054 in parallel; T051 and T053 are sequential manual
+  verification steps best run last (T053 also benefits from T054 having already run, so
+  the deployed build reflects a verified-flexible app).
 
 ---
 

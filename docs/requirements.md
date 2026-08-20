@@ -45,9 +45,37 @@ static site on GitHub Pages. Non-negotiable principles:
 6. TRANSPARENCY. Every computed number (averages, weighted scores, ranks) must be
    traceable back to raw inputs in an optional "show calculations" view — nothing
    should be a black box, mirroring how the original spreadsheet showed its formulas.
-7. PROFESSIONAL, ACCESSIBLE VISUAL DESIGN. This is used by government staff for an
-   official procurement record and may be printed/exported as a PDF report. Clean
-   typography, restrained color palette, WCAG-reasonable contrast, print-friendly.
+7. WFRC BRAND IDENTITY. This app is not a Quarto site, but its visual identity must
+   follow the Wasatch Front Regional Council brand defined in
+   https://github.com/WFRCAnalytics/wfrc-brand. Before implementing any styling,
+   fetch/clone that repo and read the actual values directly rather than guessing:
+     - _extensions/wfrc-brand/brand.yml — the portable brand.yml spec (colors,
+       typography, logo declarations)
+     - _extensions/wfrc-brand/assets/theme/_wfrc-colors.scss — exact hex values for
+       the brand color tokens (wfrc-blue, wfrc-secondary-blue, wfrc-yellow, wfrc-gray,
+       plus RTP and Wasatch Choice palette colors)
+     - _extensions/wfrc-brand/assets/theme/_wfrc-fonts.scss — exact font stacks
+     - _extensions/wfrc-brand/assets/logo/ — logo assets (horizontal/stacked/
+       abbreviated, color/white variants); copy the appropriate files into this
+       project's own assets rather than referencing the other repo at runtime
+   If this repo genuinely cannot be reached from the build/dev environment, stop and
+   flag that rather than inventing brand values.
+   Translate these into CSS custom properties / Tailwind theme tokens in this app —
+   do not pull in Quarto tooling itself, just mirror the brand values:
+     - Typography: Poppins for body text, Inter for headings/navigation/labels,
+       Fira Code for any monospace or code-style display, all loaded from Google
+       Fonts (self-host or use the same Google Fonts CDN approach)
+     - Colors: wfrc-blue as the primary brand color, wfrc-secondary-blue and
+       wfrc-yellow as accents, wfrc-gray as the neutral/text color, and the RTP/
+       Wasatch Choice palette as the categorical palette for charts (e.g. per-firm
+       bar/radar colors on the dashboard) — never invent arbitrary chart colors
+       when this palette exists for the purpose
+     - Support light/dark mode matching system preference, consistent with how
+       wfrc-brand themes both modes
+   Layer WCAG-reasonable contrast and print-friendly PDF export on top of these
+   brand colors — this is still an official government procurement record, so
+   legibility takes priority over strict brand-color literalism in the PDF report
+   specifically (e.g. don't render pale brand-yellow text on white in print).
 8. TECH STACK: Vite + React + TypeScript. Charting library of implementer's choice
    (Recharts or Chart.js). PDF export via a client-side library (e.g. react-to-print,
    or html2canvas + jsPDF). No server-rendered PDF generation. Excel read/write via a

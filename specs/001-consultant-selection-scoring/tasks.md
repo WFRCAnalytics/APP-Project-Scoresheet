@@ -319,7 +319,9 @@ scenario set passes.
       `deploy` usage (the last one exercising T007's new script)
 - [ ] T053 Perform one real `npm run deploy` dry run: build, review the `/docs` diff, commit,
       and push to `main`; confirm GitHub Pages (Settings → Pages → Source: `main` / `/docs`)
-      serves the result correctly under the project-page subpath
+      serves the result correctly under the project-page subpath. **Depends on T054** — do
+      not run this until T054 has confirmed the flexibility claim, so the deployed build
+      reflects a verified-flexible app rather than deploying ahead of that check
 - [ ] T054 [P] Verify the FR-012/SC-006 flexibility claim (`/speckit-analyze` finding G1):
       extend `tests/unit/calculations.test.ts` with a second, materially different-shaped
       fixture (e.g. 15 firms, 1 criterion, a 7-point scale) alongside the existing small
@@ -371,9 +373,11 @@ round-trip correctness; that claim is deferred to Phase 5's checkpoint, where it
 - US3: T037 (round-trip test) can run in parallel with T038–T041 once T036 exists — it
   touches only `tests/integration/`, no shared file with the UI tasks. T038–T041 (import
   panel + three dashboard views) are independent files, parallelizable once T036 exists.
-- Polish: T049, T050, T052, T054 in parallel; T051 and T053 are sequential manual
-  verification steps best run last (T053 also benefits from T054 having already run, so
-  the deployed build reflects a verified-flexible app).
+- Polish: T049, T050, T052, T054 in parallel; T051 is a sequential manual verification
+  step best run after those. T053 is **not** part of that parallel set — it explicitly
+  depends on T054 (see T053's own description) and must run after T054 completes, not
+  merely "benefit from" it having run — the dependency is stated on the task itself so it
+  doesn't rely on this section or document order to be respected.
 
 ---
 

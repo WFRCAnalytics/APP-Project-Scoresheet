@@ -1,0 +1,133 @@
+/*
+ * T016/T017: WFRC brand values as CSS custom properties, light + dark mode.
+ *
+ * Source of truth for the raw brand values: research.md §10, itself fetched directly
+ * from https://github.com/WFRCAnalytics/wfrc-brand on 2026-08-20 (constitution
+ * Principle VII — sourced, not invented). Every hex value below traces back to that
+ * file's brand.yml / _wfrc-colors.scss / _wfrc-fonts.scss.
+ *
+ * Several values here are NOT the raw brand hex — they are accessibility-adjusted
+ * variants, each with a comment naming the raw brand token it derives from and the real
+ * WCAG contrast ratio that justified the adjustment (computed with the exact formula in
+ * src/lib/contrast.ts and mechanically re-verified by tests/unit/contrast.test.ts,
+ * T020). This is the constitution's own instruction in practice: "WCAG-reasonable
+ * contrast ... MUST be layered on top of these brand colors" (Principle VII) — raw brand
+ * hex values are used everywhere they already pass; adjusted variants are used only
+ * where the raw value measurably fails and only enough to clear the threshold.
+ *
+ * Text/UI tokens target WCAG 2.1 AA for normal text (4.5:1, spec SC-010). The chart
+ * categorical palette targets 3:1 (WCAG 1.4.11 non-text/graphical-object contrast,
+ * appropriate for chart fills rather than text) in both modes.
+ */
+
+:root {
+  /* ---- Primary WFRC brand tokens (raw, unmodified) ---- */
+  --color-wfrc-blue: #023c5b;
+  --color-wfrc-secondary-blue: #52b6d5;
+  --color-wfrc-yellow: #f8b93e; /* fails AA as small text-on-white (research.md §10) —
+    used only as a background/border/accent with a dark foreground on top, never as
+    text color itself. */
+  --color-wfrc-gray: #7f7a76;
+
+  /* ---- Semantic tokens: light mode ---- */
+  --color-foreground: #151515; /* brand.yml "black" */
+  --color-background: #ffffff; /* brand.yml "white" */
+  --color-heading: var(--color-wfrc-blue); /* brand.yml's own light-mode heading color */
+  /* Raw wfrc-secondary-blue as link text on white is 2.33:1 (fails AA badly) — this is
+     an accessibility-adjusted darken of the same hue, 4.52:1 against white. Dark mode
+     uses the raw brand value unmodified (see below — it already passes there). */
+  --color-link: #397f95;
+  --color-primary: var(--color-wfrc-blue);
+  --color-primary-foreground: #ffffff; /* 11.67:1 on wfrc-blue */
+  --color-accent-background: var(--color-wfrc-yellow);
+  --color-accent-foreground: #151515; /* 10.44:1 on wfrc-yellow */
+  --color-border: #d8d5d2;
+  --color-code-background: #e6ebf1; /* matches $code-bg in wfrc-light.scss, per brand.yml */
+  --color-code-text: var(--color-wfrc-blue);
+
+  /* ---- Chart categorical palette: RTP set (primary, fixed order) ----
+     Constitution Principle VII: per-firm chart colors MUST come from this palette, never
+     invented. Where a raw RTP hex falls below 3:1 against the light background, it is
+     darkened just enough to clear that threshold (comment notes the raw value). */
+  --chart-1: #3f748e; /* rtp-blue — 5.12:1, unmodified */
+  --chart-2: #789d4b; /* rtp-green — 3.12:1, unmodified */
+  --chart-3: #c48839; /* rtp-mustard, darkened from #c98b3a (2.90:1 -> 3.03:1) */
+  --chart-4: #9d4879; /* rtp-fuschia — 5.77:1, unmodified */
+  --chart-5: #608a8f; /* rtp-turquoise — 3.80:1, unmodified */
+  --chart-6: #c23c33; /* rtp-red — 5.27:1, unmodified */
+  --chart-7: #585377; /* rtp-purple — 7.20:1, unmodified */
+  --chart-8: #597f72; /* rtp-seafoam — 4.46:1, unmodified */
+  --chart-9: #6f2d3d; /* rtp-maroon — 9.91:1, unmodified */
+  --chart-10: #cb7e72; /* rtp-pink, darkened from #e28c7f (2.53:1 -> 3.10:1) */
+
+  /* ---- Chart categorical palette: Wasatch Choice set (overflow, past 10 firms) ----
+     Several WC colors are pastel map-fill tones and fail even the 3:1 graphical
+     threshold against white outright — darkened here for the same reason as above. */
+  --chart-11: #a62966; /* wc-metro — 6.71:1, unmodified */
+  --chart-12: #e65937; /* wc-urban — 3.59:1, unmodified */
+  --chart-13: #c88433; /* wc-city, darkened from #f2a03e (2.13:1 -> 3.09:1) */
+  --chart-14: #a7951a; /* wc-neighborhood, darkened from #f8dc26 (1.38:1 -> 3.02:1) */
+  --chart-15: #989479; /* wc-residential, darkened from #fdf7ca (1.09:1 -> 3.07:1) */
+  --chart-16: #869a79; /* wc-open-space, darkened from #a3bb93 (2.08:1 -> 3.04:1) */
+  --chart-17: #ab8d90; /* wc-employment, darkened from #f4c9cd (1.49:1 -> 3.02:1) */
+  --chart-18: #968e9d; /* wc-industrial, darkened from #ded2e8 (1.45:1 -> 3.16:1) */
+
+  /* ---- Typography (research.md §10 / brand.yml) ---- */
+  --font-body:
+    "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial,
+    sans-serif;
+  --font-heading: "Inter", var(--font-body);
+  --font-mono:
+    "Fira Code", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* ---- Semantic tokens: dark mode ---- */
+    --color-foreground: #ffffff; /* brand.yml "white" */
+    --color-background: #081b26; /* brand.yml's dedicated dark bg — deliberately richer
+      than a plain darkened wfrc-blue */
+    --color-heading: #8fcfe3; /* brand.yml's own explicit dark-mode heading override
+      (lightened wfrc-secondary-blue) — 10.21:1 against the dark background */
+    --color-link: var(--color-wfrc-secondary-blue); /* raw brand value: 7.54:1 here, no
+      adjustment needed in this mode */
+    /* wfrc-blue itself is only 1.51:1 against the dark background — too low-contrast to
+       read as an accent here, so dark mode's primary accent uses the (already dark-mode-
+       safe) secondary-blue instead. Still an unmodified WFRC brand color, just the other
+       primary one. */
+    --color-primary: var(--color-wfrc-secondary-blue);
+    --color-primary-foreground: #081b26; /* 7.54:1 on the secondary-blue background —
+      white text there would only be 2.33:1 and fail outright */
+    --color-wfrc-gray: #85817d; /* lightened from #7f7a76 (4.14:1 -> 4.55:1) — only
+      applies where wfrc-gray plays a text role; non-text uses can still reference the
+      raw --color-wfrc-gray value defined above if needed */
+    --color-accent-background: var(--color-wfrc-yellow); /* 10.04:1 vs dark bg — safe
+      even unmodified */
+    --color-accent-foreground: #151515;
+    --color-border: #23394a;
+    --color-code-background: #10293a;
+    --color-code-text: #8fcfe3;
+
+    /* ---- Chart categorical palette: dark-mode-safe variants ---- */
+    --chart-1: #5c899f; /* rtp-blue, lightened from #3f748e (3.43:1 -> 4.63:1) */
+    --chart-2: #789d4b; /* rtp-green — 5.63:1, unmodified */
+    --chart-3: #c98b3a; /* rtp-mustard — 6.06:1, unmodified */
+    --chart-4: #9d4879; /* rtp-fuschia — 3.04:1, unmodified (already clears 3:1) */
+    --chart-5: #608a8f; /* rtp-turquoise — 4.63:1, unmodified */
+    --chart-6: #c23c33; /* rtp-red — 3.34:1, unmodified (already clears 3:1) */
+    --chart-7: #696485; /* rtp-purple, lightened from #585377 (2.44:1 -> 3.15:1) */
+    --chart-8: #597f72; /* rtp-seafoam — 3.94:1, unmodified */
+    --chart-9: #8c5764; /* rtp-maroon, lightened from #6f2d3d (1.77:1 -> 3.06:1) */
+    --chart-10: #e28c7f; /* rtp-pink — 6.94:1, unmodified */
+
+    --chart-11: #ad3971; /* wc-metro, lightened from #a62966 (2.62:1 -> 3.01:1) */
+    --chart-12: #e65937; /* wc-urban — 4.89:1, unmodified */
+    --chart-13: #f2a03e; /* wc-city — 8.26:1, unmodified */
+    --chart-14: #f8dc26; /* wc-neighborhood — 12.77:1, unmodified */
+    --chart-15: #fdf7ca; /* wc-residential — 16.18:1, unmodified */
+    --chart-16: #a3bb93; /* wc-open-space — 8.44:1, unmodified */
+    --chart-17: #f4c9cd; /* wc-employment — 11.78:1, unmodified */
+    --chart-18: #ded2e8; /* wc-industrial — 12.12:1, unmodified */
+  }
+}

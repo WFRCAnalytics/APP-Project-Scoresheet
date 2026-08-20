@@ -4,3 +4,7 @@ dist/
 .env.local
 *.log
 .DS_Store
+*.tsbuildinfo
+coverage/
+# NOTE: docs/ is intentionally NOT ignored — it is the GitHub Pages build output
+# (vite.config.ts build.outDir) and the actual deployed artifact (research.md §9).

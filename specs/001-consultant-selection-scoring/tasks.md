@@ -29,22 +29,22 @@ independent implementation and testing of each story.
 
 **Purpose**: Project initialization and tooling — nothing story-specific yet.
 
-- [ ] T001 Initialize the Vite + React + TypeScript project at the repo root (`package.json`,
+- [X] T001 Initialize the Vite + React + TypeScript project at the repo root (`package.json`,
       `tsconfig.json`, `index.html`, `src/main.tsx`) per `plan.md` Project Structure
-- [ ] T002 Configure `vite.config.ts`: `base: '/APP-Project-Scoresheet/'`,
+- [X] T002 Configure `vite.config.ts`: `base: '/APP-Project-Scoresheet/'`,
       `build.outDir: 'docs'` (per `research.md` §9 — GitHub Pages "Deploy from a branch")
-- [ ] T003 Install core dependencies: `react`, `react-dom`, `recharts`, `exceljs`,
+- [X] T003 Install core dependencies: `react`, `react-dom`, `recharts`, `exceljs`,
       `react-to-print`; dev dependencies: `typescript`, `vitest`,
       `@testing-library/react`, `eslint`, `prettier`, `vite-plugin-node-polyfills`
-- [ ] T004 [P] Configure ESLint + Prettier for TypeScript/React in the repo root config files
-- [ ] T005 [P] Configure Vitest + React Testing Library test setup (`vitest.config.ts` or
+- [X] T004 [P] Configure ESLint + Prettier for TypeScript/React in the repo root config files
+- [X] T005 [P] Configure Vitest + React Testing Library test setup (`vitest.config.ts` or
       `vite.config.ts` test block, `tests/setup.ts`)
-- [ ] T006 Resolve the ExcelJS Node/`Buffer` polyfill gotcha in `vite.config.ts`: add
+- [X] T006 Resolve the ExcelJS Node/`Buffer` polyfill gotcha in `vite.config.ts`: add
       `vite-plugin-node-polyfills` scoped to `buffer` only, plus
       `define: { global: 'globalThis' }`, and import ExcelJS's browser entry point (per
       `research.md` §2) — confirm `npm run build` produces a bundle with no unresolved
       Node-core imports
-- [ ] T007 Add an `npm run deploy` script wired to `package.json` `scripts.deploy` that runs
+- [X] T007 Add an `npm run deploy` script wired to `package.json` `scripts.deploy` that runs
       `vite build` and then a short Node script (`scripts/deploy-reminder.mjs`) printing a
       reminder to review the `/docs` diff (`git diff --stat docs/`) and commit + push to
       `main` — turns the manual deploy sequence in `research.md` §9 / `quickstart.md` into
@@ -62,52 +62,52 @@ calculation engine, app-wide state, and the WFRC brand/theme layer.
 
 **⚠️ CRITICAL**: No user story work should begin until this phase is complete.
 
-- [ ] T008 Define TypeScript types for `Project`, `Firm`, `Reviewer`, `Criterion`,
+- [X] T008 Define TypeScript types for `Project`, `Firm`, `Reviewer`, `Criterion`,
       `ScoringScalePoint`, `Score` in `src/types/project.ts` per `data-model.md`
-- [ ] T009 [P] Implement `src/lib/calculations.ts`: pure functions for `overallAvg`,
+- [X] T009 [P] Implement `src/lib/calculations.ts`: pure functions for `overallAvg`,
       `cityAvg`, `overallWeightedTotal`, `cityWeightedTotal`, `rank`, `completion` per
       `data-model.md`'s Derived Values table (FR-025–FR-031) — framework-free, no React
       import, so it stays independently auditable per constitution Principle VI
-- [ ] T010 [P] Unit tests for `src/lib/calculations.ts` in `tests/unit/calculations.test.ts`
+- [X] T010 [P] Unit tests for `src/lib/calculations.ts` in `tests/unit/calculations.test.ts`
       using hand-computed fixtures (small firm/reviewer/criterion sets with known expected
       averages, weighted totals, and tied ranks)
-- [ ] T011 [P] Implement `src/lib/project-schema.ts`: structural validation, `schemaVersion`
+- [X] T011 [P] Implement `src/lib/project-schema.ts`: structural validation, `schemaVersion`
       recognition + forward migration, and rejection of unrecognized/newer versions, per
       `contracts/project-file.md` (FR-004, FR-038)
-- [ ] T012 [P] Unit tests for `src/lib/project-schema.ts` in
+- [X] T012 [P] Unit tests for `src/lib/project-schema.ts` in
       `tests/unit/project-schema.test.ts`: malformed JSON rejected, missing/old
       `schemaVersion` migrated, unrecognized/future `schemaVersion` rejected with a clear
       error (quickstart Scenario 4, steps 1–3)
-- [ ] T013 [P] Implement `src/lib/filenames.ts`: sanitized default export filename logic
+- [X] T013 [P] Implement `src/lib/filenames.ts`: sanitized default export filename logic
       (`Very_Good_Project.json` / `untitled-project.json`) per FR-014
-- [ ] T014 Implement `src/state/ProjectContext.tsx`: React Context + `useReducer` over the
+- [X] T014 Implement `src/state/ProjectContext.tsx`: React Context + `useReducer` over the
       in-memory `Project`, with actions covering every CRUD operation from FR-005–FR-011,
       FR-023, FR-039, FR-041 (no Redux/Zustand, per `research.md` §5)
-- [ ] T015 Implement `src/state/sessionRecovery.ts`: opt-in, clearly-labeled `sessionStorage`
+- [X] T015 Implement `src/state/sessionRecovery.ts`: opt-in, clearly-labeled `sessionStorage`
       "recover unsaved work" convenience — never a substitute for export, never presented as
       a project list, and independent of the upload/import flow (constitution Principle II,
       `contracts/project-file.md`'s compatibility note, FR-040)
-- [ ] T016 Create `src/theme/tokens.css`: WFRC brand values as CSS custom properties for
+- [X] T016 Create `src/theme/tokens.css`: WFRC brand values as CSS custom properties for
       light and dark mode — `wfrc-blue`, `wfrc-secondary-blue`, `wfrc-yellow`, `wfrc-gray`,
       light/dark foreground+background, light/dark headings color — using the exact fetched
       values in `research.md` §10 (Principle VII: sourced, not invented)
-- [ ] T017 Add the RTP + Wasatch Choice categorical palette to `src/theme/tokens.css` as the
+- [X] T017 Add the RTP + Wasatch Choice categorical palette to `src/theme/tokens.css` as the
       fixed-order chart color set (`research.md` §10), **and** hand-pick/compute AA-safe
       dark-mode variants for each palette color against the `#081b26` dark background —
       this is the concrete task resolving the dark-mode contrast flag `research.md` §10
       raised (brand.yml provides no dark-mode RTP/WC variants itself, so this app must)
-- [ ] T018 [P] Copy the 6 WFRC logo files (horizontal/stacked/abbreviated × color/white,
+- [X] T018 [P] Copy the 6 WFRC logo files (horizontal/stacked/abbreviated × color/white,
       exact filenames confirmed in `research.md` §10) into `src/assets/logo/` — files
       copied into this project, never referenced from the wfrc-brand repo at runtime
       (constitution Principle VII)
-- [ ] T019 [P] Implement `src/theme/fonts.ts`: load Poppins (300–700, normal+italic), Inter
+- [X] T019 [P] Implement `src/theme/fonts.ts`: load Poppins (300–700, normal+italic), Inter
       (300–700, normal+italic), Fira Code (400/500/700, normal+italic) from the Google Fonts
       CDN per `research.md` §10
-- [ ] T020 Implement an automated WCAG 2.1 AA contrast check over every token pair in
+- [X] T020 Implement an automated WCAG 2.1 AA contrast check over every token pair in
       `src/theme/tokens.css` (light and dark), e.g. via `axe-core` or a small custom
       contrast-ratio script, in `tests/unit/contrast.test.ts` (spec SC-010) — include the
       dark-mode chart palette variants from T017
-- [ ] T021 Implement `src/App.tsx`: top-level area-switch state machine (Load →
+- [X] T021 Implement `src/App.tsx`: top-level area-switch state machine (Load →
       Configuration → Reviewer Forms → Calculations view → Dashboard), no router library
       (`research.md` §6)
 

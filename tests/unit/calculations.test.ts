@@ -1,0 +1,203 @@
+// T010: Unit tests for the calculation engine, using small, hand-computed fixtures so
+// every expected value in this file can be checked by hand against src/lib/calculations.ts
+// (constitution Principle VI — this is the highest-risk-of-bugs module in the app).
+
+import { describe, expect, it } from "vitest";
+import {
+  cityAvg,
+  cityWeightedTotal,
+  completion,
+  getRank,
+  overallAvg,
+  overallWeightedTotal,
+  rankFirms,
+  round2,
+} from "../../src/lib/calculations";
+import { createEmptyProject, type Project } from "../../src/types/project";
+
+/**
+ * Fixture shape (hand-computable):
+ *   Criteria: crit-1 (weight 0.6), crit-2 (weight 0.4)
+ *   Firms:    firm-1 (submitted), firm-2 (submitted), firm-3 (NOT submitted)
+ *   Reviewers: rev-1 (city), rev-2 (city), rev-3 (wfrc)
+ *
+ *   firm-1 / crit-1: rev-1=5, rev-2=3, rev-3=5
+ *     -> overallAvg = (5+3+5)/3 = 13/3 ≈ 4.3333
+ *     -> cityAvg    = (5+3)/2   = 4
+ *   firm-1 / crit-2: rev-1=1, rev-3=3 (rev-2 hasn't scored this cell)
+ *     -> overallAvg = (1+3)/2 = 2
+ *     -> cityAvg    = 1/1     = 1   (only rev-1, the only city reviewer who scored it)
+ *   firm-2 / crit-1: rev-1=3, rev-2=3, rev-3=3
+ *     -> overallAvg = 3, cityAvg = 3
+ *   firm-2 / crit-2: no scores at all -> both averages are null
+ *   firm-3: not submitted -> excluded from ranking entirely, even though it has no scores
+ */
+function buildFixture(): Project {
+  const project = createEmptyProject();
+  project.criteria = [
+    { id: "crit-1", name: "Approach", weight: 0.6, description: "" },
+    { id: "crit-2", name: "Cost", weight: 0.4, description: "" },
+  ];
+  project.firms = [
+    { id: "firm-1", name: "Alpha Co", invited: true, submitted: true, notes: "" },
+    { id: "firm-2", name: "Beta Co", invited: true, submitted: true, notes: "" },
+    { id: "firm-3", name: "Gamma Co", invited: true, submitted: false, notes: "" },
+  ];
+  project.reviewers = [
+    { id: "rev-1", name: "Alice", type: "city", email: "" },
+    { id: "rev-2", name: "Bob", type: "city", email: "" },
+    { id: "rev-3", name: "Cory", type: "wfrc", email: "" },
+  ];
+  project.scores = [
+    { reviewerId: "rev-1", firmId: "firm-1", criterionId: "crit-1", value: 5, comment: "", updatedAt: "" },
+    { reviewerId: "rev-2", firmId: "firm-1", criterionId: "crit-1", value: 3, comment: "", updatedAt: "" },
+    { reviewerId: "rev-3", firmId: "firm-1", criterionId: "crit-1", value: 5, comment: "", updatedAt: "" },
+    { reviewerId: "rev-1", firmId: "firm-1", criterionId: "crit-2", value: 1, comment: "", updatedAt: "" },
+    { reviewerId: "rev-3", firmId: "firm-1", criterionId: "crit-2", value: 3, comment: "", updatedAt: "" },
+    { reviewerId: "rev-1", firmId: "firm-2", criterionId: "crit-1", value: 3, comment: "", updatedAt: "" },
+    { reviewerId: "rev-2", firmId: "firm-2", criterionId: "crit-1", value: 3, comment: "", updatedAt: "" },
+    { reviewerId: "rev-3", firmId: "firm-2", criterionId: "crit-1", value: 3, comment: "", updatedAt: "" },
+  ];
+  return project;
+}
+
+describe("overallAvg / cityAvg", () => {
+  const project = buildFixture();
+
+  it("computes the overall average across all reviewer types", () => {
+    expect(overallAvg(project, "firm-1", "crit-1")).toBeCloseTo(13 / 3, 10);
+    expect(overallAvg(project, "firm-1", "crit-2")).toBe(2);
+  });
+
+  it("computes the city average from city-type reviewers only", () => {
+    expect(cityAvg(project, "firm-1", "crit-1")).toBe(4);
+    // Only rev-1 (city) scored this cell; rev-2 (also city) never did, and rev-3 (wfrc)
+    // must not count even though it scored.
+    expect(cityAvg(project, "firm-1", "crit-2")).toBe(1);
+  });
+
+  it("returns null (never 0) for a cell nobody has scored yet", () => {
+    expect(overallAvg(project, "firm-2", "crit-2")).toBeNull();
+    expect(cityAvg(project, "firm-2", "crit-2")).toBeNull();
+  });
+});
+
+describe("weighted totals", () => {
+  const project = buildFixture();
+
+  it("computes Overall Weighted Total as sum(avg * weight), missing cells as 0", () => {
+    // firm-1: 13/3 * 0.6 + 2 * 0.4 = 2.6 + 0.8 = 3.4
+    expect(overallWeightedTotal(project, "firm-1")).toBeCloseTo(3.4, 10);
+    // firm-2: 3 * 0.6 + (null -> 0) * 0.4 = 1.8
+    expect(overallWeightedTotal(project, "firm-2")).toBeCloseTo(1.8, 10);
+  });
+
+  it("computes City Weighted Total the same way, from city averages", () => {
+    // firm-1: 4 * 0.6 + 1 * 0.4 = 2.4 + 0.4 = 2.8
+    expect(cityWeightedTotal(project, "firm-1")).toBeCloseTo(2.8, 10);
+    expect(cityWeightedTotal(project, "firm-2")).toBeCloseTo(1.8, 10);
+  });
+});
+
+describe("rankFirms / getRank", () => {
+  it("ranks only submitted firms, descending by total", () => {
+    const project = buildFixture();
+    const ranked = rankFirms(project, "overall");
+    expect(ranked.map((r) => r.firmId)).toEqual(["firm-1", "firm-2"]);
+    expect(ranked.find((r) => r.firmId === "firm-1")?.rank).toBe(1);
+    expect(ranked.find((r) => r.firmId === "firm-2")?.rank).toBe(2);
+    // firm-3 is not submitted, so it must never appear in the ranking at all.
+    expect(ranked.some((r) => r.firmId === "firm-3")).toBe(false);
+    expect(getRank(project, "firm-3", "overall")).toBeNull();
+  });
+
+  it("uses standard competition ranking for ties (1, 1, 3 — not 1, 1, 2)", () => {
+    const project = buildFixture();
+    // Force firm-2 to tie firm-1's overall total exactly (3.4) by adding a crit-2 score.
+    project.scores.push({
+      reviewerId: "rev-1",
+      firmId: "firm-2",
+      criterionId: "crit-2",
+      value: 4,
+      comment: "",
+      updatedAt: "",
+    });
+    // firm-2 overall crit-2 avg is now 4 -> total = 3*0.6 + 4*0.4 = 1.8 + 1.6 = 3.4 (tied)
+    project.firms.push({ id: "firm-4", name: "Delta Co", invited: true, submitted: true, notes: "" });
+    project.scores.push(
+      { reviewerId: "rev-1", firmId: "firm-4", criterionId: "crit-1", value: 1, comment: "", updatedAt: "" },
+      { reviewerId: "rev-1", firmId: "firm-4", criterionId: "crit-2", value: 1, comment: "", updatedAt: "" },
+    );
+    // firm-4 total = 1*0.6 + 1*0.4 = 1 (clearly last)
+
+    const ranked = rankFirms(project, "overall");
+    const byFirm = Object.fromEntries(ranked.map((r) => [r.firmId, r.rank]));
+    expect(byFirm["firm-1"]).toBe(1);
+    expect(byFirm["firm-2"]).toBe(1); // tied with firm-1
+    expect(byFirm["firm-4"]).toBe(3); // next distinct rank skips 2
+  });
+});
+
+describe("completion", () => {
+  const project = buildFixture();
+
+  it("counts scored/expected for a single cell", () => {
+    expect(completion(project, "firm-1", { criterionId: "crit-1" })).toEqual({
+      scored: 3,
+      expected: 3,
+    });
+    expect(completion(project, "firm-1", { criterionId: "crit-2" })).toEqual({
+      scored: 2,
+      expected: 3,
+    });
+    expect(completion(project, "firm-1", { criterionId: "crit-2", by: "city" })).toEqual({
+      scored: 1,
+      expected: 2,
+    });
+  });
+
+  it("aggregates across all criteria for the firm-level indicator", () => {
+    // firm-1: crit-1 scored 3/3, crit-2 scored 2/3 -> 5 scored out of (3 reviewers * 2 criteria) = 6
+    expect(completion(project, "firm-1")).toEqual({ scored: 5, expected: 6 });
+  });
+});
+
+describe("orphan handling", () => {
+  it("excludes scores whose firm/criterion/reviewer no longer exists from every average", () => {
+    const project = buildFixture();
+    // Simulate a criterion deletion (FR-039): the score row is retained in `scores`...
+    project.scores.push({
+      reviewerId: "rev-1",
+      firmId: "firm-1",
+      criterionId: "crit-deleted",
+      value: 5,
+      comment: "orphaned",
+      updatedAt: "",
+    });
+    // ...but since "crit-deleted" is not in project.criteria, it must never surface here.
+    expect(overallAvg(project, "firm-1", "crit-deleted")).toBeNull();
+    // And it must not silently inflate any *live* criterion's average either.
+    expect(overallAvg(project, "firm-1", "crit-1")).toBeCloseTo(13 / 3, 10);
+  });
+
+  it("excludes scores referencing a deleted reviewer from both overall and city averages", () => {
+    const project = buildFixture();
+    project.scores.push({
+      reviewerId: "rev-deleted",
+      firmId: "firm-2",
+      criterionId: "crit-2",
+      value: 5,
+      comment: "orphaned",
+      updatedAt: "",
+    });
+    expect(overallAvg(project, "firm-2", "crit-2")).toBeNull();
+  });
+});
+
+describe("round2", () => {
+  it("rounds to 2 decimal places for display without touching calculation precision", () => {
+    expect(round2(13 / 3)).toBe(4.33);
+    expect(round2(3.4)).toBe(3.4);
+    expect(round2(1)).toBe(1);
+  });
+});

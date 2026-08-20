@@ -8,6 +8,26 @@
 
 **Input**: User description: "Build \"Project Scoresheet\" — a tool used by a transportation planning agency to score and rank consulting firms that responded to an RFP. Single in-memory project.json data model (firms, reviewers with city/wfrc type, weighted criteria, configurable scoring scale, sparse scores). Overall Avg = mean of all reviewer scores per firm/criterion; City Avg = mean of city-type reviewers only; both get multiplied by criterion weight and summed into two weighted totals per firm, which are ranked separately with tie-sharing. Five-area app: Load/Start (new vs. upload, routes to dashboard if scores exist or configuration if incomplete), Configuration (project info, firms, reviewers, criteria/weights, scoring scale, export/re-upload at any time), Reviewer Form Generator + Score Intake (per-reviewer .xlsx workbook with Instructions + Scoring sheets, dropdown-validated Score column, locked reference columns, hidden ID columns for row matching, single or batch generation, single-or-multi-file import with per-file diff summary and validation, plus a manual entry grid fallback), Master/Calculations view (full audit trail of every raw score, average, weight, and total), and Dashboard (ranked firm cards, completion indicators, bar chart of overall vs. city totals, per-firm criterion breakdown chart, PDF export, JSON export with user-chosen filename defaulting to a sanitized project name). Professional civic/government visual tone with print-quality PDF. Explicitly out of scope for v1: backend/login/live collaboration, email-sending, a multi-project library, and non-static hosting."
 
+## Clarifications
+
+### Session 2026-08-20
+
+- Q: How should the app handle a project.json file whose schema version is missing or
+  different from what the app currently expects? → A: Include an explicit `schemaVersion`
+  field in every export; on import, auto-migrate recognized older versions forward; reject
+  with a clear error only versions the app doesn't recognize or that are newer than it
+  supports.
+- Q: When a project's criterion weights don't sum to 1.0, should the app only warn, or
+  actually block the handler from exporting / generating reviewer forms until it's fixed?
+  → A: Warn only, never block — the handler can still export or generate forms with invalid
+  weights; the warning stays visible everywhere weights are shown.
+- Q: If a handler deletes a criterion that already has scores recorded against it, what
+  should happen? → A: Warn first (same confirmation pattern as deleting a scored firm); if
+  confirmed, the criterion is removed and its existing score entries are retained in the
+  data but excluded from all future calculations.
+- Q: What accessibility contrast standard should the app's success criteria target? → A:
+  WCAG 2.1 Level AA.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Configure a New Scoring Project (Priority: P1)
@@ -191,17 +211,17 @@ they had been imported from a workbook.
 
 ### Edge Cases
 
-- What happens when a handler tries to generate reviewer forms before configuration is
-  complete (e.g., no criteria defined, or weights not summing to 1.0)? The app should block
-  or clearly warn rather than generate a meaningless workbook.
+- What happens when a handler tries to generate reviewer forms with no criteria defined or
+  no submitted firms yet? The resulting Scoring sheet would have zero rows, so the app MUST
+  block this specific action with a clear message rather than generate an empty workbook.
+  (Invalid criterion weights do NOT block form generation — see FR-010.)
 - What happens when an imported workbook's hidden ID columns reference a firm, reviewer, or
   criterion that no longer exists in the current project (e.g., it was deleted after the
   form was sent out)? Those rows must be flagged as failed/unmatched, not silently dropped
   or misapplied to the wrong entity.
-- What happens when a criterion is deleted after it has already been scored? Existing score
-  entries for that criterion are excluded from all calculations going forward (the criterion
-  no longer exists to weight against); the handler is warned before deletion if scores exist,
-  mirroring the firm-removal confirmation.
+- What happens when a criterion is deleted after it has already been scored? See FR-039: the
+  handler is warned before deletion, and if confirmed, the existing score entries are kept
+  but excluded from all calculations going forward.
 - How does the dashboard behave when zero firms have any scores yet? It should still render
   (project header, firm list with 0/N completion) rather than error or show a blank page.
 - What happens if two firms end up with identical weighted totals? They share the same rank,
@@ -224,6 +244,10 @@ they had been imported from a workbook.
   Configuration, pre-populated with whatever data the file already contains.
 - **FR-004**: The app MUST reject a file that does not match the expected project schema
   with a clear, human-readable error, without partially loading it.
+- **FR-038**: Every exported project.json MUST include an explicit `schemaVersion` field.
+  On import, the app MUST accept and auto-migrate recognized older schema versions forward,
+  and MUST reject with a clear error any file whose schema version is unrecognized or newer
+  than the app currently supports.
 
 **Configuration**
 
@@ -237,8 +261,14 @@ they had been imported from a workbook.
   name, an explicit type of either "city" or "wfrc," and an optional email.
 - **FR-009**: The app MUST let the handler add, edit, and remove scoring criteria, each with
   a name, a numeric weight, and a description.
+- **FR-039**: The app MUST ask for confirmation before removing a criterion that has any
+  score entries attached to it. If confirmed, the criterion MUST be removed and its
+  associated score entries MUST be retained in the data but excluded from all future
+  calculations.
 - **FR-010**: The app MUST show a running total of criterion weights and a visible warning
-  whenever that total is not 1.0 within a ±0.001 tolerance.
+  whenever that total is not 1.0 within a ±0.001 tolerance. This warning MUST NOT block the
+  handler from continuing to edit, exporting the project, or generating reviewer forms —
+  the warning is advisory and must remain visible everywhere weights are shown until fixed.
 - **FR-011**: The app MUST let the handler define a scoring scale as a list of points, each
   with a numeric value and a label, and MUST require at least 2 points.
 - **FR-012**: The number of firms, reviewers, criteria, and scoring-scale points MUST be
@@ -316,10 +346,10 @@ they had been imported from a workbook.
 
 ### Key Entities
 
-- **Project**: The single unit of work the app operates on at any time — holds project
-  info (name, contact, meeting date, notes), the scoring scale, the criteria list, the
-  firms list, the reviewers list, and the flat scores collection. Persisted only via
-  explicit JSON export/import.
+- **Project**: The single unit of work the app operates on at any time — holds a
+  `schemaVersion`, project info (name, contact, meeting date, notes), the scoring scale, the
+  criteria list, the firms list, the reviewers list, and the flat scores collection.
+  Persisted only via explicit JSON export/import.
 - **Scoring Scale Point**: One selectable score value in a project's scale, consisting of a
   numeric value and a descriptive label; a project has 2 or more of these.
 - **Criterion**: A named, weighted dimension firms are scored against, with a description
@@ -360,6 +390,8 @@ they had been imported from a workbook.
 - **SC-009**: A handler can complete a full round trip — import a batch of 3+ reviewer
   workbooks in one action and see the dashboard fully updated — in under one minute of
   in-app time, excluding file-selection time.
+- **SC-010**: All text and interactive UI elements meet WCAG 2.1 Level AA contrast
+  requirements, verified via an automated contrast check, in both light and dark mode.
 
 ## Assumptions
 
@@ -375,10 +407,6 @@ they had been imported from a workbook.
 - Excel workbook protection (locked cells, protected sheets) is used to prevent accidental
   edits, not to secure the file against a deliberate attempt to bypass it; no password is
   required.
-- If a criterion is deleted after scores exist against it, those score entries are retained
-  in the data but excluded from all calculations (since the criterion they reference no
-  longer exists), and the handler is warned before deletion — mirroring firm-removal
-  behavior (FR-007).
 - Reviewer email addresses, when provided, are for the handler's own reference when sending
   forms manually; the app itself never sends email.
 - "City" and "wfrc" are the only two reviewer types needed, per the confirmed source

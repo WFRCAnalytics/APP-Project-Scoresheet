@@ -25,3 +25,15 @@ export function defaultProjectFilename(projectName: string): string {
   const sanitized = sanitizeProjectName(projectName);
   return sanitized ? `${sanitized}.json` : "untitled-project.json";
 }
+
+/**
+ * Default filename for a generated reviewer workbook (FR-015/FR-019): sanitized
+ * reviewer name + sanitized project name, e.g. "Alice_Very_Good_Project.xlsx". Reuses
+ * the same sanitization rule as project filenames — same reasoning, same fallback for an
+ * empty/punctuation-only name.
+ */
+export function reviewerWorkbookFilename(projectName: string, reviewerName: string): string {
+  const projectPart = sanitizeProjectName(projectName) || "untitled-project";
+  const reviewerPart = sanitizeProjectName(reviewerName) || "reviewer";
+  return `${reviewerPart}_${projectPart}.xlsx`;
+}

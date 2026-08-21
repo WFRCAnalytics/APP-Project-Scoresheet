@@ -131,3 +131,65 @@
     --chart-18: #ded2e8; /* wc-industrial — 12.12:1, unmodified */
   }
 }
+
+/*
+ * T043 / constitution Principle VII's explicit PDF carve-out: "legibility takes priority
+ * over strict brand-color literalism ... specifically" in print. This block forces every
+ * token back to its LIGHT-mode value for print, regardless of whether the screen is
+ * currently in dark mode — printing a page with dark-mode-tuned colors (chosen for
+ * contrast against a near-black background) onto white paper would defeat the exact
+ * contrast guarantees T020's test enforces for the two on-screen modes. Placed after the
+ * `prefers-color-scheme: dark` block on purpose: same specificity (`:root` inside a media
+ * query), so when both conditions are true at once (printing while the OS is in dark
+ * mode), this later block wins the cascade.
+ *
+ * CSS custom properties alone can't fix chart colors, though — theme/chartColors.ts reads
+ * these values via getComputedStyle and bakes them into SVG `fill` attributes at render
+ * time, which this stylesheet change can't retroactively rewrite. chartColors.ts listens
+ * for the `beforeprint` event and re-reads (now print-forced) values so charts re-render
+ * with print-safe colors just before the print dialog captures the page.
+ */
+@media print {
+  :root {
+    --color-foreground: #151515;
+    --color-background: #ffffff;
+    --color-heading: #023c5b;
+    --color-link: #397f95;
+    --color-primary: #023c5b;
+    --color-primary-foreground: #ffffff;
+    --color-wfrc-gray: #7f7a76;
+    --color-accent-background: #f8b93e;
+    --color-accent-foreground: #151515;
+    --color-border: #d8d5d2;
+    --color-code-background: #e6ebf1;
+    --color-code-text: #023c5b;
+
+    --chart-1: #3f748e;
+    --chart-2: #789d4b;
+    --chart-3: #c48839;
+    --chart-4: #9d4879;
+    --chart-5: #608a8f;
+    --chart-6: #c23c33;
+    --chart-7: #585377;
+    --chart-8: #597f72;
+    --chart-9: #6f2d3d;
+    --chart-10: #cb7e72;
+    --chart-11: #a62966;
+    --chart-12: #e65937;
+    --chart-13: #c88433;
+    --chart-14: #a7951a;
+    --chart-15: #989479;
+    --chart-16: #869a79;
+    --chart-17: #ab8d90;
+    --chart-18: #968e9d;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .card {
+    break-inside: avoid;
+    border-color: var(--color-border);
+  }
+}

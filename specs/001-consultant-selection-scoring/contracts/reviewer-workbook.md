@@ -64,8 +64,15 @@ Output: an `.xlsx` `Blob`/`ArrayBuffer` ready for download.
 ## Parsing (`lib/excel/parseWorkbook.ts`)
 
 Input: one or more uploaded `.xlsx` files (FR-020, single or multi-select in one action).
-Output, per file: a list of `{ row, status: "added" | "failed", reason?, score? }` plus a
-per-file summary count, shown to the handler before anything commits (FR-022).
+Output, per file: a list of `{ row, status: "added" | "skipped" | "failed", reason?, score? }`
+plus a per-file summary count, shown to the handler before anything commits (FR-022).
+
+**Three row outcomes, not two** (refined during implementation — see below for why):
+- `"added"` — a valid, present Score value; queued for commit.
+- `"skipped"` — the row's IDs all resolve fine, but the Score cell is blank (the reviewer
+  hasn't gotten to it yet). Nothing to commit; NOT reported as an error.
+- `"failed"` — an ID that no longer resolves to a live entity, or a Score value that isn't
+  one of the current scale's values; excluded, reported to the handler.
 
 For each data row on the "Scoring" sheet:
 
@@ -76,11 +83,20 @@ For each data row on the "Scoring" sheet:
    *current* project (not the project state at generation time — the current one, since
    configuration may have changed since the form went out). If any of the three no longer
    resolves → row status `failed`, reason e.g. "criterion no longer exists in this project."
-3. Validate the Score cell value is one of the current project's `scoringScale[].value`
-   (also re-checked against the *current* scale, same rationale as step 2) → otherwise
-   `failed`, reason e.g. "3.5 is not a valid score for this project's scale."
-4. Rows passing both checks become `Score` objects (`comment` from column E, `updatedAt` =
+3. If the Score cell is blank → row status `skipped` ("not yet scored" is a normal, expected
+   state — the same sparsity the whole data model treats as default, not an error).
+4. Otherwise, validate the Score cell value is one of the current project's
+   `scoringScale[].value` (re-checked against the *current* scale, same rationale as step 2)
+   → otherwise `failed`, reason e.g. "3.5 is not a valid score for this project's scale."
+5. Rows passing both checks become `Score` objects (`comment` from column E, `updatedAt` =
    import time) queued for commit.
+
+**Why a third status**: the round-trip contract test below expects an unmodified, freshly
+generated workbook (no scores filled in) to parse as intact rather than as a pile of
+validation failures — but a literal two-status reading of step 4 would flag every blank
+cell as failed. `"skipped"` is the reconciliation: blank is a legitimate state, not a
+validation failure, matching FR-026/Key Entities' "absence means not yet scored, never
+zero."
 
 **Commit step** (only after the handler confirms the shown summary, FR-022): for each
 `added` row across all files in this import batch, upsert into `project.scores` — replacing
@@ -92,9 +108,9 @@ marked `failed` are never written. A multi-file import produces one summary sect
 
 `tests/integration/excel-roundtrip.test.ts` MUST assert, for a small fixture `Project`:
 1. `generateWorkbook` → `parseWorkbook` on the *unmodified* output recovers every row as
-   `status: "added"` with `score` values equal to whatever was pre-filled (typically none —
-   the real test is that structure/IDs survive the round trip, not that empty cells parse as
-   scores).
+   `status: "skipped"` (every Score cell is blank on a freshly generated workbook) rather
+   than `"failed"` — the real test is that structure/IDs survive the round trip intact,
+   not that empty cells parse as scores.
 2. Programmatically setting Score cell values (simulating a reviewer) before parsing
    produces exactly the expected `Score[]`.
 3. An out-of-scale Score value and a corrupted/mismatched hidden-ID cell each independently

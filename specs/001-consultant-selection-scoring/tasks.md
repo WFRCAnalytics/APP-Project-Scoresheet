@@ -125,30 +125,30 @@ export a valid `project.json` with an empty `scores` array.
 screen, see live weight-sum validation, and download a `project.json` matching everything
 entered, without any other part of the app existing yet.
 
-- [ ] T022 [US1] Implement `src/features/load/LoadScreen.tsx`: exactly two entry actions,
+- [X] T022 [US1] Implement `src/features/load/LoadScreen.tsx`: exactly two entry actions,
       "Start a new project" and "Upload a project file" (FR-001)
-- [ ] T023 [US1] Implement `src/features/load/uploadProject.ts`: parse an uploaded file via
+- [X] T023 [US1] Implement `src/features/load/uploadProject.ts`: parse an uploaded file via
       `project-schema.ts`, then route to Configuration (`scores.length === 0`) or Dashboard
       (`scores.length > 0`) per `contracts/project-file.md` (FR-002, FR-003, FR-004)
-- [ ] T024 [P] [US1] Implement `src/features/configuration/ProjectInfoForm.tsx` (name,
+- [X] T024 [P] [US1] Implement `src/features/configuration/ProjectInfoForm.tsx` (name,
       handler/contact, committee meeting date, notes) (FR-005)
-- [ ] T025 [P] [US1] Implement `src/features/configuration/FirmsEditor.tsx`: add/edit/remove,
+- [X] T025 [P] [US1] Implement `src/features/configuration/FirmsEditor.tsx`: add/edit/remove,
       invited/submitted flags, notes, and a confirmation prompt before removing a firm with
       existing scores (FR-006, FR-007)
-- [ ] T026 [P] [US1] Implement `src/features/configuration/ReviewersEditor.tsx`: add/edit/
+- [X] T026 [P] [US1] Implement `src/features/configuration/ReviewersEditor.tsx`: add/edit/
       remove, name + explicit `type: "city" | "wfrc"` + optional email, and a confirmation
       prompt before removing a reviewer with existing scores (FR-008, FR-041 — mirrors
       T025's firm-deletion and T027's criterion-deletion confirmation pattern exactly)
-- [ ] T027 [P] [US1] Implement `src/features/configuration/CriteriaEditor.tsx`: add/edit/
+- [X] T027 [P] [US1] Implement `src/features/configuration/CriteriaEditor.tsx`: add/edit/
       remove criteria (name, weight, description), a running weight-total display with a
       non-blocking warning when it isn't 1.0 ± 0.001, and a confirmation prompt before
       removing a criterion with existing scores (FR-009, FR-010, FR-039)
-- [ ] T028 [P] [US1] Implement `src/features/configuration/ScoringScaleEditor.tsx`: add/
+- [X] T028 [P] [US1] Implement `src/features/configuration/ScoringScaleEditor.tsx`: add/
       edit/remove scale points (value + label), enforcing a minimum of 2 points (FR-011)
-- [ ] T029 [US1] Implement `src/features/configuration/ExportProjectButton.tsx`: filename
+- [X] T029 [US1] Implement `src/features/configuration/ExportProjectButton.tsx`: filename
       prompt pre-filled via `filenames.ts`, editable, available at all times in
       Configuration (FR-013, FR-014)
-- [ ] T030 [US1] Implement `src/features/configuration/ConfigurationScreen.tsx`: assembles
+- [X] T030 [US1] Implement `src/features/configuration/ConfigurationScreen.tsx`: assembles
       T024–T029 plus an "Upload a different project JSON" action, wired to
       `ProjectContext` (FR-013)
 
@@ -166,7 +166,7 @@ batch, matching `contracts/reviewer-workbook.md` exactly.
 one reviewer produces a workbook that opens correctly in Excel with the right
 Instructions/Scoring sheet structure — independent of whether any scores exist yet.
 
-- [ ] T031 [US2] Implement `src/lib/excel/generateWorkbook.ts`: Instructions sheet +
+- [X] T031 [US2] Implement `src/lib/excel/generateWorkbook.ts`: Instructions sheet +
       Scoring sheet (Firm/Criterion/Description/Score/Comments), Score-column dropdown
       validation restricted to the project's scale values, locked reference columns, and
       hidden protected reviewerId/firmId/criterionId columns, per
@@ -180,12 +180,12 @@ Instructions/Scoring sheet structure — independent of whether any scores exist
 - [ ] ~~T032~~ *(removed — the pre-condition guard now lives in T031 itself, not a
       separate caller-side task; see T031's updated description. Left as an explicit gap
       rather than renumbering everything after it — resolves `/speckit-analyze` finding I1.)*
-- [ ] T033 [P] [US2] Implement `src/features/reviewer-forms/GenerateFormButton.tsx`:
+- [X] T033 [P] [US2] Implement `src/features/reviewer-forms/GenerateFormButton.tsx`:
       single-reviewer "download form" action (FR-019)
-- [ ] T034 [P] [US2] Implement `src/features/reviewer-forms/GenerateAllFormsButton.tsx`:
+- [X] T034 [P] [US2] Implement `src/features/reviewer-forms/GenerateAllFormsButton.tsx`:
       "download all forms" batch action, looping `generateWorkbook.ts` once per reviewer so
       the single and batch paths can never drift out of sync (FR-019)
-- [ ] T035 [US2] Perform and record the manual real-Excel verification step (quickstart
+- [X] T035 [US2] Perform and record the manual real-Excel verification step (quickstart
       Scenario 2) in `specs/001-consultant-selection-scoring/qa-signoff.md`: open a
       generated workbook in real Excel and confirm the Score dropdown, locked columns, and
       hidden ID columns all behave as intended — an automated test alone cannot satisfy this
@@ -209,43 +209,43 @@ results.
 workbooks, importing them updates scores correctly and the Dashboard immediately reflects
 new rankings and completion status, independent of whether every reviewer has responded.
 
-- [ ] T036 [US3] Implement `src/lib/excel/parseWorkbook.ts`: read hidden ID columns (never
+- [X] T036 [US3] Implement `src/lib/excel/parseWorkbook.ts`: read hidden ID columns (never
       visible text) to match rows, validate each row's Score against the *current*
       project's scale and its IDs against the *current* project's entities, and produce a
       per-row `added`/`failed` result plus a per-file summary, per
       `contracts/reviewer-workbook.md` (FR-020, FR-021, FR-022)
-- [ ] T037 [P] [US3] Write the round-trip contract test in
+- [X] T037 [P] [US3] Write the round-trip contract test in
       `tests/integration/excel-roundtrip.test.ts`: generate (T031, Phase 4) → parse (T036,
       above) recovers every row correctly; an out-of-scale Score value and a corrupted
       hidden-ID cell each produce a `failed` row, not a thrown exception (per
       `contracts/reviewer-workbook.md`'s mandated test). This is the task that actually
       confirms the Excel round trip end-to-end — it lives here, not in Phase 4, because it
       needs both directions of the contract to exist first (see Phase 4's checkpoint note)
-- [ ] T038 [P] [US3] Implement `src/features/reviewer-forms/ImportScoresPanel.tsx`:
+- [X] T038 [P] [US3] Implement `src/features/reviewer-forms/ImportScoresPanel.tsx`:
       single/multi-file picker, per-file before/after summary display, and a commit step
       that upserts `added` rows into `project.scores` (overwriting existing entries for the
       same reviewer/firm/criterion) only after handler confirmation (FR-020, FR-022, FR-023)
-- [ ] T039 [P] [US3] Implement `src/features/dashboard/DashboardScreen.tsx`: project header,
+- [X] T039 [P] [US3] Implement `src/features/dashboard/DashboardScreen.tsx`: project header,
       ranked firm cards (rank, Overall Weighted Total, City Weighted Total, per-firm
       completion indicator) (FR-032, FR-033, FR-030)
-- [ ] T040 [P] [US3] Implement `src/features/dashboard/OverallCityBarChart.tsx`: Recharts
+- [X] T040 [P] [US3] Implement `src/features/dashboard/OverallCityBarChart.tsx`: Recharts
       bar chart comparing firms on Overall vs. City weighted totals, using the categorical
       chart tokens from T017 (FR-034)
-- [ ] T041 [P] [US3] Implement `src/features/dashboard/CriterionBreakdownChart.tsx`:
+- [X] T041 [P] [US3] Implement `src/features/dashboard/CriterionBreakdownChart.tsx`:
       per-firm radar/grouped-bar chart showing scores by criterion (FR-034)
-- [ ] T042 [US3] Implement `src/features/calculations-view/CalculationsView.tsx`: the
+- [X] T042 [US3] Implement `src/features/calculations-view/CalculationsView.tsx`: the
       "show calculations" toggle view rendering every reviewer's raw score per firm per
       criterion alongside computed averages, weights, weighted sub-totals, and totals,
       including per-criterion completion counts (not just the Dashboard's per-firm one) —
       sourced from the same `calculations.ts` functions the Dashboard uses, so FR-030's
       "everywhere a computed average is displayed" requirement is met here too, not just
       on the Dashboard (FR-031, FR-030)
-- [ ] T043 [US3] Implement `src/lib/pdf/printLayout.ts` + `src/features/dashboard/
+- [X] T043 [US3] Implement `src/lib/pdf/printLayout.ts` + `src/features/dashboard/
       ExportPdfButton.tsx`: react-to-print-driven print layout with a `@media print`
       stylesheet enforcing high-contrast colors (constitution Principle VII's print
       carve-out), containing project header, ranking summary, charts, and per-firm detail
       with comments (FR-035)
-- [ ] T044 [US3] Implement `src/features/dashboard/ExportProjectButton.tsx`: reuses
+- [X] T044 [US3] Implement `src/features/dashboard/ExportProjectButton.tsx`: reuses
       `filenames.ts`, available on the Dashboard, includes all scores collected so far
       (FR-036, FR-037)
 
@@ -264,10 +264,10 @@ place with no data loss.
 **Independent Test**: Two sample files (config-only, and config+scores) uploaded from the
 Load screen route to Configuration and Dashboard respectively.
 
-- [ ] T045 [US4] Implement `src/features/dashboard/EditProjectButton.tsx` and the
+- [X] T045 [US4] Implement `src/features/dashboard/EditProjectButton.tsx` and the
       corresponding `App.tsx` state transition: switch from Dashboard (view mode) into
       Configuration without losing any loaded data (spec Story 4, Acceptance Scenario 3)
-- [ ] T046 [US4] Verify and, if needed, adjust `ConfigurationScreen.tsx`'s "Upload a
+- [X] T046 [US4] Verify and, if needed, adjust `ConfigurationScreen.tsx`'s "Upload a
       different project JSON" action (T030) to correctly re-run the same routing decision
       as the Load screen (T023) rather than always staying on Configuration (spec Story 4,
       Acceptance Scenarios 1–2 — this task is primarily a cross-check that T023's routing
@@ -286,10 +286,10 @@ in both directions — quickstart.md Scenario 3 step 7 and Scenario 4 pass.
 scores directly into a grid and sees them reflected on the Dashboard exactly as an import
 would produce.
 
-- [ ] T047 [US5] Implement `src/features/reviewer-forms/ManualEntryGrid.tsx`: firms ×
+- [X] T047 [US5] Implement `src/features/reviewer-forms/ManualEntryGrid.tsx`: firms ×
       criteria grid for a selected reviewer, score + optional comment per cell, applying the
       same scale-value validation as `parseWorkbook.ts` (T036) (FR-024)
-- [ ] T048 [US5] Wire the manual entry grid's commit path through the same upsert logic
+- [X] T048 [US5] Wire the manual entry grid's commit path through the same upsert logic
       `ImportScoresPanel.tsx` (T038) uses for `project.scores`, so a later workbook import
       for the same reviewer/firm/criterion cells correctly overwrites manually entered
       values (spec Story 5, Acceptance Scenario 2) — host the grid per `plan.md`'s
@@ -304,25 +304,25 @@ scenario set passes.
 
 **Purpose**: Final verification that spans multiple stories.
 
-- [ ] T049 [P] Run the complete `quickstart.md` validation guide (all 5 scenarios) end-to-end
+- [X] T049 [P] Run the complete `quickstart.md` validation guide (all 5 scenarios) end-to-end
       and record results in `specs/001-consultant-selection-scoring/qa-signoff.md` — during
       Scenario 3 step 8, stopwatch the batch import and record the elapsed time against
       SC-009's <1 minute target
-- [ ] T050 [P] Re-run the automated WCAG 2.1 AA contrast check (T020) against the final,
+- [X] T050 [P] Re-run the automated WCAG 2.1 AA contrast check (T020) against the final,
       fully-populated `tokens.css` (including any UI-driven token additions from Phases
       3–7) to confirm nothing introduced during feature work regressed contrast (spec
       SC-010)
-- [ ] T051 Manually verify, via browser dev-tools Network tab, that zero requests carry
+- [X] T051 Manually verify, via browser dev-tools Network tab, that zero requests carry
       project data at any point during Scenario 3's full workflow; record the result in
       `qa-signoff.md` (spec SC-007)
-- [ ] T052 [P] Write `README.md`: project overview, and `npm run dev` / `test` / `build` /
+- [X] T052 [P] Write `README.md`: project overview, and `npm run dev` / `test` / `build` /
       `deploy` usage (the last one exercising T007's new script)
 - [ ] T053 Perform one real `npm run deploy` dry run: build, review the `/docs` diff, commit,
       and push to `main`; confirm GitHub Pages (Settings → Pages → Source: `main` / `/docs`)
       serves the result correctly under the project-page subpath. **Depends on T054** — do
       not run this until T054 has confirmed the flexibility claim, so the deployed build
       reflects a verified-flexible app rather than deploying ahead of that check
-- [ ] T054 [P] Verify the FR-012/SC-006 flexibility claim (`/speckit-analyze` finding G1):
+- [X] T054 [P] Verify the FR-012/SC-006 flexibility claim (`/speckit-analyze` finding G1):
       extend `tests/unit/calculations.test.ts` with a second, materially different-shaped
       fixture (e.g. 15 firms, 1 criterion, a 7-point scale) alongside the existing small
       fixture, and confirm no hardcoded count/scale assumption breaks it; then execute

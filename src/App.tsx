@@ -1,47 +1,60 @@
-// T021: Top-level area-switch state machine — Load -> Configuration -> Reviewer Forms ->
-// Calculations view -> Dashboard. No router library (research.md §6): none of the app's
-// user stories need deep-linkable URLs or browser back/forward semantics, and a router
-// would add GitHub Pages sub-path/base-path routing complexity for no corresponding
-// requirement. Switching areas is just a state value here.
-//
-// This file is Phase 2 (Foundational) scaffolding only. The five areas below are
-// placeholders — their real implementations are Phase 3+ (T022 onward), deliberately not
-// built in this pass so the foundational code (this file, ProjectContext, calculations,
-// schema validation, theme) can be reviewed before anything is built on top of it.
+// T021 (Phase 2) + T022/T030 (Phase 3) + T031-T044 (Phase 4/5): top-level area-switch
+// state machine — Load -> Configuration -> Reviewer Forms -> Dashboard. No router
+// library (research.md §6). The Calculations view (FR-031) is intentionally NOT a
+// separate top-level area — it's an inline toggle inside DashboardScreen, which matches
+// the spec's own "hidden by default behind a toggle... reachable in one click" wording
+// more directly than a fifth navigable area would.
 
 import { useEffect, useState } from "react";
+import { ConfigurationScreen } from "./features/configuration/ConfigurationScreen";
+import { DashboardScreen } from "./features/dashboard/DashboardScreen";
+import { LoadScreen } from "./features/load/LoadScreen";
+import type { UploadArea } from "./features/load/uploadProject";
+import { ReviewerFormsScreen } from "./features/reviewer-forms/ReviewerFormsScreen";
 import { ProjectProvider, useProjectContext } from "./state/ProjectContext";
 import { loadBrandFonts } from "./theme/fonts";
+import type { Project } from "./types/project";
 
-export type Area = "load" | "configuration" | "reviewer-forms" | "calculations" | "dashboard";
-
-function AreaPlaceholder({ area }: { area: Area }) {
-  const { project } = useProjectContext();
-  const labels: Record<Area, string> = {
-    load: "Load",
-    configuration: "Configuration",
-    "reviewer-forms": "Reviewer Forms",
-    calculations: "Calculations",
-    dashboard: "Dashboard",
-  };
-  return (
-    <section aria-label={`${labels[area]} area (placeholder)`}>
-      <h1>{labels[area]}</h1>
-      <p>
-        This area is not implemented yet — it will be built in a later phase. Foundational
-        state is wired up: a project is {project ? "currently loaded" : "not currently loaded"}.
-      </p>
-    </section>
-  );
-}
+export type Area = "load" | "configuration" | "reviewer-forms" | "dashboard";
 
 function AppShell() {
-  const [area] = useState<Area>("load");
-  return (
-    <div className="app-shell">
-      <AreaPlaceholder area={area} />
-    </div>
-  );
+  const [area, setArea] = useState<Area>("load");
+  const { dispatch } = useProjectContext();
+
+  function loadProjectAndNavigate(project: Project, target: Area) {
+    dispatch({ type: "SET_PROJECT", project });
+    setArea(target);
+  }
+
+  function handleUploadRouting(project: Project, uploadArea: UploadArea) {
+    loadProjectAndNavigate(project, uploadArea === "dashboard" ? "dashboard" : "configuration");
+  }
+
+  switch (area) {
+    case "load":
+      return (
+        <LoadScreen
+          onStartNew={(project) => loadProjectAndNavigate(project, "configuration")}
+          onProjectLoaded={handleUploadRouting}
+        />
+      );
+    case "configuration":
+      return (
+        <ConfigurationScreen
+          onProjectReplaced={handleUploadRouting}
+          onGenerateForms={() => setArea("reviewer-forms")}
+        />
+      );
+    case "reviewer-forms":
+      return (
+        <ReviewerFormsScreen
+          onBackToConfiguration={() => setArea("configuration")}
+          onGoToDashboard={() => setArea("dashboard")}
+        />
+      );
+    case "dashboard":
+      return <DashboardScreen onEditProject={() => setArea("configuration")} />;
+  }
 }
 
 export default function App() {
@@ -50,8 +63,10 @@ export default function App() {
   }, []);
 
   return (
-    <ProjectProvider>
-      <AppShell />
-    </ProjectProvider>
+    <div className="app-shell">
+      <ProjectProvider>
+        <AppShell />
+      </ProjectProvider>
+    </div>
   );
 }

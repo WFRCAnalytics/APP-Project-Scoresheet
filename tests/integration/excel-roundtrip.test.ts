@@ -1,0 +1,170 @@
+// T037: The Excel round-trip contract test mandated by
+// contracts/reviewer-workbook.md — generate (T031, Phase 4) -> parse (T036, this phase)
+// must agree on every detail, since they are each other's only contract test. Lives here
+// in Phase 5, not Phase 4, because it needs both directions to exist first (see Phase
+// 4's checkpoint note in tasks.md, resolving /speckit-analyze finding I1).
+//
+// This cannot substitute for the manual real-Excel verification in qa-signoff.md (T035)
+// — it only proves ExcelJS agrees with itself (research.md §2).
+// @vitest-environment node
+
+import ExcelJS from "exceljs";
+import { describe, expect, it } from "vitest";
+import { generateWorkbookForReviewer } from "../../src/lib/excel/generateWorkbook";
+import { parseScoringWorkbook } from "../../src/lib/excel/parseWorkbook";
+import { createEmptyProject, type Project } from "../../src/types/project";
+
+function buildFixture(): Project {
+  const project = createEmptyProject();
+  project.project.projectName = "Round Trip Fixture";
+  project.scoringScale = [
+    { value: 1, label: "No" },
+    { value: 3, label: "Maybe" },
+    { value: 5, label: "Yes" },
+  ];
+  project.criteria = [
+    { id: "crit-1", name: "Approach", weight: 0.6, description: "" },
+    { id: "crit-2", name: "Cost", weight: 0.4, description: "" },
+  ];
+  project.firms = [
+    { id: "firm-1", name: "Alpha Co", invited: true, submitted: true, notes: "" },
+    { id: "firm-2", name: "Beta Co", invited: true, submitted: true, notes: "" },
+  ];
+  project.reviewers = [{ id: "rev-1", name: "Alice", type: "city", email: "" }];
+  return project;
+}
+
+async function loadWorkbookFromBlob(blob: Blob): Promise<ExcelJS.Workbook> {
+  const arrayBuffer = await blob.arrayBuffer();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(arrayBuffer as unknown as ArrayBuffer);
+  return workbook;
+}
+
+describe("Excel round trip: generateWorkbook -> parseWorkbook", () => {
+  it("1. recovers every row as 'skipped' (not 'failed') on the unmodified, freshly generated workbook", async () => {
+    const project = buildFixture();
+    const generated = await generateWorkbookForReviewer(project, project.reviewers[0]);
+    if (!generated.ok) throw new Error(generated.error);
+
+    const workbook = await loadWorkbookFromBlob(generated.blob);
+    const result = parseScoringWorkbook(project, workbook, generated.filename);
+
+    // 2 firms * 2 criteria = 4 rows, all blank -> all skipped, none added, none failed.
+    expect(result.rows).toHaveLength(4);
+    expect(result.rows.every((r) => r.status === "skipped")).toBe(true);
+    expect(result.addedCount).toBe(0);
+    expect(result.failedCount).toBe(0);
+    expect(result.skippedCount).toBe(4);
+    expect(result.reviewerName).toBe("Alice");
+  });
+
+  it("2. programmatically filling Score cells produces exactly the expected Score[]", async () => {
+    const project = buildFixture();
+    const generated = await generateWorkbookForReviewer(project, project.reviewers[0]);
+    if (!generated.ok) throw new Error(generated.error);
+
+    const workbook = await loadWorkbookFromBlob(generated.blob);
+    const sheet = workbook.getWorksheet("Scoring")!;
+
+    // Simulate a reviewer filling in every row, in the row order generateWorkbook used:
+    // firm-1/crit-1, firm-1/crit-2, firm-2/crit-1, firm-2/crit-2.
+    const filledValues = [5, 3, 1, 5];
+    const filledComments = ["Great approach", "", "Too expensive", "Solid value"];
+    for (let i = 0; i < 4; i++) {
+      const r = i + 2;
+      sheet.getCell(`D${r}`).value = filledValues[i];
+      sheet.getCell(`E${r}`).value = filledComments[i];
+    }
+
+    const result = parseScoringWorkbook(project, workbook, generated.filename);
+
+    expect(result.addedCount).toBe(4);
+    expect(result.skippedCount).toBe(0);
+    expect(result.failedCount).toBe(0);
+
+    const scores = result.rows.map((r) => r.score);
+    expect(scores).toEqual([
+      { reviewerId: "rev-1", firmId: "firm-1", criterionId: "crit-1", value: 5, comment: "Great approach", updatedAt: expect.any(String) },
+      { reviewerId: "rev-1", firmId: "firm-1", criterionId: "crit-2", value: 3, comment: "", updatedAt: expect.any(String) },
+      { reviewerId: "rev-1", firmId: "firm-2", criterionId: "crit-1", value: 1, comment: "Too expensive", updatedAt: expect.any(String) },
+      { reviewerId: "rev-1", firmId: "firm-2", criterionId: "crit-2", value: 5, comment: "Solid value", updatedAt: expect.any(String) },
+    ]);
+  });
+
+  it("3a. an out-of-scale Score value produces a failed row, not a thrown exception", async () => {
+    const project = buildFixture();
+    const generated = await generateWorkbookForReviewer(project, project.reviewers[0]);
+    if (!generated.ok) throw new Error(generated.error);
+
+    const workbook = await loadWorkbookFromBlob(generated.blob);
+    const sheet = workbook.getWorksheet("Scoring")!;
+    sheet.getCell("D2").value = 99; // not one of 1/3/5
+
+    const result = parseScoringWorkbook(project, workbook, generated.filename);
+
+    expect(result.rows[0].status).toBe("failed");
+    expect(result.rows[0].reason).toMatch(/not one of this project's configured scale values/);
+    expect(result.rows[0].score).toBeUndefined();
+    // The other, still-blank rows are unaffected.
+    expect(result.rows.slice(1).every((r) => r.status === "skipped")).toBe(true);
+  });
+
+  it("3b. a corrupted/mismatched hidden-ID cell produces a failed row, not a thrown exception", async () => {
+    const project = buildFixture();
+    const generated = await generateWorkbookForReviewer(project, project.reviewers[0]);
+    if (!generated.ok) throw new Error(generated.error);
+
+    const workbook = await loadWorkbookFromBlob(generated.blob);
+    const sheet = workbook.getWorksheet("Scoring")!;
+    // Mismatched: points at a criterion ID that doesn't exist in the current project.
+    sheet.getCell("H2").value = "crit-does-not-exist";
+    sheet.getCell("D2").value = 5; // otherwise a perfectly valid score
+
+    expect(() => parseScoringWorkbook(project, workbook, generated.filename)).not.toThrow();
+    const result = parseScoringWorkbook(project, workbook, generated.filename);
+
+    expect(result.rows[0].status).toBe("failed");
+    expect(result.rows[0].reason).toMatch(/criterion.*no longer exists/i);
+  });
+
+  it("re-validates against the CURRENT project, not the project state at generation time", async () => {
+    const project = buildFixture();
+    const generated = await generateWorkbookForReviewer(project, project.reviewers[0]);
+    if (!generated.ok) throw new Error(generated.error);
+
+    const workbook = await loadWorkbookFromBlob(generated.blob);
+    const sheet = workbook.getWorksheet("Scoring")!;
+    sheet.getCell("D2").value = 5;
+
+    // Configuration changed after the form went out: criterion crit-1 was removed.
+    const changedProject: Project = { ...project, criteria: project.criteria.filter((c) => c.id !== "crit-1") };
+
+    const result = parseScoringWorkbook(changedProject, workbook, generated.filename);
+    const row2 = result.rows[0]; // firm-1/crit-1
+    expect(row2.status).toBe("failed");
+    expect(row2.reason).toMatch(/criterion.*no longer exists/i);
+  });
+
+  it("resolves reviewerName from a valid reviewerId alone, even when every row's firmId is stale", async () => {
+    const project = buildFixture();
+    const generated = await generateWorkbookForReviewer(project, project.reviewers[0]);
+    if (!generated.ok) throw new Error(generated.error);
+
+    const workbook = await loadWorkbookFromBlob(generated.blob);
+
+    // Configuration changed after the form went out: both firms were removed, so every
+    // row's firmId is now stale — but the reviewer themselves is still a live reviewer.
+    const changedProject: Project = { ...project, firms: [] };
+
+    const result = parseScoringWorkbook(changedProject, workbook, generated.filename);
+
+    // Every row fails (no live firm to attach the score to)...
+    expect(result.rows.every((r) => r.status === "failed")).toBe(true);
+    expect(result.failedCount).toBe(result.rows.length);
+    // ...but reviewerName must still resolve, since it depends only on reviewerId
+    // validity, not on firmId/criterionId (data-model.md: reviewerName is "resolved
+    // from the first row whose reviewerId matches a live reviewer").
+    expect(result.reviewerName).toBe("Alice");
+  });
+});

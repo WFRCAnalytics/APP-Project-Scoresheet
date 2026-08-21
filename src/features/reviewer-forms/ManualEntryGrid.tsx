@@ -20,6 +20,7 @@
 // immediately, matching the Configuration editors' own direct-dispatch pattern.
 
 import { useMemo, useState } from "react";
+import { SelectField } from "../../components/SelectField";
 import { useLoadedProject } from "../../state/ProjectContext";
 import type { Score } from "../../types/project";
 
@@ -45,7 +46,10 @@ export function ManualEntryGrid() {
     for (const firm of submittedFirms) {
       for (const criterion of project.criteria) {
         const existing = project.scores.find(
-          (s) => s.reviewerId === forReviewerId && s.firmId === firm.id && s.criterionId === criterion.id,
+          (s) =>
+            s.reviewerId === forReviewerId &&
+            s.firmId === firm.id &&
+            s.criterionId === criterion.id,
         );
         drafts[cellKey(firm.id, criterion.id)] = {
           value: existing?.value ?? "",
@@ -96,7 +100,11 @@ export function ManualEntryGrid() {
     return <p className="field-hint">No reviewers configured yet.</p>;
   }
   if (submittedFirms.length === 0 || project.criteria.length === 0) {
-    return <p className="field-hint">Add submitted firms and criteria before entering scores manually.</p>;
+    return (
+      <p className="field-hint">
+        Add submitted firms and criteria before entering scores manually.
+      </p>
+    );
   }
 
   return (
@@ -108,7 +116,7 @@ export function ManualEntryGrid() {
 
       <div className="field" style={{ maxWidth: "20rem" }}>
         <label htmlFor="manual-entry-reviewer">Reviewer</label>
-        <select
+        <SelectField
           id="manual-entry-reviewer"
           value={reviewerId}
           onChange={(e) => handleReviewerChange(e.target.value)}
@@ -118,7 +126,7 @@ export function ManualEntryGrid() {
               {reviewer.name} ({reviewer.type})
             </option>
           ))}
-        </select>
+        </SelectField>
       </div>
 
       <table className="data-table">
@@ -140,7 +148,7 @@ export function ManualEntryGrid() {
                   <td>{firm.name}</td>
                   <td>{criterion.name}</td>
                   <td>
-                    <select
+                    <SelectField
                       aria-label={`Score for ${firm.name} / ${criterion.name}`}
                       value={draft.value}
                       onChange={(e) =>
@@ -155,14 +163,16 @@ export function ManualEntryGrid() {
                           {point.value} — {point.label}
                         </option>
                       ))}
-                    </select>
+                    </SelectField>
                   </td>
                   <td>
                     <input
                       type="text"
                       aria-label={`Comments for ${firm.name} / ${criterion.name}`}
                       value={draft.comment}
-                      onChange={(e) => updateDraft(firm.id, criterion.id, { comment: e.target.value })}
+                      onChange={(e) =>
+                        updateDraft(firm.id, criterion.id, { comment: e.target.value })
+                      }
                     />
                   </td>
                 </tr>

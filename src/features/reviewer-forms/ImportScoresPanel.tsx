@@ -4,7 +4,13 @@
 // reviewer/firm/criterion (FR-020, FR-022, FR-023).
 
 import { useRef, useState } from "react";
-import { collectScoresToCommit, parseWorkbookFiles, type ParsedFileResult } from "../../lib/excel/parseWorkbook";
+import { Badge } from "../../components/Badge";
+import { FilePickerField, type FilePickerFieldHandle } from "../../components/FilePickerField";
+import {
+  collectScoresToCommit,
+  parseWorkbookFiles,
+  type ParsedFileResult,
+} from "../../lib/excel/parseWorkbook";
 import { useLoadedProject } from "../../state/ProjectContext";
 
 export function ImportScoresPanel() {
@@ -12,7 +18,7 @@ export function ImportScoresPanel() {
   const [pendingResults, setPendingResults] = useState<ParsedFileResult[] | null>(null);
   const [parsing, setParsing] = useState(false);
   const [committed, setCommitted] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const filePickerRef = useRef<FilePickerFieldHandle>(null);
 
   async function handleFilesChosen(files: FileList) {
     setParsing(true);
@@ -35,7 +41,7 @@ export function ImportScoresPanel() {
   function handleDiscard() {
     setPendingResults(null);
     setCommitted(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    filePickerRef.current?.reset();
   }
 
   const totalAdded = pendingResults?.reduce((sum, r) => sum + r.addedCount, 0) ?? 0;
@@ -47,15 +53,15 @@ export function ImportScoresPanel() {
         <label htmlFor="import-workbooks">
           Select one or more completed <code>.xlsx</code> files
         </label>
-        <input
-          ref={fileInputRef}
+        <FilePickerField
+          ref={filePickerRef}
           id="import-workbooks"
-          type="file"
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           multiple
           disabled={parsing}
-          onChange={(e) => {
-            if (e.target.files && e.target.files.length > 0) void handleFilesChosen(e.target.files);
+          buttonLabel="Select Reviewer Scores"
+          onFilesSelected={(files) => {
+            if (files.length > 0) void handleFilesChosen(files);
           }}
         />
       </div>
@@ -65,26 +71,60 @@ export function ImportScoresPanel() {
       {pendingResults && !committed && (
         <div>
           <h3>Review before importing</h3>
-          {pendingResults.map((result) => (
-            <div key={result.filename} className="banner" style={{ borderLeft: "3px solid var(--color-border)" }}>
-              <strong>{result.reviewerName ?? result.filename}</strong>: {result.addedCount} scores added
-              {result.skippedCount > 0 && `, ${result.skippedCount} not yet scored`}
-              {result.failedCount > 0 && `, ${result.failedCount} rows failed validation`}
-              {result.failedCount > 0 && (
-                <ul>
-                  {result.rows
-                    .filter((r) => r.status === "failed")
-                    .map((r, i) => (
-                      <li key={i}>
-                        Row {r.row}: {r.reason}
-                      </li>
-                    ))}
-                </ul>
-              )}
-            </div>
-          ))}
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Reviewer</th>
+                  <th>Added</th>
+                  <th>Not yet scored</th>
+                  <th>Failed validation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingResults.map((result) => (
+                  <tr key={result.filename}>
+                    <td>{result.reviewerName ?? result.filename}</td>
+                    <td>
+                      <Badge variant="success">{result.addedCount}</Badge>
+                    </td>
+                    <td>
+                      {result.skippedCount > 0 ? (
+                        <Badge variant="neutral">{result.skippedCount}</Badge>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td>
+                      {result.failedCount > 0 ? (
+                        <>
+                          <Badge variant="danger">{result.failedCount}</Badge>
+                          <ul className="import-failed-rows">
+                            {result.rows
+                              .filter((r) => r.status === "failed")
+                              .map((r, i) => (
+                                <li key={i}>
+                                  Row {r.row}: {r.reason}
+                                </li>
+                              ))}
+                          </ul>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <div className="actions-row">
-            <button type="button" className="button button-primary" onClick={handleCommit} disabled={totalAdded === 0}>
+            <button
+              type="button"
+              className="button button-primary"
+              onClick={handleCommit}
+              disabled={totalAdded === 0}
+            >
               Confirm import ({totalAdded} score{totalAdded === 1 ? "" : "s"})
             </button>
             <button type="button" className="button button-secondary" onClick={handleDiscard}>

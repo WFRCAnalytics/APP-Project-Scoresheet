@@ -12,18 +12,20 @@ export function ProjectInfoForm() {
       <h2>Project Info</h2>
 
       <div className="field">
-        <label htmlFor="project-name">Project name</label>
+        <label htmlFor="project-name">Project Name:</label>
         <input
           id="project-name"
           type="text"
           value={info.projectName}
-          onChange={(e) => dispatch({ type: "UPDATE_PROJECT_INFO", info: { projectName: e.target.value } })}
-          placeholder="e.g. Very Good Project"
+          onChange={(e) =>
+            dispatch({ type: "UPDATE_PROJECT_INFO", info: { projectName: e.target.value } })
+          }
+          placeholder="Example Project"
         />
       </div>
 
       <div className="field">
-        <label htmlFor="local-gov-contact">Handler / contact name</label>
+        <label htmlFor="local-gov-contact">Local Government Contact:</label>
         <input
           id="local-gov-contact"
           type="text"
@@ -35,7 +37,7 @@ export function ProjectInfoForm() {
       </div>
 
       <div className="field">
-        <label htmlFor="procurement-agent">WFRC procurement agent (optional)</label>
+        <label htmlFor="procurement-agent">Procurement Agent (WFRC PM):</label>
         <input
           id="procurement-agent"
           type="text"
@@ -47,13 +49,16 @@ export function ProjectInfoForm() {
       </div>
 
       <div className="field">
-        <label htmlFor="committee-meeting-date">Committee meeting date</label>
+        <label htmlFor="committee-meeting-date">Selection Committee Meeting Date:</label>
         <input
           id="committee-meeting-date"
           type="date"
           value={info.committeeMeetingDate}
           onChange={(e) =>
-            dispatch({ type: "UPDATE_PROJECT_INFO", info: { committeeMeetingDate: e.target.value } })
+            dispatch({
+              type: "UPDATE_PROJECT_INFO",
+              info: { committeeMeetingDate: e.target.value },
+            })
           }
         />
       </div>
@@ -64,7 +69,10 @@ export function ProjectInfoForm() {
           id="project-notes"
           rows={3}
           value={info.notes}
-          onChange={(e) => dispatch({ type: "UPDATE_PROJECT_INFO", info: { notes: e.target.value } })}
+          onChange={(e) =>
+            dispatch({ type: "UPDATE_PROJECT_INFO", info: { notes: e.target.value } })
+          }
+          placeholder="Project Description"
         />
       </div>
     </div>

@@ -45,83 +45,85 @@ export function CriteriaEditor() {
         )}
       </div>
 
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Weight</th>
-            <th>Description</th>
-            <th aria-label="Actions" />
-          </tr>
-        </thead>
-        <tbody>
-          {project.criteria.map((criterion) => (
-            <tr key={criterion.id}>
-              <td>
-                <input
-                  type="text"
-                  aria-label="Criterion name"
-                  value={criterion.name}
-                  onChange={(e) =>
-                    dispatch({
-                      type: "UPDATE_CRITERION",
-                      criterionId: criterion.id,
-                      patch: { name: e.target.value },
-                    })
-                  }
-                />
-              </td>
-              <td>
-                <input
-                  type="number"
-                  aria-label="Criterion weight (fraction of 1.0)"
-                  step={0.01}
-                  min={0}
-                  max={1}
-                  value={criterion.weight}
-                  onChange={(e) =>
-                    dispatch({
-                      type: "UPDATE_CRITERION",
-                      criterionId: criterion.id,
-                      patch: { weight: Number(e.target.value) },
-                    })
-                  }
-                />
-              </td>
-              <td>
-                <input
-                  type="text"
-                  aria-label="Criterion description"
-                  value={criterion.description}
-                  onChange={(e) =>
-                    dispatch({
-                      type: "UPDATE_CRITERION",
-                      criterionId: criterion.id,
-                      patch: { description: e.target.value },
-                    })
-                  }
-                />
-              </td>
-              <td>
-                <button
-                  type="button"
-                  className="button button-danger"
-                  onClick={() => requestRemove(criterion.id)}
-                >
-                  Remove
-                </button>
-              </td>
-            </tr>
-          ))}
-          {project.criteria.length === 0 && (
+      <div className="table-wrap">
+        <table className="data-table">
+          <thead>
             <tr>
-              <td colSpan={4} className="field-hint">
-                No criteria yet — add one below.
-              </td>
+              <th>Name</th>
+              <th>Weight</th>
+              <th>Description</th>
+              <th aria-label="Actions" />
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {project.criteria.map((criterion) => (
+              <tr key={criterion.id}>
+                <td>
+                  <input
+                    type="text"
+                    aria-label="Criterion name"
+                    value={criterion.name}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "UPDATE_CRITERION",
+                        criterionId: criterion.id,
+                        patch: { name: e.target.value },
+                      })
+                    }
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    aria-label="Criterion weight (fraction of 1.0)"
+                    step={0.01}
+                    min={0}
+                    max={1}
+                    value={criterion.weight}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "UPDATE_CRITERION",
+                        criterionId: criterion.id,
+                        patch: { weight: Number(e.target.value) },
+                      })
+                    }
+                  />
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    aria-label="Criterion description"
+                    value={criterion.description}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "UPDATE_CRITERION",
+                        criterionId: criterion.id,
+                        patch: { description: e.target.value },
+                      })
+                    }
+                  />
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="button button-danger"
+                    onClick={() => requestRemove(criterion.id)}
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {project.criteria.length === 0 && (
+              <tr>
+                <td colSpan={4} className="field-hint">
+                  No criteria yet — add one below.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       <div className="actions-row">
         <button
@@ -143,9 +145,9 @@ export function CriteriaEditor() {
         title="Remove criterion with recorded scores?"
         message={
           <>
-            "{pendingCriterion?.name || "This criterion"}" has scores recorded against it.
-            Removing it will keep those score entries in the file, but they will no longer
-            count toward any total or ranking.
+            "{pendingCriterion?.name || "This criterion"}" has scores recorded against it. Removing
+            it will keep those score entries in the file, but they will no longer count toward any
+            total or ranking.
           </>
         }
         onCancel={() => setPendingRemoval(null)}

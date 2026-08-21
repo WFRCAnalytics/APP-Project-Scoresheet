@@ -4,8 +4,13 @@
 // separate top-level area — it's an inline toggle inside DashboardScreen, which matches
 // the spec's own "hidden by default behind a toggle... reachable in one click" wording
 // more directly than a fifth navigable area would.
+//
+// AppHeader/HelpGuideModal are shell chrome layered above this same state machine — help
+// is a modal overlay, not a new route, for the same research.md §6 reason.
 
 import { useEffect, useState } from "react";
+import { AppHeader } from "./app/AppHeader";
+import { HelpGuideModal } from "./app/HelpGuideModal";
 import { ConfigurationScreen } from "./features/configuration/ConfigurationScreen";
 import { DashboardScreen } from "./features/dashboard/DashboardScreen";
 import { LoadScreen } from "./features/load/LoadScreen";
@@ -19,6 +24,7 @@ export type Area = "load" | "configuration" | "reviewer-forms" | "dashboard";
 
 function AppShell() {
   const [area, setArea] = useState<Area>("load");
+  const [helpOpen, setHelpOpen] = useState(false);
   const { dispatch } = useProjectContext();
 
   function loadProjectAndNavigate(project: Project, target: Area) {
@@ -30,31 +36,43 @@ function AppShell() {
     loadProjectAndNavigate(project, uploadArea === "dashboard" ? "dashboard" : "configuration");
   }
 
-  switch (area) {
-    case "load":
-      return (
-        <LoadScreen
-          onStartNew={(project) => loadProjectAndNavigate(project, "configuration")}
-          onProjectLoaded={handleUploadRouting}
-        />
-      );
-    case "configuration":
-      return (
-        <ConfigurationScreen
-          onProjectReplaced={handleUploadRouting}
-          onGenerateForms={() => setArea("reviewer-forms")}
-        />
-      );
-    case "reviewer-forms":
-      return (
-        <ReviewerFormsScreen
-          onBackToConfiguration={() => setArea("configuration")}
-          onGoToDashboard={() => setArea("dashboard")}
-        />
-      );
-    case "dashboard":
-      return <DashboardScreen onEditProject={() => setArea("configuration")} />;
+  function renderArea() {
+    switch (area) {
+      case "load":
+        return (
+          <LoadScreen
+            onStartNew={(project) => loadProjectAndNavigate(project, "configuration")}
+            onProjectLoaded={handleUploadRouting}
+          />
+        );
+      case "configuration":
+        return (
+          <ConfigurationScreen
+            onProjectReplaced={handleUploadRouting}
+            onGenerateForms={() => setArea("reviewer-forms")}
+          />
+        );
+      case "reviewer-forms":
+        return (
+          <ReviewerFormsScreen
+            onBackToConfiguration={() => setArea("configuration")}
+            onGoToDashboard={() => setArea("dashboard")}
+          />
+        );
+      case "dashboard":
+        return <DashboardScreen onEditProject={() => setArea("configuration")} />;
+    }
   }
+
+  return (
+    <>
+      <AppHeader onOpenHelp={() => setHelpOpen(true)} />
+      <HelpGuideModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <div className="app-shell">
+        <main>{renderArea()}</main>
+      </div>
+    </>
+  );
 }
 
 export default function App() {
@@ -63,10 +81,8 @@ export default function App() {
   }, []);
 
   return (
-    <div className="app-shell">
-      <ProjectProvider>
-        <AppShell />
-      </ProjectProvider>
-    </div>
+    <ProjectProvider>
+      <AppShell />
+    </ProjectProvider>
   );
 }

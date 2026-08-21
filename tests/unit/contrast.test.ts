@@ -64,7 +64,9 @@ function loadTokens(): { light: TokenMap; dark: TokenMap } {
   const lightRaw = parseDeclarations(rootBlock.body);
 
   const darkMediaIndex = css.indexOf("prefers-color-scheme: dark", rootBlock.endIndex);
-  expect(darkMediaIndex, "expected a @media (prefers-color-scheme: dark) block").toBeGreaterThan(-1);
+  expect(darkMediaIndex, "expected a @media (prefers-color-scheme: dark) block").toBeGreaterThan(
+    -1,
+  );
   const darkRootBlock = extractRootBlock(css, darkMediaIndex);
   const darkOverridesRaw = parseDeclarations(darkRootBlock.body);
 
@@ -96,8 +98,23 @@ describe("theme/tokens.css meets WCAG 2.1 AA (SC-010)", () => {
     ["heading color on page background", "color-heading", "color-background"],
     ["link color on page background", "color-link", "color-background"],
     ["primary-foreground on primary (button text)", "color-primary-foreground", "color-primary"],
-    ["accent-foreground on accent-background (badge text)", "color-accent-foreground", "color-accent-background"],
+    [
+      "accent-foreground on accent-background (badge text)",
+      "color-accent-foreground",
+      "color-accent-background",
+    ],
     ["code text on code background", "color-code-text", "color-code-background"],
+    [
+      "success-foreground on success background (badge text)",
+      "color-success-foreground",
+      "color-success",
+    ],
+    [
+      "danger-foreground on danger background (badge text)",
+      "color-danger-foreground",
+      "color-danger",
+    ],
+    ["foreground on border (neutral badge text)", "color-foreground", "color-border"],
   ];
 
   describe.each([

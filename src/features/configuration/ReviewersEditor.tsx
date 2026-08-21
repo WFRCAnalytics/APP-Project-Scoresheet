@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { SelectField } from "../../components/SelectField";
 import { generateId } from "../../lib/id";
 import { useLoadedProject } from "../../state/ProjectContext";
 import { reviewerHasScores } from "../../state/projectReducer";
@@ -27,82 +28,84 @@ export function ReviewersEditor() {
   return (
     <div className="card">
       <h2>Reviewers</h2>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Email</th>
-            <th aria-label="Actions" />
-          </tr>
-        </thead>
-        <tbody>
-          {project.reviewers.map((reviewer) => (
-            <tr key={reviewer.id}>
-              <td>
-                <input
-                  type="text"
-                  aria-label="Reviewer name"
-                  value={reviewer.name}
-                  onChange={(e) =>
-                    dispatch({
-                      type: "UPDATE_REVIEWER",
-                      reviewerId: reviewer.id,
-                      patch: { name: e.target.value },
-                    })
-                  }
-                />
-              </td>
-              <td>
-                <select
-                  aria-label="Reviewer type"
-                  value={reviewer.type}
-                  onChange={(e) =>
-                    dispatch({
-                      type: "UPDATE_REVIEWER",
-                      reviewerId: reviewer.id,
-                      patch: { type: e.target.value as ReviewerType },
-                    })
-                  }
-                >
-                  <option value="city">City</option>
-                  <option value="wfrc">WFRC</option>
-                </select>
-              </td>
-              <td>
-                <input
-                  type="email"
-                  aria-label="Reviewer email"
-                  value={reviewer.email}
-                  onChange={(e) =>
-                    dispatch({
-                      type: "UPDATE_REVIEWER",
-                      reviewerId: reviewer.id,
-                      patch: { email: e.target.value },
-                    })
-                  }
-                />
-              </td>
-              <td>
-                <button
-                  type="button"
-                  className="button button-danger"
-                  onClick={() => requestRemove(reviewer.id)}
-                >
-                  Remove
-                </button>
-              </td>
-            </tr>
-          ))}
-          {project.reviewers.length === 0 && (
+      <div className="table-wrap">
+        <table className="data-table">
+          <thead>
             <tr>
-              <td colSpan={4} className="field-hint">
-                No reviewers yet — add one below.
-              </td>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Email</th>
+              <th aria-label="Actions" />
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {project.reviewers.map((reviewer) => (
+              <tr key={reviewer.id}>
+                <td>
+                  <input
+                    type="text"
+                    aria-label="Reviewer name"
+                    value={reviewer.name}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "UPDATE_REVIEWER",
+                        reviewerId: reviewer.id,
+                        patch: { name: e.target.value },
+                      })
+                    }
+                  />
+                </td>
+                <td>
+                  <SelectField
+                    aria-label="Reviewer type"
+                    value={reviewer.type}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "UPDATE_REVIEWER",
+                        reviewerId: reviewer.id,
+                        patch: { type: e.target.value as ReviewerType },
+                      })
+                    }
+                  >
+                    <option value="city">City</option>
+                    <option value="wfrc">WFRC</option>
+                  </SelectField>
+                </td>
+                <td>
+                  <input
+                    type="email"
+                    aria-label="Reviewer email"
+                    value={reviewer.email}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "UPDATE_REVIEWER",
+                        reviewerId: reviewer.id,
+                        patch: { email: e.target.value },
+                      })
+                    }
+                  />
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="button button-danger"
+                    onClick={() => requestRemove(reviewer.id)}
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {project.reviewers.length === 0 && (
+              <tr>
+                <td colSpan={4} className="field-hint">
+                  No reviewers yet — add one below.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       <div className="actions-row">
         <button
@@ -124,9 +127,9 @@ export function ReviewersEditor() {
         title="Remove reviewer with recorded scores?"
         message={
           <>
-            "{pendingReviewer?.name || "This reviewer"}" has scores recorded. Removing them
-            will keep those score entries in the file, but they will no longer count toward
-            any total or ranking.
+            "{pendingReviewer?.name || "This reviewer"}" has scores recorded. Removing them will
+            keep those score entries in the file, but they will no longer count toward any total or
+            ranking.
           </>
         }
         onCancel={() => setPendingRemoval(null)}

@@ -24,83 +24,97 @@ export function FirmsEditor() {
   return (
     <div className="card">
       <h2>Firms</h2>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Invited</th>
-            <th>Submitted</th>
-            <th>Notes</th>
-            <th aria-label="Actions" />
-          </tr>
-        </thead>
-        <tbody>
-          {project.firms.map((firm) => (
-            <tr key={firm.id}>
-              <td>
-                <input
-                  type="text"
-                  aria-label="Firm name"
-                  value={firm.name}
-                  onChange={(e) =>
-                    dispatch({ type: "UPDATE_FIRM", firmId: firm.id, patch: { name: e.target.value } })
-                  }
-                />
-              </td>
-              <td>
-                <input
-                  type="checkbox"
-                  aria-label="Invited"
-                  checked={firm.invited}
-                  onChange={(e) =>
-                    dispatch({ type: "UPDATE_FIRM", firmId: firm.id, patch: { invited: e.target.checked } })
-                  }
-                />
-              </td>
-              <td>
-                <input
-                  type="checkbox"
-                  aria-label="Submitted"
-                  checked={firm.submitted}
-                  onChange={(e) =>
-                    dispatch({
-                      type: "UPDATE_FIRM",
-                      firmId: firm.id,
-                      patch: { submitted: e.target.checked },
-                    })
-                  }
-                />
-              </td>
-              <td>
-                <input
-                  type="text"
-                  aria-label="Notes"
-                  value={firm.notes}
-                  onChange={(e) =>
-                    dispatch({ type: "UPDATE_FIRM", firmId: firm.id, patch: { notes: e.target.value } })
-                  }
-                />
-              </td>
-              <td>
-                <button
-                  type="button"
-                  className="button button-danger"
-                  onClick={() => requestRemove(firm.id)}
-                >
-                  Remove
-                </button>
-              </td>
-            </tr>
-          ))}
-          {project.firms.length === 0 && (
+      <div className="table-wrap">
+        <table className="data-table">
+          <thead>
             <tr>
-              <td colSpan={5} className="field-hint">
-                No firms yet — add one below.
-              </td>
+              <th>Name</th>
+              <th>Invited</th>
+              <th>Submitted</th>
+              <th>Notes</th>
+              <th aria-label="Actions" />
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {project.firms.map((firm) => (
+              <tr key={firm.id}>
+                <td>
+                  <input
+                    type="text"
+                    aria-label="Firm name"
+                    value={firm.name}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "UPDATE_FIRM",
+                        firmId: firm.id,
+                        patch: { name: e.target.value },
+                      })
+                    }
+                  />
+                </td>
+                <td>
+                  <input
+                    type="checkbox"
+                    aria-label="Invited"
+                    checked={firm.invited}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "UPDATE_FIRM",
+                        firmId: firm.id,
+                        patch: { invited: e.target.checked },
+                      })
+                    }
+                  />
+                </td>
+                <td>
+                  <input
+                    type="checkbox"
+                    aria-label="Submitted"
+                    checked={firm.submitted}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "UPDATE_FIRM",
+                        firmId: firm.id,
+                        patch: { submitted: e.target.checked },
+                      })
+                    }
+                  />
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    aria-label="Notes"
+                    value={firm.notes}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "UPDATE_FIRM",
+                        firmId: firm.id,
+                        patch: { notes: e.target.value },
+                      })
+                    }
+                  />
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="button button-danger"
+                    onClick={() => requestRemove(firm.id)}
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {project.firms.length === 0 && (
+              <tr>
+                <td colSpan={5} className="field-hint">
+                  No firms yet — add one below.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       <div className="actions-row">
         <button
@@ -109,7 +123,13 @@ export function FirmsEditor() {
           onClick={() =>
             dispatch({
               type: "ADD_FIRM",
-              firm: { id: generateId("firm"), name: "", invited: true, submitted: false, notes: "" },
+              firm: {
+                id: generateId("firm"),
+                name: "",
+                invited: true,
+                submitted: false,
+                notes: "",
+              },
             })
           }
         >
@@ -122,9 +142,9 @@ export function FirmsEditor() {
         title="Remove firm with recorded scores?"
         message={
           <>
-            "{pendingFirm?.name || "This firm"}" has scores recorded against it. Removing it
-            will keep those score entries in the file, but they will no longer count toward
-            any total or ranking.
+            "{pendingFirm?.name || "This firm"}" has scores recorded against it. Removing it will
+            keep those score entries in the file, but they will no longer count toward any total or
+            ranking.
           </>
         }
         onCancel={() => setPendingRemoval(null)}

@@ -80,10 +80,86 @@
   --font-mono:
     "Fira Code", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
     monospace;
+
+  /* ---- Design system layer (added in the SaaS-polish pass, on top of the brand tokens
+   * above — constitution Principle VII: layout/spacing/hierarchy polish, not a rebrand).
+   * Every color below either names an existing brand-derived value or is composed from one
+   * via color-mix()/rgb(); no new hex values are introduced here. ---- */
+
+  /* Spacing — 4px base grid */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.5rem; /* 24px */
+  --space-6: 2rem; /* 32px */
+  --space-7: 3rem; /* 48px */
+  --space-8: 4rem; /* 64px */
+
+  /* Type scale */
+  --text-xs: 0.75rem; /* 12px */
+  --text-sm: 0.875rem; /* 14px */
+  --text-base: 1rem; /* 16px */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.375rem; /* 22px */
+  --text-2xl: 1.75rem; /* 28px */
+  --text-3xl: 2.25rem; /* 36px — page h1 only */
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+
+  /* Radius */
+  --radius-sm: 4px; /* inputs, badges */
+  --radius-md: 8px; /* cards, buttons */
+  --radius-lg: 12px; /* modals, hero panels */
+  --radius-full: 999px; /* pills */
+
+  /* Elevation — restrained on purpose (civic/procurement tone, not a glossy dashboard).
+   * --shadow-color is the dark brand background's RGB triplet, reused as a consistent
+   * shadow tint in both light and dark mode via rgb(... / alpha) instead of a flat
+   * rgba(0,0,0,x), which reads muddy against the dark background. */
+  --shadow-color: 8 27 38;
+  --shadow-sm: 0 1px 3px rgb(var(--shadow-color) / 0.12);
+  --shadow-md: 0 4px 12px rgb(var(--shadow-color) / 0.14);
+  --shadow-lg: 0 12px 32px rgb(var(--shadow-color) / 0.22); /* replaces ConfirmDialog's
+    previously hardcoded box-shadow */
+
+  /* Motion */
+  --transition-fast: 120ms ease;
+  --transition-base: 180ms ease;
+
+  /* Focus ring — one definition, applied to every focusable element */
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--color-primary) 35%, transparent);
+
+  /* Semantic status colors — reuse existing brand-derived hexes, don't invent new ones.
+   * --color-danger names the value already used 3x ad hoc in app.css (= --chart-6). */
+  --color-success: var(--chart-2); /* rtp-green, already brand/contrast-verified */
+  /* White-on-green is only 3.12:1 (fails AA normal text) — #789d4b is identical in both
+     light and dark mode (tokens.css above), so one dark foreground covers both; no
+     per-mode override needed (verified: 5.63:1 against this exact green). */
+  --color-success-foreground: #081b26;
+  --color-danger: #c23c33;
+  --color-danger-foreground: #ffffff; /* 5.27:1, verified */
+  --color-warning-foreground: var(--color-accent-foreground); /* reuse existing pairing */
 }
 
+/*
+ * Dark-mode block, guarded by :not([data-theme="light"]) rather than bare :root: this is
+ * the SYSTEM-preference-driven default, and an explicit "light" override (set by
+ * useTheme.ts via data-theme="light" on <html>) must be able to suppress it even when the
+ * OS itself prefers dark. The mirror case — an explicit "dark" override winning even when
+ * the OS prefers light — can't be expressed inside this media query at all (the media
+ * query itself never matches when the OS is light), so it's a separate bare-selector block
+ * below, duplicating these same values on purpose. Both blocks MUST be kept in sync; the
+ * `@media print` block further down is explicitly written to out-specificity BOTH of them
+ * so printing stays forced-light regardless of which one would otherwise apply.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     /* ---- Semantic tokens: dark mode ---- */
     --color-foreground: #ffffff; /* brand.yml "white" */
     --color-background: #081b26; /* brand.yml's dedicated dark bg — deliberately richer
@@ -129,7 +205,48 @@
     --chart-16: #a3bb93; /* wc-open-space — 8.44:1, unmodified */
     --chart-17: #f4c9cd; /* wc-employment — 11.78:1, unmodified */
     --chart-18: #ded2e8; /* wc-industrial — 12.12:1, unmodified */
+
+    /* No dark-mode overrides needed here: --color-success-foreground and
+       --color-danger-foreground above already work in both modes (see their comments in
+       the :root block). */
   }
+}
+
+/* Explicit dark-theme override (useTheme.ts sets data-theme="dark" on <html> when the user
+ * has manually toggled to dark, regardless of OS preference) — same values as the
+ * @media (prefers-color-scheme: dark) block above, duplicated per the comment there. */
+:root[data-theme="dark"] {
+  --color-foreground: #ffffff;
+  --color-background: #081b26;
+  --color-heading: #8fcfe3;
+  --color-link: var(--color-wfrc-secondary-blue);
+  --color-primary: var(--color-wfrc-secondary-blue);
+  --color-primary-foreground: #081b26;
+  --color-wfrc-gray: #85817d;
+  --color-accent-background: var(--color-wfrc-yellow);
+  --color-accent-foreground: #151515;
+  --color-border: #23394a;
+  --color-code-background: #10293a;
+  --color-code-text: #8fcfe3;
+
+  --chart-1: #5c899f;
+  --chart-2: #789d4b;
+  --chart-3: #c98b3a;
+  --chart-4: #9d4879;
+  --chart-5: #608a8f;
+  --chart-6: #c23c33;
+  --chart-7: #696485;
+  --chart-8: #597f72;
+  --chart-9: #8c5764;
+  --chart-10: #e28c7f;
+  --chart-11: #ad3971;
+  --chart-12: #e65937;
+  --chart-13: #f2a03e;
+  --chart-14: #f8dc26;
+  --chart-15: #fdf7ca;
+  --chart-16: #a3bb93;
+  --chart-17: #f4c9cd;
+  --chart-18: #ded2e8;
 }
 
 /*
@@ -148,9 +265,18 @@
  * time, which this stylesheet change can't retroactively rewrite. chartColors.ts listens
  * for the `beforeprint` event and re-reads (now print-forced) values so charts re-render
  * with print-safe colors just before the print dialog captures the page.
+ *
+ * Selector list below deliberately includes both data-theme variants, not just bare :root:
+ * `:root[data-theme="dark"]` (the explicit-override block above) has HIGHER specificity
+ * than a plain `:root` selector, so a plain `:root` print rule would lose to it — printing
+ * while explicitly toggled to dark would silently print in dark colors, defeating this
+ * entire carve-out. Listing `:root[data-theme="dark"]` here too matches its specificity
+ * exactly, so source order (this block is last) decides it correctly instead.
  */
 @media print {
-  :root {
+  :root,
+  :root[data-theme="light"],
+  :root[data-theme="dark"] {
     --color-foreground: #151515;
     --color-background: #ffffff;
     --color-heading: #023c5b;

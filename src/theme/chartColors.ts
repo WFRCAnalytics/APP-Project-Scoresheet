@@ -28,6 +28,18 @@ function readColorToken(name: string): string {
  * metric->color mapping reads more clearly than reassigning colors per firm while still
  * drawing exclusively from the mandated palette.
  *
+ * Also resolves foreground/border/background to literal hex, for the same reason
+ * overall/cityColor are resolved rather than left as `var(--chart-1)`: Recharts bakes
+ * whatever string it's given straight into an SVG `fill`/`stroke` attribute. A literal
+ * `var(--color-foreground)` string works fine on-screen (the SVG is embedded in the app's
+ * own page, where :root defines that variable), but breaks the moment that SVG is used
+ * outside this document — e.g. exported to a standalone .svg file, or drawn into an
+ * offscreen <canvas> via an <img>, neither of which has this page's CSS in scope. A
+ * `stroke` in that state resolves to CSS's invalid-var fallback, which for `stroke`
+ * (initial value "none") makes gridlines silently invisible rather than merely
+ * mis-colored. Resolving to hex here means every consumer gets a genuinely portable SVG
+ * "for free," not just an on-screen-only one.
+ *
  * Re-reads on two triggers:
  *  - the system color-scheme changing, so charts stay correct if a handler's OS theme
  *    switches mid-session;
@@ -41,12 +53,22 @@ export function useChartColors() {
   const [palette, setPalette] = useState<string[]>(() => readChartPalette());
   const [overallColor, setOverallColor] = useState(() => readColorToken("--chart-1"));
   const [cityColor, setCityColor] = useState(() => readColorToken("--chart-2"));
+  const [foregroundColor, setForegroundColor] = useState(() =>
+    readColorToken("--color-foreground"),
+  );
+  const [borderColor, setBorderColor] = useState(() => readColorToken("--color-border"));
+  const [backgroundColor, setBackgroundColor] = useState(() =>
+    readColorToken("--color-background"),
+  );
 
   useEffect(() => {
     const refresh = () => {
       setPalette(readChartPalette());
       setOverallColor(readColorToken("--chart-1"));
       setCityColor(readColorToken("--chart-2"));
+      setForegroundColor(readColorToken("--color-foreground"));
+      setBorderColor(readColorToken("--color-border"));
+      setBackgroundColor(readColorToken("--color-background"));
     };
 
     const colorSchemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -61,5 +83,5 @@ export function useChartColors() {
     };
   }, []);
 
-  return { palette, overallColor, cityColor };
+  return { palette, overallColor, cityColor, foregroundColor, borderColor, backgroundColor };
 }

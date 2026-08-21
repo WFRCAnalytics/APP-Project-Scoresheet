@@ -2,6 +2,7 @@
 // the User Story 2 + User Story 3 intake screen, per plan.md's structure note (generation
 // and import UI live together under features/reviewer-forms/).
 
+import { Badge } from "../../components/Badge";
 import { useLoadedProject } from "../../state/ProjectContext";
 import { GenerateAllFormsButton } from "./GenerateAllFormsButton";
 import { GenerateFormButton } from "./GenerateFormButton";
@@ -12,19 +13,21 @@ export interface ReviewerFormsScreenProps {
   onGoToDashboard: () => void;
 }
 
-export function ReviewerFormsScreen({ onBackToConfiguration, onGoToDashboard }: ReviewerFormsScreenProps) {
+export function ReviewerFormsScreen({
+  onBackToConfiguration,
+  onGoToDashboard,
+}: ReviewerFormsScreenProps) {
   const { project } = useLoadedProject();
 
   return (
     <section aria-label="Reviewer Forms">
       <h1>Reviewer Forms</h1>
       <p>
-        Generate an Excel scoring workbook for each reviewer. Reviewers open, fill, and
-        return these files using spreadsheet software they already have — no knowledge of
-        this app required.
+        Generate an Excel scoring workbook for each reviewer. Reviewers open, fill, and return these
+        files using spreadsheet software they already have — no knowledge of this app required.
       </p>
 
-      <div className="card">
+      <div className="card card--elevated">
         <h2>Download all at once</h2>
         <GenerateAllFormsButton />
       </div>
@@ -34,13 +37,34 @@ export function ReviewerFormsScreen({ onBackToConfiguration, onGoToDashboard }: 
         {project.reviewers.length === 0 && (
           <p className="field-hint">No reviewers configured yet.</p>
         )}
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          {project.reviewers.map((reviewer) => (
-            <li key={reviewer.id}>
-              <GenerateFormButton reviewer={reviewer} />
-            </li>
-          ))}
-        </ul>
+        {project.reviewers.length > 0 && (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Reviewer</th>
+                  <th>Type</th>
+                  <th aria-label="Actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {project.reviewers.map((reviewer) => (
+                  <tr key={reviewer.id}>
+                    <td>{reviewer.name || "Unnamed reviewer"}</td>
+                    <td>
+                      <Badge variant={reviewer.type === "wfrc" ? "info" : "neutral"}>
+                        {reviewer.type === "wfrc" ? "WFRC" : "City"}
+                      </Badge>
+                    </td>
+                    <td>
+                      <GenerateFormButton reviewer={reviewer} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <ImportScoresPanel />

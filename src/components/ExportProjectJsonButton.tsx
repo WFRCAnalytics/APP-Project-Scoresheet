@@ -13,7 +13,9 @@ import { useLoadedProject } from "../state/ProjectContext";
 
 export function ExportProjectJsonButton() {
   const { project } = useLoadedProject();
-  const [filename, setFilename] = useState(() => defaultProjectFilename(project.project.projectName));
+  const [filename, setFilename] = useState(() =>
+    defaultProjectFilename(project.project.projectName),
+  );
   const [touched, setTouched] = useState(false);
 
   // Keep the filename in sync with the project name for as long as the handler hasn't
@@ -32,12 +34,9 @@ export function ExportProjectJsonButton() {
   }
 
   return (
-    <div
-      className="field no-print"
-      style={{ display: "flex", flexDirection: "row", alignItems: "flex-end", gap: "0.5rem" }}
-    >
-      <div className="field" style={{ marginBottom: 0, flex: "1 1 auto" }}>
-        <label htmlFor="export-filename">Export filename</label>
+    <div className="field export-filename-field no-print">
+      <label htmlFor="export-filename">Export filename</label>
+      <div className="export-filename-row">
         <input
           id="export-filename"
           type="text"
@@ -47,10 +46,10 @@ export function ExportProjectJsonButton() {
             setFilename(e.target.value);
           }}
         />
+        <button type="button" className="button button-primary" onClick={handleExport}>
+          Export project JSON
+        </button>
       </div>
-      <button type="button" className="button button-primary" onClick={handleExport}>
-        Export project JSON
-      </button>
     </div>
   );
 }

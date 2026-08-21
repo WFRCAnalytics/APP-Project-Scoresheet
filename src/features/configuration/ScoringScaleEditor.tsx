@@ -41,60 +41,64 @@ export function ScoringScaleEditor() {
         <p className="field-hint">At least {MIN_SCALE_POINTS} points are required.</p>
       )}
 
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Value</th>
-            <th>Label</th>
-            <th aria-label="Actions" />
-          </tr>
-        </thead>
-        <tbody>
-          {project.scoringScale.map((point, index) => (
-            <tr key={index}>
-              <td>
-                <input
-                  type="number"
-                  aria-label="Scale point value"
-                  value={point.value}
-                  onChange={(e) =>
-                    dispatch({
-                      type: "UPDATE_SCALE_POINT",
-                      value: point.value,
-                      patch: { value: Number(e.target.value) },
-                    })
-                  }
-                />
-              </td>
-              <td>
-                <input
-                  type="text"
-                  aria-label="Scale point label"
-                  value={point.label}
-                  onChange={(e) =>
-                    dispatch({
-                      type: "UPDATE_SCALE_POINT",
-                      value: point.value,
-                      patch: { label: e.target.value },
-                    })
-                  }
-                />
-              </td>
-              <td>
-                <button
-                  type="button"
-                  className="button button-danger"
-                  disabled={!canRemove}
-                  title={canRemove ? undefined : `At least ${MIN_SCALE_POINTS} points are required`}
-                  onClick={() => dispatch({ type: "REMOVE_SCALE_POINT", value: point.value })}
-                >
-                  Remove
-                </button>
-              </td>
+      <div className="table-wrap">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Value</th>
+              <th>Label</th>
+              <th aria-label="Actions" />
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {project.scoringScale.map((point, index) => (
+              <tr key={index}>
+                <td>
+                  <input
+                    type="number"
+                    aria-label="Scale point value"
+                    value={point.value}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "UPDATE_SCALE_POINT",
+                        value: point.value,
+                        patch: { value: Number(e.target.value) },
+                      })
+                    }
+                  />
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    aria-label="Scale point label"
+                    value={point.label}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "UPDATE_SCALE_POINT",
+                        value: point.value,
+                        patch: { label: e.target.value },
+                      })
+                    }
+                  />
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="button button-danger"
+                    disabled={!canRemove}
+                    title={
+                      canRemove ? undefined : `At least ${MIN_SCALE_POINTS} points are required`
+                    }
+                    onClick={() => dispatch({ type: "REMOVE_SCALE_POINT", value: point.value })}
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <div className="actions-row">
         <button

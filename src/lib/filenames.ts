@@ -37,3 +37,24 @@ export function reviewerWorkbookFilename(projectName: string, reviewerName: stri
   const reviewerPart = sanitizeProjectName(reviewerName) || "reviewer";
   return `${reviewerPart}_${projectPart}.xlsx`;
 }
+
+/** Default filename for the Calculations modal's "Export as .xlsx" audit download —
+ * same sanitization rule as the other two filename functions here. */
+export function calculationsWorkbookFilename(projectName: string): string {
+  const projectPart = sanitizeProjectName(projectName) || "untitled-project";
+  return `${projectPart}_Calculations.xlsx`;
+}
+
+/** Default filename for a Dashboard chart's PNG/SVG download — sanitized project name +
+ * sanitized chart label (e.g. "Very_Good_Project_Overall_vs_City.png"), reusing the same
+ * sanitization rule as every other export point here. `chartLabel` reused through
+ * sanitizeProjectName rather than a second copy of the same punctuation-stripping rule. */
+export function chartExportFilename(
+  projectName: string,
+  chartLabel: string,
+  extension: "png" | "svg",
+): string {
+  const projectPart = sanitizeProjectName(projectName) || "untitled-project";
+  const labelPart = sanitizeProjectName(chartLabel) || "chart";
+  return `${projectPart}_${labelPart}.${extension}`;
+}

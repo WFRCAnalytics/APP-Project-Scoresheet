@@ -4,13 +4,21 @@
 // in Phase 5, not Phase 4, because it needs both directions to exist first (see Phase
 // 4's checkpoint note in tasks.md, resolving /speckit-analyze finding I1).
 //
+// Updated for the single-sheet redesign: row numbers come from generateWorkbook.ts's
+// exported SCORING_FIRST_DATA_ROW rather than a hardcoded "row 2" — the whole point of
+// parseWorkbook.ts locating the header row dynamically is that these two files (and this
+// test) don't need to hardcode the same row number in three places.
+//
 // This cannot substitute for the manual real-Excel verification in qa-signoff.md (T035)
 // — it only proves ExcelJS agrees with itself (research.md §2).
 // @vitest-environment node
 
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
-import { generateWorkbookForReviewer } from "../../src/lib/excel/generateWorkbook";
+import {
+  generateWorkbookForReviewer,
+  SCORING_FIRST_DATA_ROW,
+} from "../../src/lib/excel/generateWorkbook";
 import { parseScoringWorkbook } from "../../src/lib/excel/parseWorkbook";
 import { createEmptyProject, type Project } from "../../src/types/project";
 
@@ -72,7 +80,7 @@ describe("Excel round trip: generateWorkbook -> parseWorkbook", () => {
     const filledValues = [5, 3, 1, 5];
     const filledComments = ["Great approach", "", "Too expensive", "Solid value"];
     for (let i = 0; i < 4; i++) {
-      const r = i + 2;
+      const r = SCORING_FIRST_DATA_ROW + i;
       sheet.getCell(`D${r}`).value = filledValues[i];
       sheet.getCell(`E${r}`).value = filledComments[i];
     }
@@ -85,10 +93,38 @@ describe("Excel round trip: generateWorkbook -> parseWorkbook", () => {
 
     const scores = result.rows.map((r) => r.score);
     expect(scores).toEqual([
-      { reviewerId: "rev-1", firmId: "firm-1", criterionId: "crit-1", value: 5, comment: "Great approach", updatedAt: expect.any(String) },
-      { reviewerId: "rev-1", firmId: "firm-1", criterionId: "crit-2", value: 3, comment: "", updatedAt: expect.any(String) },
-      { reviewerId: "rev-1", firmId: "firm-2", criterionId: "crit-1", value: 1, comment: "Too expensive", updatedAt: expect.any(String) },
-      { reviewerId: "rev-1", firmId: "firm-2", criterionId: "crit-2", value: 5, comment: "Solid value", updatedAt: expect.any(String) },
+      {
+        reviewerId: "rev-1",
+        firmId: "firm-1",
+        criterionId: "crit-1",
+        value: 5,
+        comment: "Great approach",
+        updatedAt: expect.any(String),
+      },
+      {
+        reviewerId: "rev-1",
+        firmId: "firm-1",
+        criterionId: "crit-2",
+        value: 3,
+        comment: "",
+        updatedAt: expect.any(String),
+      },
+      {
+        reviewerId: "rev-1",
+        firmId: "firm-2",
+        criterionId: "crit-1",
+        value: 1,
+        comment: "Too expensive",
+        updatedAt: expect.any(String),
+      },
+      {
+        reviewerId: "rev-1",
+        firmId: "firm-2",
+        criterionId: "crit-2",
+        value: 5,
+        comment: "Solid value",
+        updatedAt: expect.any(String),
+      },
     ]);
   });
 
@@ -99,7 +135,7 @@ describe("Excel round trip: generateWorkbook -> parseWorkbook", () => {
 
     const workbook = await loadWorkbookFromBlob(generated.blob);
     const sheet = workbook.getWorksheet("Scoring")!;
-    sheet.getCell("D2").value = 99; // not one of 1/3/5
+    sheet.getCell(`D${SCORING_FIRST_DATA_ROW}`).value = 99; // not one of 1/3/5
 
     const result = parseScoringWorkbook(project, workbook, generated.filename);
 
@@ -118,8 +154,8 @@ describe("Excel round trip: generateWorkbook -> parseWorkbook", () => {
     const workbook = await loadWorkbookFromBlob(generated.blob);
     const sheet = workbook.getWorksheet("Scoring")!;
     // Mismatched: points at a criterion ID that doesn't exist in the current project.
-    sheet.getCell("H2").value = "crit-does-not-exist";
-    sheet.getCell("D2").value = 5; // otherwise a perfectly valid score
+    sheet.getCell(`H${SCORING_FIRST_DATA_ROW}`).value = "crit-does-not-exist";
+    sheet.getCell(`D${SCORING_FIRST_DATA_ROW}`).value = 5; // otherwise a perfectly valid score
 
     expect(() => parseScoringWorkbook(project, workbook, generated.filename)).not.toThrow();
     const result = parseScoringWorkbook(project, workbook, generated.filename);
@@ -135,10 +171,13 @@ describe("Excel round trip: generateWorkbook -> parseWorkbook", () => {
 
     const workbook = await loadWorkbookFromBlob(generated.blob);
     const sheet = workbook.getWorksheet("Scoring")!;
-    sheet.getCell("D2").value = 5;
+    sheet.getCell(`D${SCORING_FIRST_DATA_ROW}`).value = 5;
 
     // Configuration changed after the form went out: criterion crit-1 was removed.
-    const changedProject: Project = { ...project, criteria: project.criteria.filter((c) => c.id !== "crit-1") };
+    const changedProject: Project = {
+      ...project,
+      criteria: project.criteria.filter((c) => c.id !== "crit-1"),
+    };
 
     const result = parseScoringWorkbook(changedProject, workbook, generated.filename);
     const row2 = result.rows[0]; // firm-1/crit-1
@@ -166,5 +205,19 @@ describe("Excel round trip: generateWorkbook -> parseWorkbook", () => {
     // validity, not on firmId/criterionId (data-model.md: reviewerName is "resolved
     // from the first row whose reviewerId matches a live reviewer").
     expect(result.reviewerName).toBe("Alice");
+  });
+
+  it("4. a file with no header row (unrelated .xlsx) is reported as one failed row, not a crash", async () => {
+    const project = buildFixture();
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Scoring");
+    sheet.getCell("A1").value = "This is not a reviewer workbook";
+
+    const result = parseScoringWorkbook(project, workbook, "unrelated.xlsx");
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].status).toBe("failed");
+    expect(result.rows[0].reason).toMatch(/header row/i);
+    expect(result.addedCount).toBe(0);
   });
 });

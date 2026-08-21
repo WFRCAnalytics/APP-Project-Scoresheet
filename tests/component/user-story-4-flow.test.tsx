@@ -9,6 +9,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import App from "../../src/App";
 import { createEmptyProject, type Project } from "../../src/types/project";
+import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
 
 function buildScoredProject(): Project {
   const project = createEmptyProject();
@@ -22,7 +23,14 @@ function buildScoredProject(): Project {
   project.firms = [{ id: "firm-1", name: "Alpha Co", invited: true, submitted: true, notes: "" }];
   project.reviewers = [{ id: "rev-1", name: "Alice", type: "city", email: "" }];
   project.scores = [
-    { reviewerId: "rev-1", firmId: "firm-1", criterionId: "crit-1", value: 5, comment: "Great", updatedAt: "2026-01-01T00:00:00.000Z" },
+    {
+      reviewerId: "rev-1",
+      firmId: "firm-1",
+      criterionId: "crit-1",
+      value: 5,
+      comment: "Great",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    },
   ];
   return project;
 }
@@ -41,6 +49,7 @@ function jsonFile(project: Project, filename: string): File {
 describe("User Story 4 — Reopen a Project File", () => {
   it("Acceptance Scenario 3: Dashboard -> Edit project -> Configuration, with no data lost", async () => {
     render(<App />);
+    openGetStartedModal();
     const scored = buildScoredProject();
     fireEvent.change(screen.getByLabelText("Upload a project file"), {
       target: { files: [jsonFile(scored, "scored.json")] },
@@ -51,14 +60,19 @@ describe("User Story 4 — Reopen a Project File", () => {
 
     await screen.findByRole("heading", { name: "Configuration" });
     // Every field that was loaded must still be present — nothing reset to empty.
-    expect(screen.getByLabelText("Project name")).toHaveValue("US4 Scored Project");
-    expect(screen.getByLabelText("Handler / contact name")).toHaveValue("Jamie Handler");
+    expect(screen.getByLabelText("Project Name:")).toHaveValue("US4 Scored Project");
+    expect(screen.getByLabelText("Local Government Contact:")).toHaveValue("Jamie Handler");
+
+    goToConfigStep("Firms");
     expect(screen.getByLabelText("Firm name")).toHaveValue("Alpha Co");
+
+    goToConfigStep("Reviewers");
     expect(screen.getByLabelText("Reviewer name")).toHaveValue("Alice");
   });
 
   it("T046: 'Upload a different project JSON' from Configuration routes a scored file to the Dashboard", async () => {
     render(<App />);
+    openGetStartedModal();
     // Start from Configuration via an unscored upload (any path that lands there works).
     const unscored = buildUnscoredProject("Starting Point");
     fireEvent.change(screen.getByLabelText("Upload a project file"), {
@@ -66,23 +80,26 @@ describe("User Story 4 — Reopen a Project File", () => {
     });
     await screen.findByRole("heading", { name: "Configuration" });
 
+    // "Upload a different project JSON" lives in the persistent Configuration toolbar —
+    // available regardless of the current step (FR-013) — so no step navigation needed.
     const scored = buildScoredProject();
     fireEvent.change(screen.getByLabelText("Upload a different project JSON"), {
       target: { files: [jsonFile(scored, "scored.json")] },
     });
 
     await screen.findByRole("heading", { name: "Dashboard" });
-    expect(screen.getByText("US4 Scored Project")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "US4 Scored Project" })).toBeInTheDocument();
   });
 
   it("T046: 'Upload a different project JSON' from Configuration routes an unscored file back to Configuration, pre-filled with the NEW file's data", async () => {
     render(<App />);
+    openGetStartedModal();
     const first = buildUnscoredProject("First Project");
     fireEvent.change(screen.getByLabelText("Upload a project file"), {
       target: { files: [jsonFile(first, "first.json")] },
     });
     await screen.findByRole("heading", { name: "Configuration" });
-    expect(screen.getByLabelText("Project name")).toHaveValue("First Project");
+    expect(screen.getByLabelText("Project Name:")).toHaveValue("First Project");
 
     const second = buildUnscoredProject("Second Project");
     fireEvent.change(screen.getByLabelText("Upload a different project JSON"), {

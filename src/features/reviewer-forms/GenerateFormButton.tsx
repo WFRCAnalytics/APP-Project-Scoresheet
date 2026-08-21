@@ -30,8 +30,14 @@ export function GenerateFormButton({ reviewer }: { reviewer: Reviewer }) {
 
   return (
     <div>
-      <button type="button" className="button button-secondary" onClick={handleClick} disabled={generating}>
-        {generating ? "Generating…" : `Download form for ${reviewer.name || "this reviewer"}`}
+      <button
+        type="button"
+        className="button button-secondary"
+        onClick={handleClick}
+        disabled={generating}
+        aria-label={`${generating ? "Generating" : "Download"} form for ${reviewer.name || "this reviewer"}`}
+      >
+        {generating ? "Generating…" : "Download"}
       </button>
       {error && (
         <p className="field-hint" role="alert">

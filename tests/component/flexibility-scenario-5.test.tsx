@@ -9,15 +9,22 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 import App from "../../src/App";
-import { generateWorkbookForReviewer } from "../../src/lib/excel/generateWorkbook";
+import {
+  generateWorkbookForReviewer,
+  SCORING_FIRST_DATA_ROW,
+} from "../../src/lib/excel/generateWorkbook";
 import { readFileArrayBuffer } from "../../src/lib/excel/parseWorkbook";
 import { createEmptyProject, type Project } from "../../src/types/project";
+import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
 
 function buildLargeProject(): Project {
   const project = createEmptyProject();
   project.project.projectName = "Scenario 5 Flexibility Test";
   project.criteria = [{ id: "crit-1", name: "Only Criterion", weight: 1.0, description: "" }];
-  project.scoringScale = Array.from({ length: 7 }, (_, i) => ({ value: i + 1, label: `Point ${i + 1}` }));
+  project.scoringScale = Array.from({ length: 7 }, (_, i) => ({
+    value: i + 1,
+    label: `Point ${i + 1}`,
+  }));
   project.firms = Array.from({ length: 15 }, (_, i) => ({
     id: `firm-${i}`,
     name: `Firm ${i}`,
@@ -32,20 +39,24 @@ function buildLargeProject(): Project {
 describe("Scenario 5 — Flexibility check: a materially different-shaped project", () => {
   it("renders Configuration correctly at 15 firms / 1 criterion / 7-point scale (step 2)", async () => {
     render(<App />);
+    openGetStartedModal();
     const project = buildLargeProject();
     const file = new File([JSON.stringify(project)], "large.json", { type: "application/json" });
     fireEvent.change(screen.getByLabelText("Upload a project file"), { target: { files: [file] } });
     await screen.findByRole("heading", { name: "Configuration" });
 
     // All 15 firm name inputs render, in order, no truncation.
+    goToConfigStep("Firms");
     const firmInputs = screen.getAllByLabelText("Firm name") as HTMLInputElement[];
     expect(firmInputs).toHaveLength(15);
     expect(firmInputs.map((i) => i.value)).toEqual(project.firms.map((f) => f.name));
 
     // The single criterion's weight (1.0) doesn't trip the weight-sum warning.
+    goToConfigStep("Criteria");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
     // All 7 scale point rows render.
+    goToConfigStep("Scale");
     expect(screen.getAllByLabelText("Scale point value")).toHaveLength(7);
   });
 
@@ -62,10 +73,10 @@ describe("Scenario 5 — Flexibility check: a materially different-shaped projec
     await workbook.xlsx.load(arrayBuffer);
     const sheet = workbook.getWorksheet("Scoring")!;
     // 13 submitted firms * 1 criterion = 13 rows (not 15 — the 2 unsubmitted firms are
-    // correctly excluded even at this scale).
-    expect(sheet.rowCount).toBe(14); // header + 13 data rows
+    // correctly excluded even at this scale). Banner rows + header row + 13 data rows.
+    expect(sheet.rowCount).toBe(SCORING_FIRST_DATA_ROW - 1 + 13);
 
-    const dropdown = sheet.getCell("D2").dataValidation;
+    const dropdown = sheet.getCell(`D${SCORING_FIRST_DATA_ROW}`).dataValidation;
     const formula = String(dropdown?.formulae?.[0]);
     for (let v = 1; v <= 7; v++) {
       expect(formula).toContain(String(v));
@@ -74,11 +85,13 @@ describe("Scenario 5 — Flexibility check: a materially different-shaped projec
 
   it("imports and renders correctly: 13 ranked firm cards, 7-point raw values traceable (step 4)", async () => {
     render(<App />);
+    openGetStartedModal();
     const project = buildLargeProject();
     const file = new File([JSON.stringify(project)], "large.json", { type: "application/json" });
     fireEvent.change(screen.getByLabelText("Upload a project file"), { target: { files: [file] } });
     await screen.findByRole("heading", { name: "Configuration" });
 
+    goToConfigStep("Export / Review");
     fireEvent.click(screen.getByRole("button", { name: "Generate reviewer forms" }));
     await screen.findByRole("heading", { name: "Reviewer Forms" });
 
@@ -90,8 +103,8 @@ describe("Scenario 5 — Flexibility check: a materially different-shaped projec
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(arrayBuffer);
     const sheet = workbook.getWorksheet("Scoring")!;
-    for (let r = 2; r <= sheet.rowCount; r++) {
-      const rowIndex = r - 2; // 0-based row order among the 13 submitted firms
+    for (let r = SCORING_FIRST_DATA_ROW; r <= sheet.rowCount; r++) {
+      const rowIndex = r - SCORING_FIRST_DATA_ROW; // 0-based row order among the 13 submitted firms
       sheet.getCell(`D${r}`).value = (rowIndex % 7) + 1;
     }
     const buffer = await workbook.xlsx.writeBuffer();
@@ -119,11 +132,12 @@ describe("Scenario 5 — Flexibility check: a materially different-shaped projec
 
     // "show calculations" surfaces the raw 7-point values without truncation.
     fireEvent.click(screen.getByRole("button", { name: "Show calculations" }));
-    const calcView = screen.getByLabelText("Calculations");
+    fireEvent.click(screen.getByRole("tab", { name: "Full Table" }));
+    const calcView = screen.getByRole("tabpanel");
     expect(within(calcView).getByRole("heading", { name: "Firm 6" })).toBeInTheDocument();
     const calcTables = within(calcView).getAllByRole("table");
-    // 13 submitted firms -> 13 per-firm calculation tables (+ the manual entry grid's
-    // own table), confirming every submitted firm rendered its own audit section.
-    expect(calcTables.length).toBeGreaterThanOrEqual(13);
+    // 13 submitted firms -> exactly 13 per-firm calculation tables. Tabs now isolate the
+    // Full Table view from Manual Entry's own table, so this is an exact count.
+    expect(calcTables.length).toBe(13);
   });
 });

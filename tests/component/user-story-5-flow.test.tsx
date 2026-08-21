@@ -8,9 +8,13 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 import App from "../../src/App";
-import { generateWorkbookForReviewer } from "../../src/lib/excel/generateWorkbook";
+import {
+  generateWorkbookForReviewer,
+  SCORING_FIRST_DATA_ROW,
+} from "../../src/lib/excel/generateWorkbook";
 import { readFileArrayBuffer } from "../../src/lib/excel/parseWorkbook";
 import { createEmptyProject, type Project } from "../../src/types/project";
+import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
 
 function buildProject(): Project {
   const project = createEmptyProject();
@@ -30,10 +34,12 @@ function buildProject(): Project {
  * Dashboard -> "Show calculations" (where the manual entry grid lives), landing with
  * zero imported scores — exactly the Independent Test's starting state. */
 async function navigateToManualEntryGrid(project: Project) {
+  openGetStartedModal();
   const file = new File([JSON.stringify(project)], "us5.json", { type: "application/json" });
   fireEvent.change(screen.getByLabelText("Upload a project file"), { target: { files: [file] } });
   await screen.findByRole("heading", { name: "Configuration" });
 
+  goToConfigStep("Export / Review");
   fireEvent.click(screen.getByRole("button", { name: "Generate reviewer forms" }));
   await screen.findByRole("heading", { name: "Reviewer Forms" });
 
@@ -41,6 +47,7 @@ async function navigateToManualEntryGrid(project: Project) {
   await screen.findByRole("heading", { name: "Dashboard" });
 
   fireEvent.click(screen.getByRole("button", { name: "Show calculations" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Manual Entry" }));
   await screen.findByLabelText("Manual Score Entry");
 }
 
@@ -59,7 +66,9 @@ describe("User Story 5 — Manually Enter Reviewer Scores", () => {
     render(<App />);
     await navigateToManualEntryGrid(buildProject());
 
-    fireEvent.change(screen.getByLabelText("Score for Alpha Co / Approach"), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText("Score for Alpha Co / Approach"), {
+      target: { value: "5" },
+    });
     fireEvent.change(screen.getByLabelText("Comments for Alpha Co / Approach"), {
       target: { value: "Entered by phone" },
     });
@@ -79,7 +88,9 @@ describe("User Story 5 — Manually Enter Reviewer Scores", () => {
     await navigateToManualEntryGrid(project);
 
     // Manually enter a score of 1 first.
-    fireEvent.change(screen.getByLabelText("Score for Alpha Co / Approach"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Score for Alpha Co / Approach"), {
+      target: { value: "1" },
+    });
 
     // Now import a workbook for the SAME reviewer/firm/criterion with a different score.
     const generated = await generateWorkbookForReviewer(project, project.reviewers[0]);
@@ -89,8 +100,8 @@ describe("User Story 5 — Manually Enter Reviewer Scores", () => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(arrayBuffer);
     const sheet = workbook.getWorksheet("Scoring")!;
-    sheet.getCell("D2").value = 5; // overwrite: manual said 1, workbook says 5
-    sheet.getCell("E2").value = "Returned via email";
+    sheet.getCell(`D${SCORING_FIRST_DATA_ROW}`).value = 5; // overwrite: manual said 1, workbook says 5
+    sheet.getCell(`E${SCORING_FIRST_DATA_ROW}`).value = "Returned via email";
     const buffer = await workbook.xlsx.writeBuffer();
     const importFile = new File([buffer as unknown as BlobPart], generated.filename, {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -101,6 +112,7 @@ describe("User Story 5 — Manually Enter Reviewer Scores", () => {
     fireEvent.click(screen.getByRole("button", { name: "Hide calculations" }));
     fireEvent.click(screen.getByRole("button", { name: "Edit project" }));
     await screen.findByRole("heading", { name: "Configuration" });
+    goToConfigStep("Export / Review");
     fireEvent.click(screen.getByRole("button", { name: "Generate reviewer forms" }));
     await screen.findByRole("heading", { name: "Reviewer Forms" });
 
@@ -112,13 +124,18 @@ describe("User Story 5 — Manually Enter Reviewer Scores", () => {
     await screen.findByText(/Import complete/);
 
     fireEvent.click(screen.getByRole("button", { name: "View Dashboard" }));
-    const rankedTable = await screen.findByRole("table");
+    // The Ranked Firms table is always first in DOM order — Per-Firm Detail & Comments'
+    // own table (inside a collapsed <details>) also matches getByRole("table") here since
+    // jsdom doesn't hide a closed <details>'s content from the accessibility tree the way
+    // real browsers do, so this can't be a single unscoped findByRole("table") anymore.
+    const rankedTable = (await screen.findAllByRole("table"))[0];
     const dataRow = within(rankedTable).getAllByRole("row")[1];
     const cells = within(dataRow).getAllByRole("cell");
     // The import's value (5) must have overwritten the manual entry's value (1).
     expect(cells[2].textContent).toBe("5");
 
     fireEvent.click(screen.getByRole("button", { name: "Show calculations" }));
-    expect(screen.getByLabelText("Score for Alpha Co / Approach")).toHaveValue("5");
+    fireEvent.click(screen.getByRole("tab", { name: "Manual Entry" }));
+    expect(await screen.findByLabelText("Score for Alpha Co / Approach")).toHaveValue("5");
   });
 });

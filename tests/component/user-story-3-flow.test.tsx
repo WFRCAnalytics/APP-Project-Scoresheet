@@ -12,6 +12,7 @@ import App from "../../src/App";
 import { generateWorkbookForReviewer } from "../../src/lib/excel/generateWorkbook";
 import { readFileArrayBuffer } from "../../src/lib/excel/parseWorkbook";
 import { createEmptyProject, type Project } from "../../src/types/project";
+import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
 
 function buildUnscoredProject(): Project {
   const project = createEmptyProject();
@@ -78,18 +79,26 @@ describe("User Story 3 — Import Returned Scores and View Ranked Results", () =
 
   it("imports two reviewers' real workbooks and renders correct ranked totals + calculations", async () => {
     render(<App />);
+    openGetStartedModal();
 
     const project = buildUnscoredProject();
     const file = new File([JSON.stringify(project)], "us3-flow.json", { type: "application/json" });
     fireEvent.change(screen.getByLabelText("Upload a project file"), { target: { files: [file] } });
     await screen.findByRole("heading", { name: "Configuration" });
 
+    goToConfigStep("Export / Review");
     fireEvent.click(screen.getByRole("button", { name: "Generate reviewer forms" }));
     await screen.findByRole("heading", { name: "Reviewer Forms" });
 
     // Alice (city): Alpha=5, Beta=1. Bob (wfrc): Alpha=1, Beta=5.
-    const aliceFile = await buildCompletedWorkbookFile(project, "rev-1", { "firm-1": 5, "firm-2": 1 });
-    const bobFile = await buildCompletedWorkbookFile(project, "rev-2", { "firm-1": 1, "firm-2": 5 });
+    const aliceFile = await buildCompletedWorkbookFile(project, "rev-1", {
+      "firm-1": 5,
+      "firm-2": 1,
+    });
+    const bobFile = await buildCompletedWorkbookFile(project, "rev-2", {
+      "firm-1": 1,
+      "firm-2": 5,
+    });
 
     const importInput = screen.getByLabelText("Select one or more completed .xlsx files");
     fireEvent.change(importInput, { target: { files: [aliceFile, bobFile] } });
@@ -128,7 +137,8 @@ describe("User Story 3 — Import Returned Scores and View Ranked Results", () =
     // repeats each firm's name in its own table — so this must target the per-firm
     // heading specifically, not just any text match.)
     fireEvent.click(screen.getByRole("button", { name: "Show calculations" }));
-    const calcView = screen.getByLabelText("Calculations");
+    fireEvent.click(screen.getByRole("tab", { name: "Full Table" }));
+    const calcView = screen.getByRole("tabpanel");
     expect(within(calcView).getByRole("heading", { name: "Alpha Co" })).toBeInTheDocument();
     // Raw scores: Alice=5, Bob=1 for Alpha's single criterion row.
     const calcTable = within(calcView).getAllByRole("table")[0];

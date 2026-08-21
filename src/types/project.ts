@@ -21,7 +21,7 @@ export interface Criterion {
   name: string;
   /** Fractional weight; see Project-level weight-sum validation (FR-010). */
   weight: number;
-  /** Shown to reviewers on the Scoring sheet (FR-016) and Instructions sheet. */
+  /** Shown to reviewers on the Scoring sheet (FR-016). */
   description: string;
 }
 

@@ -5,6 +5,10 @@
 // exactly the kind of check tasks.md's own Notes flag as warranted for "this feature's
 // highest-risk-of-bugs modules."
 //
+// Updated for the single-sheet redesign (contracts/reviewer-workbook.md's "Revised" note):
+// row numbers are read from generateWorkbook.ts's own exported SCORING_* constants rather
+// than hardcoded a second time here — the two can't drift silently out of sync.
+//
 // This still cannot replace the manual real-Excel verification step (T035) — it only
 // proves ExcelJS agrees with itself (research.md §2).
 //
@@ -17,7 +21,14 @@
 
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
-import { checkCanGenerateWorkbooks, generateWorkbookForReviewer } from "../../src/lib/excel/generateWorkbook";
+import {
+  checkCanGenerateWorkbooks,
+  generateWorkbookForReviewer,
+  SCORING_FIRST_DATA_ROW,
+  SCORING_HEADER_ROW,
+  SCORING_SUBTITLE_ROW,
+  SCORING_TITLE_ROW,
+} from "../../src/lib/excel/generateWorkbook";
 import { createEmptyProject, type Project } from "../../src/types/project";
 
 function buildFixture(): Project {
@@ -49,34 +60,31 @@ async function reloadWorkbook(blob: Blob): Promise<ExcelJS.Workbook> {
 }
 
 describe("generateWorkbookForReviewer", () => {
-  it("produces Instructions + Scoring sheets, in that order", async () => {
+  it("produces exactly one sheet, named Scoring (single-sheet redesign)", async () => {
     const project = buildFixture();
     const result = await generateWorkbookForReviewer(project, project.reviewers[0]);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
     const workbook = await reloadWorkbook(result.blob);
-    expect(workbook.worksheets.map((s) => s.name)).toEqual(["Instructions", "Scoring"]);
+    expect(workbook.worksheets.map((s) => s.name)).toEqual(["Scoring"]);
   });
 
-  it("includes the project name, reviewer name, and full scale legend on Instructions", async () => {
+  it("includes the project name, reviewer name, and full scale legend in the title banner", async () => {
     const project = buildFixture();
     const result = await generateWorkbookForReviewer(project, project.reviewers[0]);
     if (!result.ok) throw new Error("expected ok");
 
     const workbook = await reloadWorkbook(result.blob);
-    const instructions = workbook.getWorksheet("Instructions")!;
-    const text = instructions
-      .getSheetValues()
-      .flat()
-      .filter((v): v is string => typeof v === "string")
-      .join("\n");
+    const scoring = workbook.getWorksheet("Scoring")!;
+    const titleText = String(scoring.getCell(`A${SCORING_TITLE_ROW}`).value);
+    const subtitleText = String(scoring.getCell(`A${SCORING_SUBTITLE_ROW}`).value);
 
-    expect(text).toContain("Quickstart Test");
-    expect(text).toContain("Alice");
-    expect(text).toContain("1 — No");
-    expect(text).toContain("3 — Maybe");
-    expect(text).toContain("5 — Yes");
+    expect(titleText).toContain("Quickstart Test");
+    expect(subtitleText).toContain("Alice");
+    expect(subtitleText).toContain("1 = No");
+    expect(subtitleText).toContain("3 = Maybe");
+    expect(subtitleText).toContain("5 = Yes");
   });
 
   it("has exactly one row per (submitted firm x criterion) pair — withdrawn firm excluded", async () => {
@@ -86,11 +94,12 @@ describe("generateWorkbookForReviewer", () => {
 
     const workbook = await reloadWorkbook(result.blob);
     const scoring = workbook.getWorksheet("Scoring")!;
-    // header row + (2 submitted firms * 2 criteria) = 5 rows total
-    expect(scoring.rowCount).toBe(5);
+    // banner (4 rows, incl. blank spacer) + header row + (2 submitted firms * 2 criteria)
+    // = SCORING_FIRST_DATA_ROW - 1 + 4 data rows.
+    expect(scoring.rowCount).toBe(SCORING_FIRST_DATA_ROW - 1 + 4);
 
     const firmNames = new Set<string>();
-    for (let r = 2; r <= scoring.rowCount; r++) {
+    for (let r = SCORING_FIRST_DATA_ROW; r <= scoring.rowCount; r++) {
       firmNames.add(String(scoring.getCell(`A${r}`).value));
     }
     expect(firmNames.has("Gamma Co (withdrew)")).toBe(false);
@@ -109,7 +118,7 @@ describe("generateWorkbookForReviewer", () => {
     expect(scoring.getColumn("G").hidden).toBe(true);
     expect(scoring.getColumn("H").hidden).toBe(true);
 
-    for (let r = 2; r <= scoring.rowCount; r++) {
+    for (let r = SCORING_FIRST_DATA_ROW; r <= scoring.rowCount; r++) {
       const firmName = scoring.getCell(`A${r}`).value;
       const criterionName = scoring.getCell(`B${r}`).value;
       const firm = project.firms.find((f) => f.name === firmName)!;
@@ -121,7 +130,7 @@ describe("generateWorkbookForReviewer", () => {
     }
   });
 
-  it("restricts the Score column to the configured scale values via a dropdown, and locks A-C/F-H while leaving D-E unlocked", async () => {
+  it("has the real header row at SCORING_HEADER_ROW, with the expected labels", async () => {
     const project = buildFixture();
     const result = await generateWorkbookForReviewer(project, project.reviewers[0]);
     if (!result.ok) throw new Error("expected ok");
@@ -129,17 +138,68 @@ describe("generateWorkbookForReviewer", () => {
     const workbook = await reloadWorkbook(result.blob);
     const scoring = workbook.getWorksheet("Scoring")!;
 
-    const validation = scoring.getCell("D2").dataValidation;
+    expect(scoring.getCell(`A${SCORING_HEADER_ROW}`).value).toBe("Firm");
+    expect(scoring.getCell(`B${SCORING_HEADER_ROW}`).value).toBe("Criterion");
+    expect(scoring.getCell(`C${SCORING_HEADER_ROW}`).value).toBe("Criterion Description");
+    expect(scoring.getCell(`D${SCORING_HEADER_ROW}`).value).toBe("Score");
+    expect(scoring.getCell(`E${SCORING_HEADER_ROW}`).value).toBe("Comments");
+  });
+
+  it("restricts the Score column to the configured scale values via a dropdown, and locks A-C/F-H while leaving D-E unlocked", async () => {
+    const project = buildFixture();
+    const result = await generateWorkbookForReviewer(project, project.reviewers[0]);
+    if (!result.ok) throw new Error("expected ok");
+
+    const workbook = await reloadWorkbook(result.blob);
+    const scoring = workbook.getWorksheet("Scoring")!;
+    const r = SCORING_FIRST_DATA_ROW;
+
+    const validation = scoring.getCell(`D${r}`).dataValidation;
     expect(validation?.type).toBe("list");
     expect(validation?.formulae?.[0]).toContain("1");
     expect(validation?.formulae?.[0]).toContain("3");
     expect(validation?.formulae?.[0]).toContain("5");
 
     for (const col of ["A", "B", "C", "F", "G", "H"]) {
-      expect(scoring.getCell(`${col}2`).protection?.locked).not.toBe(false);
+      expect(scoring.getCell(`${col}${r}`).protection?.locked).not.toBe(false);
     }
     for (const col of ["D", "E"]) {
-      expect(scoring.getCell(`${col}2`).protection?.locked).toBe(false);
+      expect(scoring.getCell(`${col}${r}`).protection?.locked).toBe(false);
+    }
+  });
+
+  it("visually distinguishes locked vs. editable columns with fills sourced from WFRC brand hex", async () => {
+    const project = buildFixture();
+    const result = await generateWorkbookForReviewer(project, project.reviewers[0]);
+    if (!result.ok) throw new Error("expected ok");
+
+    const workbook = await reloadWorkbook(result.blob);
+    const scoring = workbook.getWorksheet("Scoring")!;
+    const r = SCORING_FIRST_DATA_ROW;
+
+    const lockedFill = scoring.getCell(`A${r}`).fill;
+    const editableFill = scoring.getCell(`D${r}`).fill;
+    // Same fill type on both, but a genuinely different color — this is the actual visual
+    // cue, not just "some fill exists somewhere."
+    expect(lockedFill).toBeTruthy();
+    expect(editableFill).toBeTruthy();
+    expect(JSON.stringify(lockedFill)).not.toBe(JSON.stringify(editableFill));
+    // Editable cells also get a border — the locked ones don't need one, the fill alone
+    // plus zebra striping is enough there.
+    expect(scoring.getCell(`D${r}`).border).toBeTruthy();
+  });
+
+  it("freezes the header row so it stays visible while scrolling", async () => {
+    const project = buildFixture();
+    const result = await generateWorkbookForReviewer(project, project.reviewers[0]);
+    if (!result.ok) throw new Error("expected ok");
+
+    const workbook = await reloadWorkbook(result.blob);
+    const scoring = workbook.getWorksheet("Scoring")!;
+    const view = scoring.views?.[0];
+    expect(view?.state).toBe("frozen");
+    if (view?.state === "frozen") {
+      expect(view.ySplit).toBe(SCORING_HEADER_ROW);
     }
   });
 
@@ -151,7 +211,10 @@ describe("generateWorkbookForReviewer", () => {
 
     const noSubmittedFirms = buildFixture();
     noSubmittedFirms.firms = noSubmittedFirms.firms.map((f) => ({ ...f, submitted: false }));
-    const result2 = await generateWorkbookForReviewer(noSubmittedFirms, noSubmittedFirms.reviewers[0]);
+    const result2 = await generateWorkbookForReviewer(
+      noSubmittedFirms,
+      noSubmittedFirms.reviewers[0],
+    );
     expect(result2.ok).toBe(false);
 
     // And confirm the guard function itself agrees (used directly by the batch button).

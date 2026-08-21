@@ -10,11 +10,14 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import App from "../../src/App";
+import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
 
 describe("ScoringScaleEditor — edit and remove existing points", () => {
   it("editing the middle of 3 points updates it in place (array stays length 3, no append)", () => {
     render(<App />);
+    openGetStartedModal();
     fireEvent.click(screen.getByRole("button", { name: "Start a new project" }));
+    goToConfigStep("Scale");
 
     // Add 3 scale points. nextDefaultValue() starts at 1 and increments the running max,
     // so this produces values 1, 2, 3 in that insertion order.
@@ -48,7 +51,9 @@ describe("ScoringScaleEditor — edit and remove existing points", () => {
 
   it("removing a point at 3 leaves exactly 2, and both become remove-blocked at the floor", () => {
     render(<App />);
+    openGetStartedModal();
     fireEvent.click(screen.getByRole("button", { name: "Start a new project" }));
+    goToConfigStep("Scale");
 
     const addButton = screen.getByRole("button", { name: "Add scale point" });
     fireEvent.click(addButton);

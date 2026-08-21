@@ -1,38 +1,7 @@
-.confirm-dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(8, 27, 38, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-
-.confirm-dialog {
-  background: var(--color-background);
-  color: var(--color-foreground);
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  padding: 1.5rem;
-  max-width: 28rem;
-  width: calc(100% - 2rem);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-}
-
-.confirm-dialog h2 {
-  font-family: var(--font-heading);
-  color: var(--color-heading);
-  margin: 0 0 0.5rem;
-  font-size: 1.1rem;
-}
-
-.confirm-dialog p {
-  margin: 0 0 1.25rem;
-  line-height: 1.5;
-}
-
+/* Backdrop/panel styling now lives in Modal.css (shared primitive) — this file only keeps
+   the one rule specific to ConfirmDialog's own content layout. */
 .confirm-dialog-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }

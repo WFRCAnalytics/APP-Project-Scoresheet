@@ -56,6 +56,48 @@ real application, not just re-parsing the file format.
 
 ---
 
+## T035 (re-verification) — Single-sheet redesign, SaaS-polish pass
+
+**Date**: 2026-08-21
+**What**: The reviewer workbook was redesigned from two sheets (Instructions + Scoring)
+to a single formatted "Scoring" sheet (contracts/reviewer-workbook.md's "Revised" note) —
+a merged title/legend/instruction banner, brand-colored header, WFRC-yellow tint + border
+on editable cells, pale-gray zebra striping on locked cells, and frozen header row. Since
+this changes cell positions, protection, merges, and fills throughout the sheet, T035's
+original checks were re-run against the new layout rather than assumed to still hold.
+
+**How**: Same methodology as the original T035 — generated a real sample workbook via
+`generateWorkbookForReviewer` (project: "Real Excel Verification," 2 firms, 2 criteria, a
+3-point scale, 1 reviewer), wrote it to disk, and drove real Microsoft Excel via COM
+automation.
+
+**Results**:
+
+| Check | Expected | Actual | Pass? |
+|---|---|---|---|
+| File opens without a repair/corruption prompt | Yes | Yes | ✅ |
+| Sheet count/name | One sheet, "Scoring" | `Worksheets.Count = 1`, name `"Scoring"` | ✅ |
+| Title banner (row 1), merged A1:E1 | Project name in text | Exact match, `MergeCells = True`, `MergeArea = $A$1:$E$1` | ✅ |
+| Subtitle banner (row 2) | Reviewer name + full scale legend | Exact match | ✅ |
+| Instruction banner (row 3) | Edit-guidance line | Exact match | ✅ |
+| Header row (row 5) | Firm / Criterion / Criterion Description / Score / Comments | Exact match | ✅ |
+| Locked vs. editable fill colors | Visually distinct | Confirmed 3 distinct `Interior.Color` values (title/locked/editable) | ✅ |
+| Sheet protection | Protected | `ProtectContents = True` | ✅ |
+| Locked cell (A6) — actual write attempt while protected | Blocked | COM `Range.Value2 =` threw "protected sheet" error | ✅ |
+| Unlocked cell (D6) — actual write attempt while protected | Succeeds | Wrote `5` successfully | ✅ |
+| Score dropdown (D6) | List validation, values 1/3/5 | `Validation.Type = xlValidateList (3)`, `Formula1 = "1,3,5"` | ✅ |
+| Dropdown enforcement | Stop-style alert, not just a warning | `Validation.AlertStyle = xlValidAlertStop (1)` | ✅ |
+| Hidden columns F/G/H | Hidden | All three `Hidden = True` | ✅ |
+| Frozen panes | Frozen at the header row | `Window.FreezePanes = True`, `SplitRow = 5` | ✅ |
+| Row count (2 firms × 2 criteria) | 4 data rows (rows 6–9), row 10 empty | Confirmed | ✅ |
+
+**Conclusion**: PASS. Same rigor as the original T035, including the stronger "actually
+attempt to write to a protected cell" check (not just reading the `.Locked` flag) — the
+redesigned single-sheet layout behaves correctly in real Microsoft Excel, not just in
+ExcelJS's own reader.
+
+---
+
 ## T054 — FR-012/SC-006 flexibility verification (quickstart.md Scenario 5)
 
 **Date**: 2026-08-20

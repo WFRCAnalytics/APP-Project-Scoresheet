@@ -20,5 +20,5 @@ export const PRINT_PAGE_STYLE = `
 
 export function printDocumentTitle(projectName: string): string {
   const name = projectName.trim() || "Untitled Project";
-  return `${name} — Consultant Selection Scoring Report`;
+  return `${name} — Project Evaluation Scoresheet`;
 }

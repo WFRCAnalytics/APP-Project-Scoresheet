@@ -3,22 +3,21 @@
 // reviewer), so this can never produce a workbook that differs from what the
 // single-download path would have produced for the same reviewer.
 //
-// Sequential downloads, not a zip archive: spec Assumptions explicitly leave the batch
-// packaging mechanism as an implementation detail ("one action produces all files" is the
-// only user-facing requirement), and this avoids adding a zip-library dependency beyond
-// what plan.md/tasks.md scoped for this feature. A short delay between each download
-// keeps the browser from treating a rapid burst of blob downloads as something to block.
+// Post-launch improvements, item 4: packaged as a single .zip archive (via lib/zipFiles.ts),
+// not N sequential blob downloads. The original implementation deliberately avoided a
+// zip-library dependency and staggered N separate browser downloads instead — a real
+// annoyance flagged in the post-launch review (N popup/save prompts for one user action,
+// browsers sometimes blocking the burst regardless of the stagger). JSZip was added
+// specifically for this (flagged and approved before implementing, not a silent scope
+// change) — every reviewer's workbook is generated exactly as before, then packaged into
+// one archive and downloaded once.
 
 import { useState } from "react";
 import { downloadBlob } from "../../lib/downloadBlob";
 import { checkCanGenerateWorkbooks, generateWorkbookForReviewer } from "../../lib/excel/generateWorkbook";
+import { reviewerFormsZipFilename } from "../../lib/filenames";
+import { zipFiles } from "../../lib/zipFiles";
 import { useLoadedProject } from "../../state/ProjectContext";
-
-const DOWNLOAD_STAGGER_MS = 400;
-
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 export function GenerateAllFormsButton() {
   const { project } = useLoadedProject();
@@ -43,18 +42,17 @@ export function GenerateAllFormsButton() {
 
     setGenerating(true);
     try {
-      for (let i = 0; i < project.reviewers.length; i++) {
-        const reviewer = project.reviewers[i];
+      const files: Array<{ filename: string; blob: Blob }> = [];
+      for (const reviewer of project.reviewers) {
         const result = await generateWorkbookForReviewer(project, reviewer);
         if (!result.ok) {
           setError(`Stopped at "${reviewer.name || "unnamed reviewer"}": ${result.error}`);
           return;
         }
-        downloadBlob(result.blob, result.filename);
-        if (i < project.reviewers.length - 1) {
-          await delay(DOWNLOAD_STAGGER_MS);
-        }
+        files.push({ filename: result.filename, blob: result.blob });
       }
+      const zipBlob = await zipFiles(files);
+      downloadBlob(zipBlob, reviewerFormsZipFilename(project.project.projectName));
     } finally {
       setGenerating(false);
     }

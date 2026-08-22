@@ -119,14 +119,41 @@
   --radius-full: 999px; /* pills */
 
   /* Elevation — restrained on purpose (civic/procurement tone, not a glossy dashboard).
-   * --shadow-color is the dark brand background's RGB triplet, reused as a consistent
-   * shadow tint in both light and dark mode via rgb(... / alpha) instead of a flat
-   * rgba(0,0,0,x), which reads muddy against the dark background. */
+   * --shadow-color is an RGB triplet reused as a consistent shadow tint via rgb(... /
+   * alpha) instead of a flat rgba(0,0,0,x). In light mode it's the dark brand
+   * background's own value (8 27 38) — a dark navy shadow reads clearly against a white
+   * surface. That same value is WRONG in dark mode, though: it's bit-identical to dark
+   * mode's own --color-background, so a shadow "tinted" with it is mathematically the
+   * same color as the surface it's supposed to darken — zero contrast, not just subtle,
+   * fully invisible (found in manual testing: hover elevation on Load's entry cards and
+   * modal box-shadow-lg were both silently no-ops in dark mode). Dark mode gets its own
+   * override below (pure black — genuinely darker than the dark surface, unlike the navy
+   * it replaces) plus --shadow-ring, a light-mode no-op that becomes a visible highlight
+   * rim in dark mode: a drop shadow alone still reads weakly against a near-black page
+   * even once it's black instead of navy, so dark-mode "elevation" leans on the more
+   * conventional dark-UI technique of a light edge highlight, not shadow alone. */
   --shadow-color: 8 27 38;
-  --shadow-sm: 0 1px 3px rgb(var(--shadow-color) / 0.12);
-  --shadow-md: 0 4px 12px rgb(var(--shadow-color) / 0.14);
-  --shadow-lg: 0 12px 32px rgb(var(--shadow-color) / 0.22); /* replaces ConfirmDialog's
-    previously hardcoded box-shadow */
+  --shadow-ring: 0 0 0 0 transparent; /* no-op layer in light mode — shadows alone
+    already read clearly against a light background */
+  --shadow-sm: var(--shadow-ring), 0 1px 3px rgb(var(--shadow-color) / 0.12);
+  --shadow-md: var(--shadow-ring), 0 4px 12px rgb(var(--shadow-color) / 0.14);
+  --shadow-lg: var(--shadow-ring), 0 12px 32px rgb(var(--shadow-color) / 0.22); /* replaces
+    ConfirmDialog's previously hardcoded box-shadow */
+
+  /* Hover-only ring, stronger than the resting --shadow-ring (double the opacity, double
+   * the thickness in dark mode) — manual testing found the resting ring alone plus the
+   * lift/shadow-deepening on the interactive card's hover state still read as too subtle a
+   * "this is now the active one" signal in dark mode. A no-op in light mode, same as the
+   * resting ring, for the same reason: light mode's shadow deepening alone already reads
+   * clearly. Used ONLY by app.css's hover rule for interactive cards — the resting-state
+   * ring/shadow-md is untouched by this token. */
+  --shadow-ring-hover: 0 0 0 0 transparent;
+
+  /* Modal backdrop dim — reuses --shadow-color rather than its own hex, so fixing that one
+   * token's dark-mode invisibility (above) fixes this too, no separate override needed.
+   * Previously a hardcoded `rgba(8, 27, 38, 0.5)` in Modal.css: identical bug to the
+   * shadow's, for the identical reason (that literal navy = dark mode's own background). */
+  --overlay-backdrop: rgb(var(--shadow-color) / 0.5);
 
   /* Motion */
   --transition-fast: 120ms ease;
@@ -185,6 +212,25 @@
     --color-code-background: #10293a;
     --color-code-text: #8fcfe3;
 
+    /* ---- Elevation: dark mode ---- */
+    /* Pure black, not the light-mode navy — genuinely darker than this mode's own
+       --color-background (#081b26), unlike the navy it replaces which WAS that exact
+       background color (see the light-mode definition's comment for the bug this fixes).
+       Also drives --overlay-backdrop (defined once, above, in terms of this token). */
+    --shadow-color: 0 0 0;
+    /* A crisp light rim around the raised element — the conventional dark-UI elevation
+       cue (surfaces read as "raised" via a light edge/tonal highlight, since a shadow
+       alone has very little contrast to work with against an already-dark page). Derived
+       from --color-foreground (white in dark mode) via color-mix rather than a bare
+       rgba(255,255,255,x) literal, consistent with how every other translucent overlay in
+       this file (--focus-ring, table-row hover, etc.) is composed from a named token. */
+    --shadow-ring: 0 0 0 1px color-mix(in srgb, var(--color-foreground) 12%, transparent);
+    /* Double the resting ring's opacity and thickness (12% -> 24%, 1px -> 2px) — a clearly
+       stronger, unmistakably distinct rim specifically for the interactive card's hover
+       state, so hovering reads as a real "this is now the active one" signal on top of the
+       lift and shadow deepening, not just the same constant edge every card has at rest. */
+    --shadow-ring-hover: 0 0 0 2px color-mix(in srgb, var(--color-foreground) 24%, transparent);
+
     /* ---- Chart categorical palette: dark-mode-safe variants ---- */
     --chart-1: #5c899f; /* rtp-blue, lightened from #3f748e (3.43:1 -> 4.63:1) */
     --chart-2: #789d4b; /* rtp-green — 5.63:1, unmodified */
@@ -228,6 +274,13 @@
   --color-border: #23394a;
   --color-code-background: #10293a;
   --color-code-text: #8fcfe3;
+
+  /* Elevation: dark mode — see the @media (prefers-color-scheme: dark) block above for
+     the full explanation; duplicated per this file's own "both blocks must stay in sync"
+     rule. */
+  --shadow-color: 0 0 0;
+  --shadow-ring: 0 0 0 1px color-mix(in srgb, var(--color-foreground) 12%, transparent);
+  --shadow-ring-hover: 0 0 0 2px color-mix(in srgb, var(--color-foreground) 24%, transparent);
 
   --chart-1: #5c899f;
   --chart-2: #789d4b;

@@ -4,84 +4,9 @@
 // in tokens.css without a matching contrast fix will fail this test immediately instead
 // of silently drifting.
 
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { AA_NORMAL_TEXT, contrastRatio, hexToRgb } from "../../src/lib/contrast";
-
-// Resolved from the project root (where `npm run test` / `vitest run` always execute
-// from) rather than import.meta.url — Vitest's module transform doesn't guarantee
-// import.meta.url resolves to a real file:// URL for every environment/OS combination.
-const TOKENS_PATH = resolve(process.cwd(), "src/theme/tokens.css");
-
-type TokenMap = Record<string, string>;
-
-/** Extracts `--name: value;` custom-property declarations from a CSS block body. */
-function parseDeclarations(blockBody: string): TokenMap {
-  const tokens: TokenMap = {};
-  const re = /--([\w-]+):\s*([^;]+);/g;
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(blockBody))) {
-    tokens[match[1]] = match[2].trim();
-  }
-  return tokens;
-}
-
-/** Finds the first `:root { ... }` block starting at `fromIndex` and returns its body
- * plus the index just past its closing brace. Assumes no nested braces inside (true for
- * this file — it's a flat custom-property list, no rulesets nested inside :root). */
-function extractRootBlock(css: string, fromIndex: number): { body: string; endIndex: number } {
-  const start = css.indexOf(":root", fromIndex);
-  if (start === -1) throw new Error("No :root block found");
-  const openBrace = css.indexOf("{", start);
-  const closeBrace = css.indexOf("}", openBrace);
-  return { body: css.slice(openBrace + 1, closeBrace), endIndex: closeBrace + 1 };
-}
-
-/** Resolves `var(--foo)` references against an already-parsed token map, a few passes
- * deep (enough for this file's short reference chains). Leaves the value alone if it
- * isn't a `var()` reference (a literal color, font stack, etc.). */
-function resolveTokens(raw: TokenMap): TokenMap {
-  const resolved: TokenMap = { ...raw };
-  for (let pass = 0; pass < 5; pass++) {
-    let changed = false;
-    for (const [name, value] of Object.entries(resolved)) {
-      const varMatch = value.match(/^var\(--([\w-]+)\)$/);
-      if (varMatch && resolved[varMatch[1]] && resolved[varMatch[1]] !== value) {
-        resolved[name] = resolved[varMatch[1]];
-        changed = true;
-      }
-    }
-    if (!changed) break;
-  }
-  return resolved;
-}
-
-function loadTokens(): { light: TokenMap; dark: TokenMap } {
-  const css = readFileSync(TOKENS_PATH, "utf-8");
-
-  const rootBlock = extractRootBlock(css, 0);
-  const lightRaw = parseDeclarations(rootBlock.body);
-
-  const darkMediaIndex = css.indexOf("prefers-color-scheme: dark", rootBlock.endIndex);
-  expect(darkMediaIndex, "expected a @media (prefers-color-scheme: dark) block").toBeGreaterThan(
-    -1,
-  );
-  const darkRootBlock = extractRootBlock(css, darkMediaIndex);
-  const darkOverridesRaw = parseDeclarations(darkRootBlock.body);
-
-  // Dark mode = light-mode tokens with dark-mode overrides layered on top, mirroring how
-  // the CSS cascade actually resolves them at runtime (same :root selector, later rule
-  // wins for anything it redefines; anything it doesn't redefine falls through unchanged).
-  const light = resolveTokens(lightRaw);
-  const dark = resolveTokens({ ...lightRaw, ...darkOverridesRaw });
-
-  return { light, dark };
-}
-
-function isHexColor(value: string): boolean {
-  return /^#[0-9a-fA-F]{3,8}$/.test(value);
-}
+import { isHexColor, loadTokens } from "../helpers/tokensCss";
 
 /** Mimics `color-mix(in srgb, a a%, b)`: a straight per-channel linear interpolation of the
  * two colors' already gamma-encoded (non-linear) sRGB byte values — that's what `in srgb`

@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { findDuplicateNames } from "../../lib/duplicateNames";
 import { generateId } from "../../lib/id";
 import { useLoadedProject } from "../../state/ProjectContext";
 import { firmHasScores } from "../../state/projectReducer";
@@ -10,6 +11,11 @@ import { firmHasScores } from "../../state/projectReducer";
 export function FirmsEditor() {
   const { project, dispatch } = useLoadedProject();
   const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
+
+  // Non-blocking, same convention as CriteriaEditor's weight-total banner — a duplicate
+  // name doesn't stop saving or generating forms, it just makes two firms indistinguishable
+  // on the Dashboard and in exports, which is worth flagging but not preventing.
+  const duplicateFirmNames = findDuplicateNames(project.firms.map((f) => f.name));
 
   function requestRemove(firmId: string) {
     if (firmHasScores(project, firmId)) {
@@ -24,6 +30,18 @@ export function FirmsEditor() {
   return (
     <div className="card">
       <h2>Firms</h2>
+
+      {duplicateFirmNames.size > 0 && (
+        <div className="banner banner-warning" role="alert">
+          Duplicate name{duplicateFirmNames.size > 1 ? "s" : ""}:{" "}
+          {[...duplicateFirmNames.entries()]
+            .map(([name, count]) => `"${name}" is used by ${count} firms`)
+            .join("; ")}{" "}
+          — rename so results stay unambiguous on the Dashboard and in exports (this does not
+          block saving or generating forms).
+        </div>
+      )}
+
       <div className="table-wrap">
         <table className="data-table">
           <thead>

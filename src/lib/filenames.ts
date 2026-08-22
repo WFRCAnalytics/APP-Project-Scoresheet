@@ -45,6 +45,13 @@ export function calculationsWorkbookFilename(projectName: string): string {
   return `${projectPart}_Calculations.xlsx`;
 }
 
+/** Default filename for the "Download all forms" zip archive (post-launch improvements,
+ * item 4) — same sanitization rule as the other export points here. */
+export function reviewerFormsZipFilename(projectName: string): string {
+  const projectPart = sanitizeProjectName(projectName) || "untitled-project";
+  return `${projectPart}_Reviewer_Forms.zip`;
+}
+
 /** Default filename for a Dashboard chart's PNG/SVG download — sanitized project name +
  * sanitized chart label (e.g. "Very_Good_Project_Overall_vs_City.png"), reusing the same
  * sanitization rule as every other export point here. `chartLabel` reused through

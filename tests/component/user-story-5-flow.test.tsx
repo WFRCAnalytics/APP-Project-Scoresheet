@@ -123,7 +123,15 @@ describe("User Story 5 — Manually Enter Reviewer Scores", () => {
       target: { files: [importFile] },
     });
     await screen.findByText(/Review before importing/);
+
+    // 004 post-launch improvements: this row overwrites the manually entered score (1 ->
+    // 5), so "Confirm import" no longer commits directly — it opens the overwrite gate.
     fireEvent.click(screen.getByRole("button", { name: /Confirm import/ }));
+    const overwriteDialog = await screen.findByRole("alertdialog", {
+      name: "Overwrite existing scores?",
+    });
+    expect(overwriteDialog).toHaveTextContent("overwrite 1 existing score");
+    fireEvent.click(screen.getByRole("button", { name: /Yes, overwrite 1 existing score/ }));
     await screen.findByText(/Import complete/);
 
     fireEvent.click(screen.getByRole("button", { name: "View Dashboard" }));

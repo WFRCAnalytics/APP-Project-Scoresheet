@@ -19,6 +19,7 @@ import { buildRankedRows, type RankedRow } from "./rankedRows";
 import { usePrintMode } from "./usePrintMode";
 import { CriterionBreakdownChart } from "./CriterionBreakdownChart";
 import { FirmCommentsTable } from "./FirmCommentsTable";
+import { ReviewerScoreSpreadChart } from "./ReviewerScoreSpreadChart";
 
 type SortKey = "rank" | "firm" | "overall" | "city" | "completion";
 type SortDirection = "asc" | "desc";
@@ -234,6 +235,7 @@ export function RankedFirmsTable({ project }: { project: Project }) {
                     <td colSpan={6}>
                       <div className="firm-detail">
                         <CriterionBreakdownChart project={project} firmId={row.firm.id} />
+                        <ReviewerScoreSpreadChart project={project} firmId={row.firm.id} />
                         <FirmCommentsTable project={project} firmId={row.firm.id} />
                       </div>
                     </td>

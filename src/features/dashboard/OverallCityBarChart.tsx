@@ -3,6 +3,7 @@
 // §10) — never invented colors, per constitution Principle VII.
 
 import type { RefObject } from "react";
+import { BarChart3 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -13,6 +14,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { EmptyState } from "../../components/EmptyState";
 import { round2 } from "../../lib/calculations";
 import { useChartColors } from "../../theme/chartColors";
 import type { Project } from "../../types/project";
@@ -43,10 +45,10 @@ export function OverallCityBarChart({ project, containerRef }: OverallCityBarCha
     .sort((a, b) => (a.overallRank ?? 0) - (b.overallRank ?? 0));
 
   if (data.length === 0) {
-    return <p className="field-hint">No submitted firms to chart yet.</p>;
+    return <EmptyState icon={BarChart3} message="No submitted firms to chart yet." />;
   }
   if (project.criteria.length === 0) {
-    return <p className="field-hint">No criteria configured yet.</p>;
+    return <EmptyState icon={BarChart3} message="No criteria configured yet." />;
   }
 
   // Anchored to the max/min POSSIBLE weighted total, not the highest one actually reached

@@ -7,7 +7,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { AA_NORMAL_TEXT, contrastRatio } from "../../src/lib/contrast";
+import { AA_NORMAL_TEXT, contrastRatio, hexToRgb } from "../../src/lib/contrast";
 
 // Resolved from the project root (where `npm run test` / `vitest run` always execute
 // from) rather than import.meta.url — Vitest's module transform doesn't guarantee
@@ -83,6 +83,21 @@ function isHexColor(value: string): boolean {
   return /^#[0-9a-fA-F]{3,8}$/.test(value);
 }
 
+/** Mimics `color-mix(in srgb, a a%, b)`: a straight per-channel linear interpolation of the
+ * two colors' already gamma-encoded (non-linear) sRGB byte values — that's what `in srgb`
+ * means, as opposed to `in srgb-linear` — rounded to the nearest byte, same as browsers do.
+ * Used to reproduce app.css's `.banner-success` background (a color-mix expression, not a
+ * standalone token) here in the test, since it can't come from tokens.css's flat
+ * `--name: value` custom-property list the rest of this file parses. */
+function mixHexInSrgb(hexA: string, hexB: string, aPercent: number): string {
+  const [ar, ag, ab] = hexToRgb(hexA);
+  const [br, bg, bb] = hexToRgb(hexB);
+  const t = aPercent / 100;
+  const mix = (a: number, b: number) => Math.round(a * t + b * (1 - t));
+  const toHex = (n: number) => n.toString(16).padStart(2, "0");
+  return `#${toHex(mix(ar, br))}${toHex(mix(ag, bg))}${toHex(mix(ab, bb))}`;
+}
+
 describe("theme/tokens.css meets WCAG 2.1 AA (SC-010)", () => {
   const { light, dark } = loadTokens();
 
@@ -151,5 +166,26 @@ describe("theme/tokens.css meets WCAG 2.1 AA (SC-010)", () => {
         expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(CHART_NON_TEXT_THRESHOLD);
       },
     );
+  });
+
+  // 003 Dashboard redesign: the completion-status banner's new "results are final" state
+  // (app.css .banner-success) — text color is plain --color-foreground, but the background
+  // is a color-mix() composed at the component-CSS level, not a tokens.css custom property,
+  // so it can't join the flat `textPairs` loop above. Reproduced here instead of assumed to
+  // pass, per constitution Principle VII.
+  describe.each([
+    ["light", light],
+    ["dark", dark],
+  ] as const)("%s mode .banner-success (new in 003 Dashboard redesign)", (_modeName, tokens) => {
+    it("foreground on success-tinted banner background meets AA normal-text contrast (>= 4.5:1)", () => {
+      const fg = tokens["color-foreground"];
+      const success = tokens["color-success"];
+      const background = tokens["color-background"];
+      expect(isHexColor(fg)).toBe(true);
+      expect(isHexColor(success)).toBe(true);
+      expect(isHexColor(background)).toBe(true);
+      const mixedBackground = mixHexInSrgb(success, background, 20);
+      expect(contrastRatio(fg, mixedBackground)).toBeGreaterThanOrEqual(AA_NORMAL_TEXT);
+    });
   });
 });

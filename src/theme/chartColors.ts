@@ -1,9 +1,9 @@
 // Reads the categorical chart palette from theme/tokens.css at runtime via
 // getComputedStyle, rather than duplicating hex values in JS. This is what makes chart
-// colors correctly follow the light/dark `prefers-color-scheme` switch live (the CSS
-// custom properties already do; this just reads whatever they currently resolve to) —
-// constitution Principle VII: never invent arbitrary chart colors when the RTP/Wasatch
-// Choice palette exists for the purpose.
+// colors correctly follow the light/dark theme switch live (the CSS custom properties
+// already do; this just reads whatever they currently resolve to) — constitution
+// Principle VII: never invent arbitrary chart colors when the RTP/Wasatch Choice palette
+// exists for the purpose.
 
 import { useEffect, useState } from "react";
 
@@ -41,14 +41,23 @@ function readColorToken(name: string): string {
  * "for free," not just an on-screen-only one.
  *
  * Re-reads on two triggers:
- *  - the system color-scheme changing, so charts stay correct if a handler's OS theme
- *    switches mid-session;
+ *  - the effective theme changing — a `data-theme` attribute mutation on <html>, which
+ *    useTheme.ts is the single place that ever writes (both when the user manually
+ *    toggles via ThemeToggle, AND when the OS-level prefers-color-scheme changes live and
+ *    no manual override is set — see that module's own comment). Watching the attribute
+ *    itself, via MutationObserver, covers both cases with one mechanism instead of two:
+ *    an earlier version of this hook only listened for the matchMedia "change" event,
+ *    which fires for an OS-level change but NOT for a manual toggle (that path never
+ *    touches matchMedia at all, it just calls `setAttribute` directly) — charts silently
+ *    kept whatever colors they'd resolved at initial render until the next print or OS
+ *    theme flip, a real bug fixed here;
  *  - `beforeprint`/`afterprint`, because Recharts bakes these values into SVG `fill`
  *    attributes at render time — a `@media print` CSS override alone (tokens.css) can't
  *    retroactively change an attribute React already wrote. Re-reading right before
  *    print picks up tokens.css's print-forced light-mode values instead of whatever the
  *    on-screen theme happened to be (constitution Principle VII's PDF legibility
- *    carve-out). */
+ *    carve-out). Print doesn't change `data-theme` itself, so this needs its own
+ *    listener regardless of the MutationObserver above. */
 export function useChartColors() {
   const [palette, setPalette] = useState<string[]>(() => readChartPalette());
   const [overallColor, setOverallColor] = useState(() => readColorToken("--chart-1"));
@@ -71,13 +80,16 @@ export function useChartColors() {
       setBackgroundColor(readColorToken("--color-background"));
     };
 
-    const colorSchemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    colorSchemeQuery.addEventListener("change", refresh);
+    const themeObserver = new MutationObserver(refresh);
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
     window.addEventListener("beforeprint", refresh);
     window.addEventListener("afterprint", refresh); // restore on-screen colors after printing
 
     return () => {
-      colorSchemeQuery.removeEventListener("change", refresh);
+      themeObserver.disconnect();
       window.removeEventListener("beforeprint", refresh);
       window.removeEventListener("afterprint", refresh);
     };

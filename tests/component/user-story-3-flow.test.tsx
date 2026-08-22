@@ -113,24 +113,36 @@ describe("User Story 3 — Import Returned Scores and View Ranked Results", () =
 
     // Overall Avg: Alpha = (5+1)/2 = 3, Beta = (1+5)/2 = 3 -> TIE, both rank 1.
     // City Avg (Alice only): Alpha = 5, Beta = 1 -> Alpha ranks 1, Beta ranks 2.
-    const rankedTable = screen.getByRole("table");
+    // Queried by accessible name (aria-label="Ranked firms") rather than DOM
+    // position/order — robust to other <table> elements an expanded row's comments table
+    // may add to the tree.
+    const rankedTable = screen.getByRole("table", { name: "Ranked firms" });
     const rows = within(rankedTable).getAllByRole("row").slice(1); // skip header
+    // Cell 0 is the row-expand toggle, 1 is Rank, 2 is Firm, 3 is Overall Weighted Total,
+    // 4 is City Weighted Total, 5 is Completion.
     const cellsByFirm = Object.fromEntries(
       rows.map((row) => {
         const cells = within(row).getAllByRole("cell");
-        return [cells[1].textContent, cells];
+        return [cells[2].textContent, cells];
       }),
     );
 
-    expect(cellsByFirm["Alpha Co"][0].textContent).toBe("1"); // overall rank
-    expect(cellsByFirm["Alpha Co"][2].textContent).toBe("3"); // Overall Weighted Total
-    expect(cellsByFirm["Alpha Co"][3].textContent).toBe("5"); // City Weighted Total
-    expect(cellsByFirm["Beta Co"][0].textContent).toBe("1"); // tied overall rank
-    expect(cellsByFirm["Beta Co"][2].textContent).toBe("3");
-    expect(cellsByFirm["Beta Co"][3].textContent).toBe("1");
+    // Alpha: overall rank 1, city rank 1 — the two lenses AGREE, so the rank cell shows
+    // just the overall rank with no "diverges" note.
+    expect(within(cellsByFirm["Alpha Co"][1]).getByText("1")).toBeInTheDocument();
+    expect(within(cellsByFirm["Alpha Co"][1]).queryByText(/City #/)).not.toBeInTheDocument();
+    expect(cellsByFirm["Alpha Co"][3].textContent).toBe("3"); // Overall Weighted Total
+    expect(cellsByFirm["Alpha Co"][4].textContent).toBe("5"); // City Weighted Total
+
+    // Beta: tied overall rank 1, but city rank 2 — the lenses DISAGREE, so the rank cell
+    // must also surface the city rank.
+    expect(within(cellsByFirm["Beta Co"][1]).getByText("1")).toBeInTheDocument();
+    expect(within(cellsByFirm["Beta Co"][1]).getByText(/City #2/)).toBeInTheDocument();
+    expect(cellsByFirm["Beta Co"][3].textContent).toBe("3");
+    expect(cellsByFirm["Beta Co"][4].textContent).toBe("1");
 
     // Completion: both firms fully scored by both reviewers (1 criterion * 2 reviewers).
-    expect(cellsByFirm["Alpha Co"][4].textContent).toContain("2/2");
+    expect(cellsByFirm["Alpha Co"][5].textContent).toContain("2/2");
 
     // Toggle "show calculations" and confirm the raw per-reviewer scores are traceable.
     // (Since Phase 7, the Calculations view also hosts the manual entry grid, which

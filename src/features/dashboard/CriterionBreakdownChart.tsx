@@ -1,10 +1,14 @@
 // T041: Per-firm breakdown chart — a radar chart showing Overall Avg vs. City Avg per
-// criterion for one selected firm (FR-034), so a viewer can see WHY a firm ranked where
-// it did, not just the final number. Uses the same two metric colors as
-// OverallCityBarChart (Overall = chart-1, City = chart-2) for a consistent legend
-// meaning across the whole Dashboard.
+// criterion for one firm (FR-034), so a viewer can see WHY a firm ranked where it did, not
+// just the final number. Uses the same two metric colors as OverallCityBarChart (Overall =
+// chart-1, City = chart-2) for a consistent legend meaning across the whole Dashboard.
+//
+// Takes a fixed `firmId` rather than owning its own firm picker — since the 003 Dashboard
+// redesign, this only ever renders inside a RankedFirmsTable row's expanded detail, where
+// the firm is already determined by which row is open. There is no longer a standalone
+// "pick a firm from a dropdown" card on the Dashboard.
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import {
   PolarAngleAxis,
   PolarGrid,
@@ -15,30 +19,24 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { SelectField } from "../../components/SelectField";
 import { cityAvg, overallAvg, round2 } from "../../lib/calculations";
 import { useChartColors } from "../../theme/chartColors";
 import type { Project } from "../../types/project";
 import { ChartExportButtons } from "./ChartExportButtons";
 
-export function CriterionBreakdownChart({ project }: { project: Project }) {
+export function CriterionBreakdownChart({ project, firmId }: { project: Project; firmId: string }) {
   const { overallColor, cityColor, foregroundColor, borderColor, backgroundColor } =
     useChartColors();
-  const submittedFirms = project.firms.filter((f) => f.submitted);
-  const [selectedFirmId, setSelectedFirmId] = useState(submittedFirms[0]?.id ?? "");
   const containerRef = useRef<HTMLDivElement>(null);
+  const firm = project.firms.find((f) => f.id === firmId);
 
-  if (submittedFirms.length === 0) {
-    return <p className="field-hint">No submitted firms to chart yet.</p>;
-  }
+  if (!firm) return null; // orphaned reference — nothing sensible to render
   if (project.criteria.length === 0) {
     return <p className="field-hint">No criteria configured yet.</p>;
   }
   if (project.scoringScale.length === 0) {
     return <p className="field-hint">No scoring scale configured yet.</p>;
   }
-
-  const selectedFirm = submittedFirms.find((f) => f.id === selectedFirmId) ?? submittedFirms[0];
 
   // Anchored to the project's CONFIGURED scoring scale range, not the highest value
   // actually present in this firm's scores — Recharts' default radial-axis domain is
@@ -53,8 +51,8 @@ export function CriterionBreakdownChart({ project }: { project: Project }) {
   const scaleMax = sortedScaleValues[sortedScaleValues.length - 1] ?? 0;
 
   const data = project.criteria.map((criterion) => {
-    const overall = overallAvg(project, selectedFirm.id, criterion.id);
-    const city = cityAvg(project, selectedFirm.id, criterion.id);
+    const overall = overallAvg(project, firm.id, criterion.id);
+    const city = cityAvg(project, firm.id, criterion.id);
     return {
       criterion: criterion.name,
       // A not-yet-scored criterion is plotted at the scale FLOOR, not 0 — with the domain
@@ -75,28 +73,15 @@ export function CriterionBreakdownChart({ project }: { project: Project }) {
   return (
     <div>
       <div className="chart-controls-row">
-        <div className="field" style={{ maxWidth: "20rem", marginBottom: 0 }}>
-          <label htmlFor="breakdown-firm-select">Firm</label>
-          <SelectField
-            id="breakdown-firm-select"
-            value={selectedFirm.id}
-            onChange={(e) => setSelectedFirmId(e.target.value)}
-          >
-            {submittedFirms.map((firm) => (
-              <option key={firm.id} value={firm.id}>
-                {firm.name}
-              </option>
-            ))}
-          </SelectField>
-        </div>
+        <h3 className="breakdown-chart-title">Why {firm.name} scored where it did</h3>
         <ChartExportButtons
           getSvg={() => containerRef.current?.querySelector("svg") ?? null}
           projectName={project.project.projectName}
-          chartLabel={`Criterion Breakdown - ${selectedFirm.name}`}
+          chartLabel={`Criterion Breakdown - ${firm.name}`}
           backgroundColor={backgroundColor}
         />
       </div>
-      <div ref={containerRef} style={{ width: "100%", height: 320 }}>
+      <div ref={containerRef} style={{ width: "100%", height: 280 }}>
         <ResponsiveContainer>
           <RadarChart data={data} outerRadius="70%">
             <PolarGrid stroke={borderColor} />

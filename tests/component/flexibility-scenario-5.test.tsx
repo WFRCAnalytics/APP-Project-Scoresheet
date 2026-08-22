@@ -122,13 +122,18 @@ describe("Scenario 5 — Flexibility check: a materially different-shaped projec
     fireEvent.click(screen.getByRole("button", { name: "View Dashboard" }));
     await screen.findByRole("heading", { name: "Dashboard" });
 
-    const rankedTable = screen.getAllByRole("table")[0];
+    // Given an accessible name (aria-label="Ranked firms") rather than relying on DOM
+    // order/position — robust to the 003 redesign's per-row expanded-detail rows, which
+    // (like the old comments accordion before it) also render <table> elements jsdom's
+    // accessibility tree doesn't hide the way a real browser would.
+    const rankedTable = screen.getByRole("table", { name: "Ranked firms" });
     // Header row + 13 data rows -> exactly 13 ranked firm cards, not 15.
     expect(within(rankedTable).getAllByRole("row")).toHaveLength(14);
 
-    // firm-6 (row index 6 -> score 7, the highest) must be ranked 1st.
+    // firm-6 (row index 6 -> score 7, the highest) must be ranked 1st. Cell 0 is the
+    // row-expand toggle; cell 1 is the rank column.
     const firm6Row = within(rankedTable).getByText("Firm 6").closest("tr")!;
-    expect(within(firm6Row).getAllByRole("cell")[0].textContent).toBe("1");
+    expect(within(firm6Row).getAllByRole("cell")[1].textContent).toBe("1");
 
     // "show calculations" surfaces the raw 7-point values without truncation.
     fireEvent.click(screen.getByRole("button", { name: "Show calculations" }));

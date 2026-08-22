@@ -74,12 +74,15 @@ describe("User Story 5 — Manually Enter Reviewer Scores", () => {
     });
 
     // Hide/show calculations to force a re-render from the committed project state, then
-    // check the Dashboard's ranked table reflects the manually entered score.
+    // check the Dashboard's ranked table reflects the manually entered score. Queried by
+    // its accessible name (aria-label="Ranked firms") rather than DOM position/order.
     fireEvent.click(screen.getByRole("button", { name: "Hide calculations" }));
-    const rankedTable = screen.getAllByRole("table")[0];
+    const rankedTable = screen.getByRole("table", { name: "Ranked firms" });
     const dataRow = within(rankedTable).getAllByRole("row")[1];
     const cells = within(dataRow).getAllByRole("cell");
-    expect(cells[2].textContent).toBe("5"); // Overall Weighted Total (1 criterion, weight 1)
+    // Cell 0 is the row-expand toggle, cell 1 is Rank, cell 2 is Firm, cell 3 is Overall
+    // Weighted Total.
+    expect(cells[3].textContent).toBe("5"); // Overall Weighted Total (1 criterion, weight 1)
   });
 
   it("Acceptance Scenario 2: a later workbook import for the same cell overwrites the manually entered value", async () => {
@@ -124,15 +127,16 @@ describe("User Story 5 — Manually Enter Reviewer Scores", () => {
     await screen.findByText(/Import complete/);
 
     fireEvent.click(screen.getByRole("button", { name: "View Dashboard" }));
-    // The Ranked Firms table is always first in DOM order — Per-Firm Detail & Comments'
-    // own table (inside a collapsed <details>) also matches getByRole("table") here since
-    // jsdom doesn't hide a closed <details>'s content from the accessibility tree the way
-    // real browsers do, so this can't be a single unscoped findByRole("table") anymore.
-    const rankedTable = (await screen.findAllByRole("table"))[0];
+    // Queried by accessible name (aria-label="Ranked firms") rather than DOM position —
+    // robust regardless of how many other <table> elements (e.g. an expanded row's
+    // comments table) happen to be in the tree at once.
+    const rankedTable = await screen.findByRole("table", { name: "Ranked firms" });
     const dataRow = within(rankedTable).getAllByRole("row")[1];
     const cells = within(dataRow).getAllByRole("cell");
-    // The import's value (5) must have overwritten the manual entry's value (1).
-    expect(cells[2].textContent).toBe("5");
+    // Cell 0 is the row-expand toggle, cell 1 is Rank, cell 2 is Firm, cell 3 is Overall
+    // Weighted Total. The import's value (5) must have overwritten the manual entry's
+    // value (1).
+    expect(cells[3].textContent).toBe("5");
 
     fireEvent.click(screen.getByRole("button", { name: "Show calculations" }));
     fireEvent.click(screen.getByRole("tab", { name: "Manual Entry" }));

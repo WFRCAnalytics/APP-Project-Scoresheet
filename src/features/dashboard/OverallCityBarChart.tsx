@@ -67,15 +67,29 @@ export function OverallCityBarChart({ project, containerRef }: OverallCityBarCha
   return (
     <div ref={containerRef} style={{ width: "100%", height: 320 }}>
       <ResponsiveContainer>
-        <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+        <BarChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
           <XAxis dataKey="name" tick={{ fill: foregroundColor, fontSize: 12 }} />
           <YAxis
             domain={[scaleMin * totalWeight, scaleMax * totalWeight]}
             tick={{ fill: foregroundColor, fontSize: 12 }}
+            label={{
+              value: "Weighted Total",
+              angle: -90,
+              position: "insideLeft",
+              fill: foregroundColor,
+              style: { textAnchor: "middle" },
+            }}
           />
+          {/* itemStyle/labelStyle explicitly set, not just contentStyle: Recharts defaults
+              itemStyle to an inline `color: #000`, which overrides inherited theme color
+              entirely regardless of what contentStyle's own background/border resolve to —
+              found and fixed on ReviewerScoreSpreadChart's identical tooltip setup first;
+              same omission here, same fix. */}
           <Tooltip
             contentStyle={{ background: backgroundColor, border: `1px solid ${borderColor}` }}
+            itemStyle={{ color: foregroundColor }}
+            labelStyle={{ color: foregroundColor }}
           />
           <Legend />
           <Bar dataKey="Overall" fill={overallColor} />

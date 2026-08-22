@@ -106,11 +106,18 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
               fillOpacity={0.25}
             />
             <Legend />
+            {/* itemStyle/labelStyle explicitly set, not just contentStyle: Recharts
+                defaults itemStyle to an inline `color: #000`, which overrides inherited
+                theme color entirely regardless of what contentStyle's own background/border
+                resolve to — found and fixed on ReviewerScoreSpreadChart's identical tooltip
+                setup first; same omission here, same fix. */}
             <Tooltip
               contentStyle={{
                 background: backgroundColor,
                 border: `1px solid ${borderColor}`,
               }}
+              itemStyle={{ color: foregroundColor }}
+              labelStyle={{ color: foregroundColor }}
               formatter={(value, name, entry) => {
                 const scoredKey = name === "Overall" ? "OverallScored" : "CityScored";
                 const scored = (entry.payload as { [key: string]: unknown })[scoredKey];

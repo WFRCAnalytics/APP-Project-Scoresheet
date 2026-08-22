@@ -2,9 +2,21 @@
 // before/after summary shown before anything commits, and a commit step that upserts
 // added rows into project.scores, overwriting any prior entry for the same
 // reviewer/firm/criterion (FR-020, FR-022, FR-023).
+//
+// Overwrite confirmation (004 post-launch improvements): FR-023's "last input wins" used
+// to happen silently — the review table's "Added" count didn't distinguish a brand-new
+// score from one replacing an already-recorded value (e.g. from a stale/resent workbook).
+// Now every added row that would replace an existing score is flagged with its own
+// "Overwrites existing score" count and an old-value -> new-value list, AND — the actual
+// gate, not just a visible line — if any row in the batch overwrites anything, clicking
+// "Confirm import" no longer commits directly. It opens the same ConfirmDialog every
+// destructive action in this app already uses (FirmsEditor/ReviewersEditor/CriteriaEditor's
+// delete gates), requiring a distinct, explicit second click before anything is written.
+// An import with zero overwrites is completely unaffected — one click, same as before.
 
 import { useRef, useState } from "react";
 import { Badge } from "../../components/Badge";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { FilePickerField, type FilePickerFieldHandle } from "../../components/FilePickerField";
 import {
   collectScoresToCommit,
@@ -18,6 +30,7 @@ export function ImportScoresPanel() {
   const [pendingResults, setPendingResults] = useState<ParsedFileResult[] | null>(null);
   const [parsing, setParsing] = useState(false);
   const [committed, setCommitted] = useState(false);
+  const [overwriteConfirmOpen, setOverwriteConfirmOpen] = useState(false);
   const filePickerRef = useRef<FilePickerFieldHandle>(null);
 
   async function handleFilesChosen(files: FileList) {
@@ -31,20 +44,31 @@ export function ImportScoresPanel() {
     }
   }
 
-  function handleCommit() {
+  function commitScores() {
     if (!pendingResults) return;
     const scores = collectScoresToCommit(pendingResults);
     dispatch({ type: "UPSERT_SCORES", scores });
     setCommitted(true);
+    setOverwriteConfirmOpen(false);
+  }
+
+  function handleConfirmImportClick() {
+    if (totalOverwrites > 0) {
+      setOverwriteConfirmOpen(true);
+      return;
+    }
+    commitScores();
   }
 
   function handleDiscard() {
     setPendingResults(null);
     setCommitted(false);
+    setOverwriteConfirmOpen(false);
     filePickerRef.current?.reset();
   }
 
   const totalAdded = pendingResults?.reduce((sum, r) => sum + r.addedCount, 0) ?? 0;
+  const totalOverwrites = pendingResults?.reduce((sum, r) => sum + r.overwriteCount, 0) ?? 0;
 
   return (
     <div className="card">
@@ -79,6 +103,7 @@ export function ImportScoresPanel() {
                   <th>Added</th>
                   <th>Not yet scored</th>
                   <th>Failed validation</th>
+                  <th>Overwrites existing score</th>
                 </tr>
               </thead>
               <tbody>
@@ -113,6 +138,25 @@ export function ImportScoresPanel() {
                         "—"
                       )}
                     </td>
+                    <td>
+                      {result.overwriteCount > 0 ? (
+                        <>
+                          <Badge variant="warning">{result.overwriteCount}</Badge>
+                          <ul className="import-overwrite-rows">
+                            {result.rows
+                              .filter((r) => r.status === "added" && r.overwrites)
+                              .map((r, i) => (
+                                <li key={i}>
+                                  Row {r.row}: {r.overwrites!.firmName} / {r.overwrites!.criterionName}:{" "}
+                                  {r.overwrites!.previousValue} → {r.score!.value}
+                                </li>
+                              ))}
+                          </ul>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -122,7 +166,7 @@ export function ImportScoresPanel() {
             <button
               type="button"
               className="button button-primary"
-              onClick={handleCommit}
+              onClick={handleConfirmImportClick}
               disabled={totalAdded === 0}
             >
               Confirm import ({totalAdded} score{totalAdded === 1 ? "" : "s"})
@@ -144,6 +188,24 @@ export function ImportScoresPanel() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={overwriteConfirmOpen}
+        title="Overwrite existing scores?"
+        message={
+          <>
+            This import will overwrite {totalOverwrites} existing score
+            {totalOverwrites === 1 ? "" : "s"} with new values from the imported file
+            {pendingResults && pendingResults.length === 1 ? "" : "s"} — see the "Overwrites
+            existing score" column above for exactly which ones. This cannot be undone within
+            the app. Continue?
+          </>
+        }
+        confirmLabel={`Yes, overwrite ${totalOverwrites} existing score${totalOverwrites === 1 ? "" : "s"}`}
+        cancelLabel="Cancel"
+        onCancel={() => setOverwriteConfirmOpen(false)}
+        onConfirm={commitScores}
+      />
     </div>
   );
 }

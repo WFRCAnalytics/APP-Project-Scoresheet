@@ -14,8 +14,17 @@
 // "Upload a different project JSON" intentionally reuses uploadProject.ts's
 // `routeUploadedFile` — the exact same routing decision the Load screen makes (FR-002/
 // FR-003) — rather than a second, independently-maintained copy of that logic.
+//
+// Replace confirmation (004 post-launch improvements): a project is always loaded here
+// (guarded below), so replacing it always risks losing unexported in-memory changes —
+// unlike the Load screen's own upload path, which only ever runs with nothing loaded yet
+// (there's no "back to Load" navigation once a project is active) and so never needs this
+// gate. The new file is parsed/validated FIRST so both project names are known, then staged
+// behind the same ConfirmDialog every destructive action in this app already uses, rather
+// than routing immediately on a successful parse the way this used to work.
 
 import { useRef, useState } from "react";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { FilePickerField, type FilePickerFieldHandle } from "../../components/FilePickerField";
 import { useProjectContext } from "../../state/ProjectContext";
 import { routeUploadedFile, type UploadArea } from "../load/uploadProject";
@@ -51,6 +60,10 @@ export function ConfigurationScreen({
 }: ConfigurationScreenProps) {
   const { project } = useProjectContext();
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [pendingReplacement, setPendingReplacement] = useState<{
+    project: Project;
+    area: UploadArea;
+  } | null>(null);
   const filePickerRef = useRef<FilePickerFieldHandle>(null);
   const [currentStep, setCurrentStep] = useState<string>(STEPS[0].id);
   const [visitedSteps, setVisitedSteps] = useState<Set<string>>(new Set([STEPS[0].id]));
@@ -68,7 +81,23 @@ export function ConfigurationScreen({
       setUploadError(result.error);
       return;
     }
-    onProjectReplaced(result.project, result.area);
+    // A project is always loaded here (the guard above returned already if not) — stage
+    // the parsed result behind the confirm dialog rather than routing immediately.
+    setPendingReplacement({ project: result.project, area: result.area });
+  }
+
+  function confirmReplacement() {
+    if (!pendingReplacement) return;
+    onProjectReplaced(pendingReplacement.project, pendingReplacement.area);
+    setPendingReplacement(null);
+    // Clears the underlying <input>'s value, not just the displayed filename — without
+    // this, re-selecting the exact same file after a Cancel wouldn't re-fire the browser's
+    // change event (identical file path), silently breaking "try again with the same file."
+    filePickerRef.current?.reset();
+  }
+
+  function cancelReplacement() {
+    setPendingReplacement(null);
     filePickerRef.current?.reset();
   }
 
@@ -155,6 +184,23 @@ export function ConfigurationScreen({
           Next
         </button>
       </div>
+
+      <ConfirmDialog
+        open={pendingReplacement !== null}
+        title="Replace the current project?"
+        message={
+          <>
+            This will replace the currently loaded project "
+            {project.project.projectName || "Untitled Project"}" with "
+            {pendingReplacement?.project.project.projectName || "Untitled Project"}". Any
+            unexported changes to the current project will be lost. Continue?
+          </>
+        }
+        confirmLabel="Replace project"
+        cancelLabel="Cancel"
+        onCancel={cancelReplacement}
+        onConfirm={confirmReplacement}
+      />
     </section>
   );
 }

@@ -31,6 +31,17 @@ import type { Project, Score } from "../../types/project";
 
 export type RowStatus = "added" | "skipped" | "failed";
 
+/** Detail attached to an "added" row when a live score already exists for the same
+ * reviewer/firm/criterion cell — the exact value/comment that would be silently replaced,
+ * per the three-key match FR-023's "last input wins" already uses. Never present on
+ * "skipped"/"failed" rows (nothing is committed for those either way). */
+export interface OverwriteDetail {
+  previousValue: number;
+  previousComment: string;
+  firmName: string;
+  criterionName: string;
+}
+
 export interface ParsedRow {
   /** 1-indexed spreadsheet row number, for referring the handler back to it if needed. */
   row: number;
@@ -39,6 +50,8 @@ export interface ParsedRow {
   reason?: string;
   /** Present only for "added". */
   score?: Score;
+  /** Present only for "added" rows that would overwrite an existing score. */
+  overwrites?: OverwriteDetail;
 }
 
 export interface ParsedFileResult {
@@ -50,6 +63,12 @@ export interface ParsedFileResult {
   addedCount: number;
   skippedCount: number;
   failedCount: number;
+  /** Count of "added" rows that also carry `overwrites` — a subset of addedCount, not a
+   * fourth mutually-exclusive bucket: an overwriting row is still genuinely "added" (it
+   * does get committed, replacing the prior value), just also flagged as replacing
+   * something. Surfaced separately so the handler sees it before confirming, not folded
+   * silently into "added" the way it was before this was added. */
+  overwriteCount: number;
 }
 
 /** Reads a File's bytes as an ArrayBuffer via FileReader — not `File.arrayBuffer()` —
@@ -106,6 +125,7 @@ export function parseScoringWorkbook(
       addedCount: 0,
       skippedCount: 0,
       failedCount: 1,
+      overwriteCount: 0,
     };
   }
 
@@ -124,6 +144,7 @@ export function parseScoringWorkbook(
       addedCount: 0,
       skippedCount: 0,
       failedCount: 1,
+      overwriteCount: 0,
     };
   }
 
@@ -200,10 +221,26 @@ export function parseScoringWorkbook(
     const commentCell = sheet.getCell(`E${r}`).value;
     const comment = typeof commentCell === "string" ? commentCell : "";
 
+    // Same three-key match FR-023's "last input wins" upsert already uses — checked here,
+    // before commit, so the handler sees what would be replaced instead of it happening
+    // silently on confirm.
+    const existing = project.scores.find(
+      (s) =>
+        s.reviewerId === reviewerId && s.firmId === firmId && s.criterionId === criterionId,
+    );
+
     rows.push({
       row: r,
       status: "added",
       score: { reviewerId, firmId, criterionId, value: scoreValue, comment, updatedAt: now },
+      overwrites: existing
+        ? {
+            previousValue: existing.value,
+            previousComment: existing.comment,
+            firmName: firm.name,
+            criterionName: criterion.name,
+          }
+        : undefined,
     });
   }
 
@@ -214,6 +251,7 @@ export function parseScoringWorkbook(
     addedCount: rows.filter((r) => r.status === "added").length,
     skippedCount: rows.filter((r) => r.status === "skipped").length,
     failedCount: rows.filter((r) => r.status === "failed").length,
+    overwriteCount: rows.filter((r) => r.status === "added" && r.overwrites).length,
   };
 }
 
@@ -232,6 +270,7 @@ export async function parseWorkbookFile(project: Project, file: File): Promise<P
       addedCount: 0,
       skippedCount: 0,
       failedCount: 1,
+      overwriteCount: 0,
     };
   }
   return parseScoringWorkbook(project, workbook, file.name);

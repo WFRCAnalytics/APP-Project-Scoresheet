@@ -220,4 +220,116 @@ describe("Excel round trip: generateWorkbook -> parseWorkbook", () => {
     expect(result.rows[0].reason).toMatch(/header row/i);
     expect(result.addedCount).toBe(0);
   });
+
+  // 004 post-launch improvements: overwrite detection (FR-023's "last input wins" upsert
+  // used to happen silently; the handler now sees which added rows would replace an
+  // already-recorded score, with the old value, before ever committing).
+  describe("overwrite detection", () => {
+    it("5a. a row scoring an already-scored cell is flagged 'added' WITH overwrites, carrying the previous value/comment/names", async () => {
+      const project = buildFixture();
+      project.scores = [
+        {
+          reviewerId: "rev-1",
+          firmId: "firm-1",
+          criterionId: "crit-1",
+          value: 1,
+          comment: "Original comment",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ];
+      const generated = await generateWorkbookForReviewer(project, project.reviewers[0]);
+      if (!generated.ok) throw new Error(generated.error);
+      const workbook = await loadWorkbookFromBlob(generated.blob);
+      const sheet = workbook.getWorksheet("Scoring")!;
+      sheet.getCell(`D${SCORING_FIRST_DATA_ROW}`).value = 5; // firm-1/crit-1 — already scored above
+
+      const result = parseScoringWorkbook(project, workbook, generated.filename);
+
+      const row = result.rows[0];
+      expect(row.status).toBe("added");
+      expect(row.score?.value).toBe(5); // the NEW value is still what gets committed
+      expect(row.overwrites).toEqual({
+        previousValue: 1,
+        previousComment: "Original comment",
+        firmName: "Alpha Co",
+        criterionName: "Approach",
+      });
+      expect(result.overwriteCount).toBe(1);
+      // Overwriting doesn't remove it from "added" — it's a subset, not a fourth bucket.
+      expect(result.addedCount).toBe(1);
+    });
+
+    it("5b. a row scoring a cell with no prior score has no overwrites, and doesn't count toward overwriteCount", async () => {
+      const project = buildFixture(); // no scores at all yet
+      const generated = await generateWorkbookForReviewer(project, project.reviewers[0]);
+      if (!generated.ok) throw new Error(generated.error);
+      const workbook = await loadWorkbookFromBlob(generated.blob);
+      const sheet = workbook.getWorksheet("Scoring")!;
+      sheet.getCell(`D${SCORING_FIRST_DATA_ROW}`).value = 5;
+
+      const result = parseScoringWorkbook(project, workbook, generated.filename);
+
+      expect(result.rows[0].status).toBe("added");
+      expect(result.rows[0].overwrites).toBeUndefined();
+      expect(result.overwriteCount).toBe(0);
+      expect(result.addedCount).toBe(1);
+    });
+
+    it("5c. a mixed batch (some overwriting, some brand new, some blank) tallies overwriteCount correctly", async () => {
+      const project = buildFixture();
+      // Existing score for firm-1/crit-1 only.
+      project.scores = [
+        {
+          reviewerId: "rev-1",
+          firmId: "firm-1",
+          criterionId: "crit-1",
+          value: 3,
+          comment: "",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ];
+      const generated = await generateWorkbookForReviewer(project, project.reviewers[0]);
+      if (!generated.ok) throw new Error(generated.error);
+      const workbook = await loadWorkbookFromBlob(generated.blob);
+      const sheet = workbook.getWorksheet("Scoring")!;
+      // Row order: firm-1/crit-1, firm-1/crit-2, firm-2/crit-1, firm-2/crit-2.
+      sheet.getCell(`D${SCORING_FIRST_DATA_ROW}`).value = 5; // overwrites the existing score
+      sheet.getCell(`D${SCORING_FIRST_DATA_ROW + 1}`).value = 1; // brand new, no prior score
+      // Row 3 (firm-2/crit-1) left blank -> "skipped", not counted either way.
+
+      const result = parseScoringWorkbook(project, workbook, generated.filename);
+
+      expect(result.addedCount).toBe(2);
+      expect(result.skippedCount).toBe(2); // firm-2/crit-1 blank, firm-2/crit-2 blank
+      expect(result.overwriteCount).toBe(1);
+      expect(result.rows[0].overwrites?.previousValue).toBe(3);
+      expect(result.rows[1].overwrites).toBeUndefined();
+    });
+
+    it("5d. an orphaned score (references a firm/criterion no longer in the project) is never matched as 'existing' for overwrite purposes", async () => {
+      const project = buildFixture();
+      // A score exists for the SAME reviewer/criterion but a DIFFERENT firm than the one
+      // being imported — must not be mistaken for the same cell.
+      project.scores = [
+        {
+          reviewerId: "rev-1",
+          firmId: "firm-2",
+          criterionId: "crit-1",
+          value: 1,
+          comment: "",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ];
+      const generated = await generateWorkbookForReviewer(project, project.reviewers[0]);
+      if (!generated.ok) throw new Error(generated.error);
+      const workbook = await loadWorkbookFromBlob(generated.blob);
+      const sheet = workbook.getWorksheet("Scoring")!;
+      sheet.getCell(`D${SCORING_FIRST_DATA_ROW}`).value = 5; // firm-1/crit-1 — a DIFFERENT cell
+
+      const result = parseScoringWorkbook(project, workbook, generated.filename);
+
+      expect(result.rows[0].overwrites).toBeUndefined();
+      expect(result.overwriteCount).toBe(0);
+    });
+  });
 });

@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { SelectField } from "../../components/SelectField";
+import { findDuplicateNames } from "../../lib/duplicateNames";
 import { generateId } from "../../lib/id";
 import { useLoadedProject } from "../../state/ProjectContext";
 import { reviewerHasScores } from "../../state/projectReducer";
@@ -14,6 +15,10 @@ import type { ReviewerType } from "../../types/project";
 export function ReviewersEditor() {
   const { project, dispatch } = useLoadedProject();
   const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
+
+  // Non-blocking, same convention as CriteriaEditor's weight-total banner and
+  // FirmsEditor's identical duplicate check — see FirmsEditor for the full rationale.
+  const duplicateReviewerNames = findDuplicateNames(project.reviewers.map((r) => r.name));
 
   function requestRemove(reviewerId: string) {
     if (reviewerHasScores(project, reviewerId)) {
@@ -28,6 +33,18 @@ export function ReviewersEditor() {
   return (
     <div className="card">
       <h2>Reviewers</h2>
+
+      {duplicateReviewerNames.size > 0 && (
+        <div className="banner banner-warning" role="alert">
+          Duplicate name{duplicateReviewerNames.size > 1 ? "s" : ""}:{" "}
+          {[...duplicateReviewerNames.entries()]
+            .map(([name, count]) => `"${name}" is used by ${count} reviewers`)
+            .join("; ")}{" "}
+          — rename so results stay unambiguous on the Dashboard and in exports (this does not
+          block saving or generating forms).
+        </div>
+      )}
+
       <div className="table-wrap">
         <table className="data-table">
           <thead>

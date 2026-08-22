@@ -5,23 +5,8 @@
 // of silently drifting.
 
 import { describe, expect, it } from "vitest";
-import { AA_NORMAL_TEXT, contrastRatio, hexToRgb } from "../../src/lib/contrast";
-import { isHexColor, loadTokens } from "../helpers/tokensCss";
-
-/** Mimics `color-mix(in srgb, a a%, b)`: a straight per-channel linear interpolation of the
- * two colors' already gamma-encoded (non-linear) sRGB byte values — that's what `in srgb`
- * means, as opposed to `in srgb-linear` — rounded to the nearest byte, same as browsers do.
- * Used to reproduce app.css's `.banner-success` background (a color-mix expression, not a
- * standalone token) here in the test, since it can't come from tokens.css's flat
- * `--name: value` custom-property list the rest of this file parses. */
-function mixHexInSrgb(hexA: string, hexB: string, aPercent: number): string {
-  const [ar, ag, ab] = hexToRgb(hexA);
-  const [br, bg, bb] = hexToRgb(hexB);
-  const t = aPercent / 100;
-  const mix = (a: number, b: number) => Math.round(a * t + b * (1 - t));
-  const toHex = (n: number) => n.toString(16).padStart(2, "0");
-  return `#${toHex(mix(ar, br))}${toHex(mix(ag, bg))}${toHex(mix(ab, bb))}`;
-}
+import { AA_NORMAL_TEXT, contrastRatio } from "../../src/lib/contrast";
+import { isHexColor, loadTokens, mixHexInSrgb } from "../helpers/tokensCss";
 
 describe("theme/tokens.css meets WCAG 2.1 AA (SC-010)", () => {
   const { light, dark } = loadTokens();
@@ -55,6 +40,11 @@ describe("theme/tokens.css meets WCAG 2.1 AA (SC-010)", () => {
       "color-danger",
     ],
     ["foreground on border (neutral badge text)", "color-foreground", "color-border"],
+    // Added after a manual sweep found this pairing had never been checked despite
+    // --color-wfrc-gray being used as text everywhere (field hints, stat labels, table
+    // header labels, page subtitles) — light mode's raw brand value was 4.24:1 here,
+    // failing AA by a hair, until tokens.css's own light-mode darken (see that file).
+    ["muted/secondary text on page background", "color-wfrc-gray", "color-background"],
   ];
 
   describe.each([

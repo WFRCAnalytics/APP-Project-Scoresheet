@@ -27,7 +27,6 @@
   --color-wfrc-yellow: #f8b93e; /* fails AA as small text-on-white (research.md §10) —
     used only as a background/border/accent with a dark foreground on top, never as
     text color itself. */
-  --color-wfrc-gray: #7f7a76;
 
   /* ---- Semantic tokens: light mode ---- */
   --color-foreground: #151515; /* brand.yml "black" */
@@ -37,6 +36,16 @@
      an accessibility-adjusted darken of the same hue, 4.52:1 against white. Dark mode
      uses the raw brand value unmodified (see below — it already passes there). */
   --color-link: #397f95;
+  /* Raw brand gray (#7f7a76) as text on white is 4.24:1 — fails AA normal text (4.5:1)
+     by a hair. Moved out of the "raw, unmodified" brand-token block above for that
+     reason (it's no longer literally that) and darkened just enough to clear the
+     threshold, 4.82:1 against white — same treatment as --color-link just above.
+     Found in a manual sweep after the dark-mode elevation fixes: unlike --color-link,
+     this pairing had never been added to contrast.test.ts's textPairs, despite being
+     used as text everywhere (field hints, stat labels, table header labels, page
+     subtitles) — see that test for the pairing added alongside this fix. Dark mode's
+     own --color-wfrc-gray override (below) already passes and is unaffected by this. */
+  --color-wfrc-gray: #76716e;
   --color-primary: var(--color-wfrc-blue);
   --color-primary-foreground: #ffffff; /* 11.67:1 on wfrc-blue */
   --color-accent-background: var(--color-wfrc-yellow);
@@ -172,6 +181,23 @@
   --color-danger: #c23c33;
   --color-danger-foreground: #ffffff; /* 5.27:1, verified */
   --color-warning-foreground: var(--color-accent-foreground); /* reuse existing pairing */
+
+  /* .banner-error's own token (not inlined in app.css) — dark mode needs a different MIX
+   * PERCENTAGE than light, not a different --color-danger (danger is deliberately identical
+   * in both modes, already a vivid, unmodified-enough red). Manual sweep found this fill
+   * reads weak as a distinct "highlighted region" in EITHER mode on its own — the border
+   * (--color-danger at full strength) is what actually signals "error" — but dark mode was
+   * measurably weaker still: mixing a mid-dark red into an already near-black background
+   * barely differentiates the fill from the page (1.15:1 vs light's 1.35:1), the same
+   * "numerically different, visually collapses" family as the chart/modal/shadow fixes.
+   * Dark mode's own override (below) uses a stronger mix so it reads at least as distinctly
+   * as light's, mirroring how .banner-warning's dark mode already ends up stronger than its
+   * light mode (not a coincidence there either — a bright accent mixed into a dark surface
+   * naturally separates more than the same mix into a light one; danger's mid-dark red does
+   * the opposite, so it needs an explicit per-mode percentage rather than relying on that
+   * same effect). Text stays enormously safe either way (12.37:1 dark), so there's no
+   * legibility trade-off in going stronger. */
+  --banner-error-background: color-mix(in srgb, var(--color-danger) 20%, var(--color-background));
 }
 
 /*
@@ -202,9 +228,13 @@
     --color-primary: var(--color-wfrc-secondary-blue);
     --color-primary-foreground: #081b26; /* 7.54:1 on the secondary-blue background —
       white text there would only be 2.33:1 and fail outright */
-    --color-wfrc-gray: #85817d; /* lightened from #7f7a76 (4.14:1 -> 4.55:1) — only
-      applies where wfrc-gray plays a text role; non-text uses can still reference the
-      raw --color-wfrc-gray value defined above if needed */
+    /* Lightened from the raw WFRC brand gray (#7f7a76, 4.14:1 against this dark
+       background — fails AA) to #85817d, 4.55:1. Independent fix from light mode's own
+       darken of the same raw value above (#7f7a76 -> #76716e, for the opposite reason:
+       4.24:1 against WHITE failed AA too) — both modes needed their own adjustment off
+       the same raw brand hex, in opposite directions, for the same reason (AA text
+       contrast against that mode's own background). */
+    --color-wfrc-gray: #85817d;
     --color-accent-background: var(--color-wfrc-yellow); /* 10.04:1 vs dark bg — safe
       even unmodified */
     --color-accent-foreground: #151515;
@@ -255,6 +285,10 @@
     /* No dark-mode overrides needed here: --color-success-foreground and
        --color-danger-foreground above already work in both modes (see their comments in
        the :root block). */
+
+    /* 45% instead of light mode's 20% — see the :root definition's comment for why dark
+       mode needs a stronger mix than light rather than inheriting the same percentage. */
+    --banner-error-background: color-mix(in srgb, var(--color-danger) 45%, var(--color-background));
   }
 }
 
@@ -300,6 +334,8 @@
   --chart-16: #a3bb93;
   --chart-17: #f4c9cd;
   --chart-18: #ded2e8;
+
+  --banner-error-background: color-mix(in srgb, var(--color-danger) 45%, var(--color-background));
 }
 
 /*
@@ -336,7 +372,7 @@
     --color-link: #397f95;
     --color-primary: #023c5b;
     --color-primary-foreground: #ffffff;
-    --color-wfrc-gray: #7f7a76;
+    --color-wfrc-gray: #76716e;
     --color-accent-background: #f8b93e;
     --color-accent-foreground: #151515;
     --color-border: #d8d5d2;
@@ -361,6 +397,8 @@
     --chart-16: #869a79;
     --chart-17: #ab8d90;
     --chart-18: #968e9d;
+
+    --banner-error-background: color-mix(in srgb, var(--color-danger) 20%, var(--color-background));
   }
 
   .no-print {

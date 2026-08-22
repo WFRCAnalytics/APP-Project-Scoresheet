@@ -106,3 +106,36 @@ export function loadTokens(): { light: TokenMap; dark: TokenMap } {
 export function isHexColor(value: string): boolean {
   return /^#[0-9a-fA-F]{3,8}$/.test(value);
 }
+
+function hexToRgbByte(hex: string): [number, number, number] {
+  const normalized = hex.replace("#", "");
+  const full =
+    normalized.length === 3
+      ? normalized
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : normalized;
+  return [
+    parseInt(full.slice(0, 2), 16),
+    parseInt(full.slice(2, 4), 16),
+    parseInt(full.slice(4, 6), 16),
+  ];
+}
+
+/** Mimics `color-mix(in srgb, a a%, b)`: a straight per-channel linear interpolation of the
+ * two colors' already gamma-encoded (non-linear) sRGB byte values — that's what `in srgb`
+ * means, as opposed to `in srgb-linear` — rounded to the nearest byte, same as browsers do.
+ * Used to reproduce a `color-mix()` expression from app.css/tokens.css here in a test,
+ * since it can't come from tokens.css's flat `--name: value` custom-property list the rest
+ * of this file parses (loadTokens() leaves composite expressions like this one as their raw
+ * string — see resolveTokens' own comment). Shared by contrast.test.ts (.banner-success)
+ * and bannerErrorContrast.test.ts (.banner-error) rather than each keeping its own copy. */
+export function mixHexInSrgb(hexA: string, hexB: string, aPercent: number): string {
+  const [ar, ag, ab] = hexToRgbByte(hexA);
+  const [br, bg, bb] = hexToRgbByte(hexB);
+  const t = aPercent / 100;
+  const mix = (a: number, b: number) => Math.round(a * t + b * (1 - t));
+  const toHex = (n: number) => n.toString(16).padStart(2, "0");
+  return `#${toHex(mix(ar, br))}${toHex(mix(ag, bg))}${toHex(mix(ab, bb))}`;
+}

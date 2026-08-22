@@ -139,6 +139,20 @@ textarea:focus-visible,
   cursor: not-allowed;
 }
 
+/* SelectField's dropdown-arrow icon is a SIBLING of the <select> it decorates, not a
+   descendant (see select-field-wrap below) — the disabled <select>'s own `opacity: 0.6`
+   above has no effect on it, since CSS opacity doesn't cascade to siblings. Left alone,
+   a disabled select would render as a faded box with a still-full-brightness arrow on top
+   of it — an inconsistent "half disabled" look (found in a manual sweep; no SelectField in
+   the app currently passes `disabled`, so this was latent rather than visibly broken
+   today). The general sibling combinator targets the arrow specifically when the select
+   immediately before it in DOM order (SelectField.tsx's own render order) is disabled,
+   using the same 0.6 opacity so the two fade in visual lockstep. */
+.field select:disabled ~ .select-field-arrow,
+.data-table td select:disabled ~ .select-field-arrow {
+  opacity: 0.6;
+}
+
 /* Every <select> in the app (Reviewer type, Firm/Reviewer pickers, Manual Entry Score)
    gets its native dropdown arrow removed and replaced with a real lucide-react ChevronDown
    icon (SelectField.tsx), positioned absolutely over it. `padding-right` alone can't fix
@@ -393,8 +407,11 @@ table.data-table tbody tr:last-child td {
   border: 1px solid var(--color-wfrc-yellow);
 }
 
+/* Background is --banner-error-background (tokens.css), not inlined here — dark mode uses
+   a stronger mix percentage than light (see that token's own comment for why). Border and
+   text are untouched by that fix; both already read fine in either mode. */
 .banner-error {
-  background: color-mix(in srgb, var(--color-danger) 20%, var(--color-background));
+  background: var(--banner-error-background);
   border: 1px solid var(--color-danger);
 }
 

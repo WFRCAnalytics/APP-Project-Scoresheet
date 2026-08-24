@@ -8,11 +8,24 @@
 // (FR-031, reachable in one click), the Dashboard's own Export PDF / Export JSON actions
 // (T043/T044), and T045's "Edit project" transition back into Configuration.
 //
+// Toolbar hierarchy pass (post-launch): the four header controls used to be identically
+// styled buttons in a flat row — two of them both `button-primary`, one an inline label+
+// input+button form control breaking the row's shared baseline, no visual cue distinguishing
+// "opens a view," "downloads a file," and "navigates away." Now grouped by actual
+// consequence inside one bordered toolbar (.dashboard-toolbar, same chrome language
+// .config-toolbar already uses): Edit project and Show calculations are low-stakes/
+// reversible (nothing downloads, easy to back out of) and render icon-only, exactly the
+// pattern AppHeader's own Help/theme-toggle buttons already use; Export PDF and Export JSON
+// produce a real file, so they keep an icon **and** a label — a bare icon can't
+// disambiguate "which file am I about to get" the way it safely can for a view toggle. PDF
+// is the only `button-primary`: it's the actual procurement-record deliverable this tool
+// exists to produce, so it's the one control that should visually outrank the rest.
+//
 // Must work purely as a viewer (FR-037): rendering this requires no configuration step —
 // everything here reads from the already-loaded project.
 
 import { forwardRef, useRef, useState } from "react";
-import { CircleCheck, TriangleAlert } from "lucide-react";
+import { Calculator, CircleCheck, TriangleAlert } from "lucide-react";
 import { useLoadedProject } from "../../state/ProjectContext";
 import { useChartColors } from "../../theme/chartColors";
 import { CalculationsModal } from "../calculations-view/CalculationsModal";
@@ -184,17 +197,26 @@ export function DashboardScreen({ onEditProject }: DashboardScreenProps) {
           <h1>Dashboard</h1>
           <p className="page-subtitle">{project.project.projectName || "Untitled Project"}</p>
         </div>
-        <div className="actions-row dashboard-page-header-actions">
-          <button
-            type="button"
-            className="button button-secondary"
-            onClick={() => setCalculationsOpen((s) => !s)}
-          >
-            {calculationsOpen ? "Hide calculations" : "Show calculations"}
-          </button>
-          <ExportPdfButton printRef={printRef} />
-          <ExportProjectButton />
-          <EditProjectButton onEditProject={onEditProject} />
+        <div className="dashboard-toolbar no-print">
+          <div className="dashboard-toolbar-group">
+            <EditProjectButton onEditProject={onEditProject} />
+            <button
+              type="button"
+              className={`button-link icon-button${calculationsOpen ? " is-active" : ""}`}
+              onClick={() => setCalculationsOpen((s) => !s)}
+              aria-label={calculationsOpen ? "Hide calculations" : "Show calculations"}
+              title={calculationsOpen ? "Hide calculations" : "Show calculations"}
+              aria-haspopup="dialog"
+              aria-expanded={calculationsOpen}
+            >
+              <Calculator size={18} strokeWidth={1.75} aria-hidden="true" />
+            </button>
+          </div>
+          <div className="dashboard-toolbar-divider" aria-hidden="true" />
+          <div className="dashboard-toolbar-group">
+            <ExportProjectButton />
+            <ExportPdfButton printRef={printRef} />
+          </div>
         </div>
       </div>
 

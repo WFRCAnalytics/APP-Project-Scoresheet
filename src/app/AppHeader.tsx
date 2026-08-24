@@ -52,7 +52,7 @@ export function AppHeader({ onOpenHelp }: AppHeaderProps) {
         <ThemeToggle theme={theme} onToggle={toggleTheme} />
         <button
           type="button"
-          className="button-link app-header-icon-button"
+          className="button-link icon-button"
           onClick={onOpenHelp}
           aria-label="Help & guide"
           title="Help & guide"

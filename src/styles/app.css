@@ -315,6 +315,9 @@ input[type="radio"]:disabled {
 }
 
 .button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   font: inherit;
   font-weight: var(--font-weight-semibold);
   padding: var(--space-2) var(--space-4);
@@ -557,10 +560,12 @@ table.data-table tbody tr:last-child td {
   transform: translateY(-2px);
 }
 
-/* align-items: flex-end (not the default "stretch"), so a plain <button> sitting next to
-   ExportProjectJsonButton's stacked label+input+button block aligns with THAT block's own
-   button — the input/label float above, the two buttons share a baseline — instead of
-   every plain button being stretched to match the taller compound block's full height. */
+/* align-items: flex-end (not the default "stretch") — every current user of this class is
+   a row of same-height buttons (the various editors' "Add X" actions, Back/Next nav, etc.),
+   where flex-end and center are visually identical, but flex-end is the safer default if a
+   taller sibling (a labeled form field, say) ever joins one of these rows again — it keeps
+   the plain buttons anchored to a shared bottom baseline instead of being stretched to that
+   taller sibling's full height. */
 .actions-row {
   display: flex;
   align-items: flex-end;
@@ -569,8 +574,9 @@ table.data-table tbody tr:last-child td {
   margin-top: var(--space-3);
 }
 
-/* ExportProjectJsonButton: label above, input + button in a row below (unchanged shape
-   from before the SaaS-polish pass — this one was already right). */
+/* ExportProjectJsonButton's "inline" variant (Configuration's toolbar — left exactly as it
+   was before the Dashboard toolbar redesign below, per explicit feedback that this pass was
+   Dashboard-only): label above, input + button in a row below. */
 .export-filename-field {
   margin-bottom: 0;
 }
@@ -584,6 +590,47 @@ table.data-table tbody tr:last-child td {
 .export-filename-row input[type="text"] {
   width: 12rem;
   max-width: 100%;
+}
+
+/* ExportProjectJsonButton's "compact" variant (Dashboard toolbar only) — clicking "Export
+   JSON" opens a confirm panel instead of exporting directly (a "Save As"-style review step,
+   not a novel pattern — see that component's own header comment). The panel reuses the
+   same bordered/shadow-md language .combobox-listbox already established, anchored
+   below-right since the Dashboard toolbar sits near the right edge of its container. */
+.export-json-control {
+  position: relative;
+  display: inline-flex;
+}
+
+.export-json-popover {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 16rem;
+  padding: var(--space-3);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+}
+
+/* The filename field wraps in a plain .field div specifically so its <input> picks up the
+   shared `.field input[type="text"]` treatment (border/radius/focus-ring — every other
+   text input in the app) instead of the browser's unstyled default, which is what made it
+   look out of place here. .field's own margin-bottom is reset to 0 since the popover's own
+   flex `gap` already spaces it from the Cancel/Export row below. */
+.export-json-popover .field {
+  margin-bottom: 0;
+}
+
+.export-json-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
 
 .entry-choice {
@@ -649,7 +696,11 @@ table.data-table tbody tr:last-child td {
   flex-shrink: 0;
 }
 
-.app-header-icon-button {
+/* Generic icon-only button — originally AppHeader-specific (Help, theme toggle), now also
+   used by the Dashboard toolbar (EditProjectButton, the "Show calculations" toggle):
+   nothing about the sizing/hover treatment is actually header-specific, so this stayed one
+   shared class rather than a second, near-identical copy for the Dashboard's context. */
+.icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -658,12 +709,27 @@ table.data-table tbody tr:last-child td {
   border-radius: var(--radius-sm);
   color: var(--color-foreground);
   text-decoration: none;
-  transition: background-color var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
-.app-header-icon-button:hover {
+.icon-button:hover {
   background: color-mix(in srgb, var(--color-foreground) 6%, transparent);
   color: var(--color-foreground);
+}
+
+/* Persistent "currently on" state — the Dashboard's "Hide calculations" toggle while its
+   modal is open. Same color convention as .calc-tab.is-active (text tints to
+   --color-primary), plus a background tint here since a lone color shift on a small icon
+   glyph alone is easy to miss at this size, unlike a text tab. */
+.icon-button.is-active {
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.icon-button.is-active:hover {
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
 }
 
 @media (max-width: 640px) {
@@ -844,10 +910,33 @@ table.data-table tbody tr:last-child td {
   margin-bottom: var(--space-1);
 }
 
-/* Overrides .actions-row's own margin-top — it's a sibling in this header row now, not
-   stacked below a heading. */
-.dashboard-page-header-actions {
-  margin-top: 0;
+/* Dashboard toolbar (post-launch hierarchy pass) — a single bordered/tinted container, same
+   "toolbar chrome" language .config-toolbar already established, so the action cluster
+   reads as one deliberate group sitting near the title instead of a handful of bare buttons
+   adrift in the header's own justify-content: space-between gap. Two sub-groups inside,
+   split by a hairline divider: reversible/low-stakes controls (Edit project, Show
+   calculations — icon-only) on the left, the two export actions (icon+label, since a
+   downloaded-file action deserves less ambiguity than a view toggle) on the right. */
+.dashboard-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-foreground) 3%, transparent);
+}
+
+.dashboard-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.dashboard-toolbar-divider {
+  align-self: stretch;
+  width: 1px;
+  background: var(--color-border);
 }
 
 /* ---- Dashboard: project info panel ---- */

@@ -26,6 +26,7 @@
 
 import { forwardRef, useRef, useState } from "react";
 import { Calculator, CircleCheck, TriangleAlert } from "lucide-react";
+import { formatIsoDate } from "../../lib/formatDate";
 import { useLoadedProject } from "../../state/ProjectContext";
 import { useChartColors } from "../../theme/chartColors";
 import { CalculationsModal } from "../calculations-view/CalculationsModal";
@@ -37,19 +38,6 @@ import { OverallApplicantBarChart } from "./OverallApplicantBarChart";
 import { RankedFirmsTable } from "./RankedFirmsTable";
 import { buildRankedRows } from "./rankedRows";
 import type { Project } from "../../types/project";
-
-/** "2026-08-20" -> "August 20, 2026". Parses the Y/M/D components manually and builds the
- * Date from local-time components rather than `new Date(isoDate)` — the latter parses a
- * bare date string as UTC midnight, which `toLocaleDateString()` can then render as the
- * PREVIOUS day in any timezone west of UTC (a classic off-by-one-day bug). Falls back to
- * the raw string if it isn't the expected shape rather than showing "Invalid Date". */
-function formatMeetingDate(isoDate: string): string {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  if (!year || !month || !day) return isoDate;
-  const date = new Date(year, month - 1, day);
-  if (Number.isNaN(date.getTime())) return isoDate;
-  return date.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
-}
 
 /** Persistent, can't-miss signal of whether the results below are final or still coming in
  * — promoted out of the old summary strip's "Scoring Complete %" stat tile (easy to skim
@@ -143,7 +131,7 @@ export const PrintableDashboard = forwardRef<HTMLDivElement, { project: Project 
             {project.project.committeeMeetingDate && (
               <div className="project-info-item">
                 <dt>Selection Committee Meeting</dt>
-                <dd>{formatMeetingDate(project.project.committeeMeetingDate)}</dd>
+                <dd>{formatIsoDate(project.project.committeeMeetingDate)}</dd>
               </div>
             )}
           </dl>

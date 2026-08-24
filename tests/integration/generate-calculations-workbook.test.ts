@@ -1,20 +1,28 @@
-// Real ExcelJS round-trip for the Calculations modal's "Export as .xlsx" button. Written
-// after catching a real column-offset bug while first wiring this up (the totals row's
-// Overall Wtd/TLC Applicant Wtd values landed one column left of their own header) — this
-// test specifically asserts the totals row lines up under the SAME header text it's meant
-// to be under, not just that some value exists somewhere in the row.
+// Real ExcelJS round-trip for the Calculations modal's "Export as .xlsx" button — now a
+// multi-tab workbook (Results, Calculations, Project Info, Firms, Reviewers, Criteria,
+// Scoring Scale), not a single sheet.
 //
-// Every derived cell (Overall/TLC Applicant/WFRC Avg, Overall/TLC Applicant/WFRC Wtd,
-// Completion, and each firm's totals row) is a real formula now, not a hardcoded snapshot
-// number — see generateCalculationsWorkbook.ts's own header comment for the full design.
-// These tests assert both the FORMULA TEXT (so a handler opening the file in real Excel can
-// audit/recalculate it) and the cached RESULT (what shows before Excel's own recalculation).
+// Every derived cell (Overall/TLC Applicant/WFRC Avg/Wtd, Completion, and every cell on
+// Results) is a real formula, not a hardcoded snapshot number — and every LABEL cell that
+// duplicates data already present on a config tab (Firm, Criterion, Weight, each reviewer's
+// column header) is a real cross-sheet formula too, not a hardcoded copy — see
+// generateCalculationsWorkbook.ts and its calculationsWorkbook/*.ts sheet builders for the
+// full design. These tests assert both the FORMULA TEXT (so a handler opening the file in
+// real Excel can audit/recalculate it) and the cached RESULT (what shows before Excel's own
+// recalculation).
 // @vitest-environment node
 
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 import { generateCalculationsWorkbook } from "../../src/lib/excel/generateCalculationsWorkbook";
 import { createEmptyProject, type Project } from "../../src/types/project";
+
+// The Calculations sheet's title/subtitle/instruction banner occupies rows 1-3, row 4 is
+// blank, and the real header row is row 5 — see calculationsWorkbook/shared.ts's
+// addTitleBanner (an instruction line is what pushes the header down to row 5 instead of
+// row 4; only the Calculations tab uses one). Every row number below is relative to this.
+const CALC_HEADER_ROW = 5;
+const CALC_FIRST_DATA_ROW = CALC_HEADER_ROW + 1; // 6
 
 function buildFixture(): Project {
   const project = createEmptyProject();
@@ -79,30 +87,76 @@ async function reloadWorkbook(blob: Blob): Promise<ExcelJS.Workbook> {
   return workbook;
 }
 
-describe("generateCalculationsWorkbook", () => {
-  it("has a header row matching Firm/Criterion/Weight/[reviewers]/Overall Avg/TLC Applicant Avg/WFRC Avg/Overall Wtd/TLC Applicant Wtd/WFRC Wtd/Completion", async () => {
+describe("generateCalculationsWorkbook — workbook structure", () => {
+  it("has all seven tabs, in order, with Results first and active", async () => {
+    const project = buildFixture();
+    const { blob } = await generateCalculationsWorkbook(project);
+    const workbook = await reloadWorkbook(blob);
+
+    expect(workbook.worksheets.map((s) => s.name)).toEqual([
+      "Results",
+      "Calculations",
+      "Project Info",
+      "Firms",
+      "Reviewers",
+      "Criteria",
+      "Scoring Scale",
+    ]);
+  });
+});
+
+describe("generateCalculationsWorkbook — Calculations tab", () => {
+  it("has a header row (row 5, after the title banner) matching Firm/Criterion/Weight/[reviewers]/Overall Avg/TLC Applicant Avg/WFRC Avg/Overall Wtd/TLC Applicant Wtd/WFRC Wtd/Completion", async () => {
     const project = buildFixture();
     const { blob } = await generateCalculationsWorkbook(project);
     const workbook = await reloadWorkbook(blob);
     const sheet = workbook.getWorksheet("Calculations")!;
 
-    const headerValues = sheet.getRow(1).values as unknown[];
-    // ExcelJS row.values is 1-indexed with a leading empty slot at index 0.
-    const headers = headerValues.slice(1).map(String);
-    expect(headers).toEqual([
-      "Firm",
-      "Criterion",
-      "Weight",
-      "Alice (TLC Applicant)",
-      "Bob (WFRC)",
-      "Overall Avg",
-      "TLC Applicant Avg",
-      "WFRC Avg",
-      "Overall Wtd",
-      "TLC Applicant Wtd",
-      "WFRC Wtd",
-      "Completion",
-    ]);
+    const headerRow = sheet.getRow(CALC_HEADER_ROW);
+    // Firm/Criterion/Weight/Overall.../Completion are plain header labels; the reviewer
+    // columns (D, E) are live formulas concatenating that reviewer's Name + Type cells from
+    // the Reviewers tab — checked via `.result` (the resolved text), not `.value` (which
+    // would be the formula object, not a string).
+    expect(headerRow.getCell(1).value).toBe("Firm");
+    expect(headerRow.getCell(2).value).toBe("Criterion");
+    expect(headerRow.getCell(3).value).toBe("Weight");
+    expect(headerRow.getCell(4).formula).toBe('Reviewers!A5&" ("&Reviewers!B5&")"');
+    expect(headerRow.getCell(4).result).toBe("Alice (TLC Applicant)");
+    expect(headerRow.getCell(5).formula).toBe('Reviewers!A6&" ("&Reviewers!B6&")"');
+    expect(headerRow.getCell(5).result).toBe("Bob (WFRC)");
+    expect(headerRow.getCell(6).value).toBe("Overall Avg");
+    expect(headerRow.getCell(7).value).toBe("TLC Applicant Avg");
+    expect(headerRow.getCell(8).value).toBe("WFRC Avg");
+    expect(headerRow.getCell(9).value).toBe("Overall Wtd");
+    expect(headerRow.getCell(10).value).toBe("TLC Applicant Wtd");
+    expect(headerRow.getCell(11).value).toBe("WFRC Wtd");
+    expect(headerRow.getCell(12).value).toBe("Completion");
+  });
+
+  it("cross-references Firm/Criterion/Weight to the Firms/Criteria config tabs instead of hardcoding them", async () => {
+    const project = buildFixture();
+    const { blob } = await generateCalculationsWorkbook(project);
+    const workbook = await reloadWorkbook(blob);
+    const sheet = workbook.getWorksheet("Calculations")!;
+
+    // Row 6 = Alpha Co / Approach. Alpha is project.firms[0] -> Firms sheet row 5; Approach
+    // is project.criteria[0] -> Criteria sheet row 5.
+    const firmCell = sheet.getCell("A6");
+    expect(firmCell.formula).toBe("Firms!A5");
+    expect(firmCell.result).toBe("Alpha Co");
+    const criterionCell = sheet.getCell("B6");
+    expect(criterionCell.formula).toBe("Criteria!A5");
+    expect(criterionCell.result).toBe("Approach");
+    const weightCell = sheet.getCell("C6");
+    expect(weightCell.formula).toBe("Criteria!B5");
+    expect(weightCell.result).toBe(0.6);
+
+    // Row 8 = Beta Co (project.firms[1] -> Firms sheet row 6) / Approach again (Criteria
+    // cycles back to row 5 for every firm's block).
+    expect(sheet.getCell("A8").formula).toBe("Firms!A6");
+    expect(sheet.getCell("A8").result).toBe("Beta Co");
+    expect(sheet.getCell("B8").formula).toBe("Criteria!A5");
+    expect(sheet.getCell("C8").formula).toBe("Criteria!B5");
   });
 
   it("computes Overall/TLC Applicant/WFRC Avg and Wtd via real formulas, not hardcoded numbers", async () => {
@@ -111,37 +165,38 @@ describe("generateCalculationsWorkbook", () => {
     const workbook = await reloadWorkbook(blob);
     const sheet = workbook.getWorksheet("Calculations")!;
 
-    // Row 2 = Alpha Co / Approach: Alice (D, applicant) = 5, Bob (E, wfrc) = 1, weight = 0.6.
-    const overallAvgCell = sheet.getCell("F2");
-    expect(overallAvgCell.formula).toBe('IFERROR(AVERAGE(D2:E2),"")');
+    // Row 6 = Alpha Co / Approach: Alice (D, applicant) = 5, Bob (E, wfrc) = 1, weight = 0.6.
+    const r = CALC_FIRST_DATA_ROW;
+    const overallAvgCell = sheet.getCell(`F${r}`);
+    expect(overallAvgCell.formula).toBe(`IFERROR(AVERAGE(D${r}:E${r}),"")`);
     expect(overallAvgCell.result).toBe(3); // (5+1)/2
 
-    const applicantAvgCell = sheet.getCell("G2");
+    const applicantAvgCell = sheet.getCell(`G${r}`);
     // Applicant-only average references Alice's cell directly, not a range including Bob.
-    expect(applicantAvgCell.formula).toBe('IFERROR(AVERAGE(D2),"")');
+    expect(applicantAvgCell.formula).toBe(`IFERROR(AVERAGE(D${r}),"")`);
     expect(applicantAvgCell.result).toBe(5);
 
-    const wfrcAvgCell = sheet.getCell("H2");
+    const wfrcAvgCell = sheet.getCell(`H${r}`);
     // WFRC-only average references Bob's cell directly, not a range including Alice.
-    expect(wfrcAvgCell.formula).toBe('IFERROR(AVERAGE(E2),"")');
+    expect(wfrcAvgCell.formula).toBe(`IFERROR(AVERAGE(E${r}),"")`);
     expect(wfrcAvgCell.result).toBe(1);
 
-    const overallWtdCell = sheet.getCell("I2");
-    expect(overallWtdCell.formula).toBe('IFERROR(F2*C2,"")'); // Avg cell x Weight cell
+    const overallWtdCell = sheet.getCell(`I${r}`);
+    expect(overallWtdCell.formula).toBe(`IFERROR(F${r}*C${r},"")`); // Avg cell x Weight cell
     expect(overallWtdCell.result).toBeCloseTo(1.8, 10); // 3 * 0.6
 
-    const applicantWtdCell = sheet.getCell("J2");
-    expect(applicantWtdCell.formula).toBe('IFERROR(G2*C2,"")');
+    const applicantWtdCell = sheet.getCell(`J${r}`);
+    expect(applicantWtdCell.formula).toBe(`IFERROR(G${r}*C${r},"")`);
     expect(applicantWtdCell.result).toBeCloseTo(3, 10); // 5 * 0.6
 
-    const wfrcWtdCell = sheet.getCell("K2");
-    expect(wfrcWtdCell.formula).toBe('IFERROR(H2*C2,"")');
+    const wfrcWtdCell = sheet.getCell(`K${r}`);
+    expect(wfrcWtdCell.formula).toBe(`IFERROR(H${r}*C${r},"")`);
     expect(wfrcWtdCell.result).toBeCloseTo(0.6, 10); // 1 * 0.6
 
-    const completionCell = sheet.getCell("L2");
-    // Denominator is COLUMNS(D2:E2), not a hardcoded "2" — stays correct on its own even if
+    const completionCell = sheet.getCell(`L${r}`);
+    // Denominator is COLUMNS(D6:E6), not a hardcoded "2" — stays correct on its own even if
     // the reviewer range it's paired with ever did.
-    expect(completionCell.formula).toBe('COUNT(D2:E2)&"/"&COLUMNS(D2:E2)');
+    expect(completionCell.formula).toBe(`COUNT(D${r}:E${r})&"/"&COLUMNS(D${r}:E${r})`);
     expect(completionCell.result).toBe("2/2");
   });
 
@@ -151,97 +206,272 @@ describe("generateCalculationsWorkbook", () => {
     const workbook = await reloadWorkbook(blob);
     const sheet = workbook.getWorksheet("Calculations")!;
 
-    // Row 5 = Beta Co / Approach: nobody has scored it yet. An empty-string cached result
-    // round-trips through the .xlsx XML as `undefined` (ExcelJS/OOXML don't serialize an
-    // empty <v> for a formula cell) rather than literally "" — functionally identical once
-    // opened for real (Excel recalculates IFERROR(...,"") to blank either way), so both are
-    // accepted here rather than over-asserting a serialization quirk.
-    expect(sheet.getCell("F5").result ?? "").toBe(""); // Overall Avg
-    expect(sheet.getCell("G5").result ?? "").toBe(""); // TLC Applicant Avg
-    expect(sheet.getCell("H5").result ?? "").toBe(""); // WFRC Avg
-    expect(sheet.getCell("I5").result ?? "").toBe(""); // Overall Wtd
-    expect(sheet.getCell("J5").result ?? "").toBe(""); // TLC Applicant Wtd
-    expect(sheet.getCell("K5").result ?? "").toBe(""); // WFRC Wtd
-    expect(sheet.getCell("L5").result).toBe("0/2"); // Completion — COUNT still resolves to 0
+    // Beta Co / Approach (row 8 = header(5) + Alpha's 2 criteria rows + 1; there's no
+    // totals row between firms anymore): nobody has scored it yet. An empty-string cached
+    // result round-trips through the .xlsx XML as `undefined` (ExcelJS/OOXML don't
+    // serialize an empty <v> for a formula cell) rather than literally "" — functionally
+    // identical once opened for real (Excel recalculates IFERROR(...,"") to blank either
+    // way), so both are accepted here rather than over-asserting a serialization quirk.
+    const r = 8;
+    expect(sheet.getCell(`F${r}`).result ?? "").toBe(""); // Overall Avg
+    expect(sheet.getCell(`G${r}`).result ?? "").toBe(""); // TLC Applicant Avg
+    expect(sheet.getCell(`H${r}`).result ?? "").toBe(""); // WFRC Avg
+    expect(sheet.getCell(`I${r}`).result ?? "").toBe(""); // Overall Wtd
+    expect(sheet.getCell(`J${r}`).result ?? "").toBe(""); // TLC Applicant Wtd
+    expect(sheet.getCell(`K${r}`).result ?? "").toBe(""); // WFRC Wtd
+    expect(sheet.getCell(`L${r}`).result).toBe("0/2"); // Completion — COUNT still resolves to 0
   });
 
-  it("puts each firm's totals row formulas directly under the Overall Wtd / TLC Applicant Wtd / WFRC Wtd header columns, not offset", async () => {
+  it("has no per-firm totals row anymore — Weighted Totals are computed on the Results tab instead", async () => {
     const project = buildFixture();
     const { blob } = await generateCalculationsWorkbook(project);
     const workbook = await reloadWorkbook(blob);
     const sheet = workbook.getWorksheet("Calculations")!;
 
-    // Locate the header row's Overall/TLC Applicant/WFRC Wtd columns dynamically, rather
-    // than hardcoding a column letter a second time in this test.
-    const headerRow = sheet.getRow(1);
-    let overallWtdCol = -1;
-    let applicantWtdCol = -1;
-    let wfrcWtdCol = -1;
-    for (let c = 1; c <= headerRow.cellCount; c++) {
-      const value = headerRow.getCell(c).value;
-      if (value === "Overall Wtd") overallWtdCol = c;
-      if (value === "TLC Applicant Wtd") applicantWtdCol = c;
-      if (value === "WFRC Wtd") wfrcWtdCol = c;
+    // Alpha Co: 2 criteria rows only (6-7); Beta Co starts immediately after on row 8, with
+    // no intervening "— Weighted Totals" row for either firm. Firm cells are formulas now
+    // (see the cross-reference test above), so compare `.result`, not `.value`.
+    for (let r = CALC_FIRST_DATA_ROW; r <= 9; r++) {
+      expect(String(sheet.getRow(r).getCell(1).result)).not.toContain("Weighted Totals");
     }
-    expect(overallWtdCol).toBeGreaterThan(0);
-    expect(applicantWtdCol).toBeGreaterThan(0);
-    expect(wfrcWtdCol).toBeGreaterThan(0);
-
-    // Alpha Co: 2 criteria rows (rows 2-3) then its totals row (row 4).
-    const totalsRow = sheet.getRow(4);
-    expect(totalsRow.getCell(1).value).toBe("Alpha Co — Weighted Totals");
-
-    const overallTotalCell = totalsRow.getCell(overallWtdCol);
-    const applicantTotalCell = totalsRow.getCell(applicantWtdCol);
-    const wfrcTotalCell = totalsRow.getCell(wfrcWtdCol);
-    // SUM() over exactly this firm's own criteria rows (2-3), not the whole column.
-    expect(overallTotalCell.formula).toBe("SUM(I2:I3)");
-    expect(applicantTotalCell.formula).toBe("SUM(J2:J3)");
-    expect(wfrcTotalCell.formula).toBe("SUM(K2:K3)");
-
-    // Overall Wtd = 3*0.6 + 5*0.4 = 3.8; TLC Applicant Wtd (Alice only) = 5*0.6 + 5*0.4 = 5;
-    // WFRC Wtd (Bob only) = 1*0.6 + 5*0.4 = 2.6.
-    expect(overallTotalCell.result).toBeCloseTo(3.8, 10);
-    expect(applicantTotalCell.result).toBe(5);
-    expect(wfrcTotalCell.result).toBeCloseTo(2.6, 10);
-    // And the cell immediately left of Overall Wtd (WFRC Avg) must NOT hold the totals
-    // value — this is exactly the off-by-one this test was written to catch.
-    expect(totalsRow.getCell(overallWtdCol - 1).value).not.toBe(3.8);
+    expect(sheet.getRow(6).getCell(1).result).toBe("Alpha Co");
+    expect(sheet.getRow(8).getCell(1).result).toBe("Beta Co");
   });
 
-  it("Beta Co's totals row sums to 0 via SUM(), not blank/error, when nothing is scored yet", async () => {
+  it("puts a thick rule under every firm's LAST criteria row, spanning every column — the boundary between one firm's block and the next", async () => {
     const project = buildFixture();
     const { blob } = await generateCalculationsWorkbook(project);
     const workbook = await reloadWorkbook(blob);
     const sheet = workbook.getWorksheet("Calculations")!;
 
-    // Beta Co: rows 5-6 (criteria), row 7 (totals) — nothing scored for Beta at all.
-    const totalsRow = sheet.getRow(7);
-    expect(totalsRow.getCell(1).value).toBe("Beta Co — Weighted Totals");
-    expect(totalsRow.getCell(9).formula).toBe("SUM(I5:I6)"); // Overall Wtd column
-    expect(totalsRow.getCell(9).result).toBe(0); // SUM() of all-blank cells is 0, not an error
-    expect(totalsRow.getCell(10).result).toBe(0); // TLC Applicant Wtd column
-    expect(totalsRow.getCell(11).result).toBe(0); // WFRC Wtd column
-  });
-
-  it("puts a thick rule under every firm's totals row, spanning every column", async () => {
-    const project = buildFixture();
-    const { blob } = await generateCalculationsWorkbook(project);
-    const workbook = await reloadWorkbook(blob);
-    const sheet = workbook.getWorksheet("Calculations")!;
-
-    // Alpha Co's totals row (4) and Beta Co's (7) — 12 columns total: Firm, Criterion,
-    // Weight, Alice, Bob, Overall Avg, TLC Applicant Avg, WFRC Avg, Overall Wtd, TLC
-    // Applicant Wtd, WFRC Wtd, Completion.
-    for (const rowNum of [4, 7]) {
-      const totalsRow = sheet.getRow(rowNum);
+    // Alpha Co's last criteria row (7) and Beta Co's (9) — 12 columns total: Firm,
+    // Criterion, Weight, Alice, Bob, Overall Avg, TLC Applicant Avg, WFRC Avg, Overall Wtd,
+    // TLC Applicant Wtd, WFRC Wtd, Completion.
+    for (const rowNum of [7, 9]) {
+      const boundaryRow = sheet.getRow(rowNum);
       for (let c = 1; c <= 12; c++) {
-        expect(totalsRow.getCell(c).border?.bottom?.style).toBe("thick");
+        expect(boundaryRow.getCell(c).border?.bottom?.style).toBe("thick");
       }
     }
 
-    // A criteria row (not a totals row) must NOT have this rule — it's specific to the
-    // boundary between one firm's block and the next.
-    expect(sheet.getRow(2).getCell(1).border?.bottom?.style).not.toBe("thick");
+    // Alpha's FIRST criteria row (not its last) must NOT have this rule — it's specific to
+    // the boundary at the end of a firm's block, not every row in it.
+    expect(sheet.getRow(CALC_FIRST_DATA_ROW).getCell(1).border?.bottom?.style).not.toBe("thick");
+  });
+
+  it("color-codes raw score + computed columns by metric — WFRC light blue, Overall light orange, TLC Applicant light green", async () => {
+    const project = buildFixture();
+    const { blob } = await generateCalculationsWorkbook(project);
+    const workbook = await reloadWorkbook(blob);
+    const sheet = workbook.getWorksheet("Calculations")!;
+    const r = CALC_FIRST_DATA_ROW;
+
+    function fillArgb(cellRef: string): string | undefined {
+      const fill = sheet.getCell(cellRef).fill as ExcelJS.FillPattern;
+      return (fill?.fgColor as { argb?: string } | undefined)?.argb;
+    }
+
+    // D = Alice (applicant/TLC Applicant), E = Bob (wfrc) — raw score columns.
+    const applicantTint = fillArgb(`D${r}`);
+    const wfrcTint = fillArgb(`E${r}`);
+    expect(applicantTint).toBeDefined();
+    expect(wfrcTint).toBeDefined();
+    expect(applicantTint).not.toBe(wfrcTint);
+
+    // Computed columns share their raw column's tint: F/I = Overall Avg/Wtd, G/J = TLC
+    // Applicant Avg/Wtd, H/K = WFRC Avg/Wtd.
+    expect(fillArgb(`G${r}`)).toBe(applicantTint); // TLC Applicant Avg matches Alice's tint
+    expect(fillArgb(`J${r}`)).toBe(applicantTint); // TLC Applicant Wtd
+    expect(fillArgb(`H${r}`)).toBe(wfrcTint); // WFRC Avg matches Bob's tint
+    expect(fillArgb(`K${r}`)).toBe(wfrcTint); // WFRC Wtd
+    // Overall isn't any one reviewer's own tint — it's its own third color.
+    const overallTint = fillArgb(`F${r}`);
+    expect(overallTint).toBeDefined();
+    expect(overallTint).not.toBe(applicantTint);
+    expect(overallTint).not.toBe(wfrcTint);
+    expect(fillArgb(`I${r}`)).toBe(overallTint); // Overall Wtd matches Overall Avg's tint
+
+    // Firm/Criterion/Weight (raw inputs that aren't a "reviewer type" column) and
+    // Completion stay untinted.
+    expect(fillArgb(`A${r}`)).toBeUndefined();
+    expect(fillArgb(`C${r}`)).toBeUndefined();
+    expect(fillArgb(`L${r}`)).toBeUndefined();
+  });
+});
+
+describe("generateCalculationsWorkbook — Results tab", () => {
+  it("has a header row matching Rank/Firm/Overall/TLC Applicant/WFRC Weighted Total/Completion", async () => {
+    const project = buildFixture();
+    const { blob } = await generateCalculationsWorkbook(project);
+    const workbook = await reloadWorkbook(blob);
+    const sheet = workbook.getWorksheet("Results")!;
+
+    const headerValues = sheet.getRow(4).values as unknown[]; // no instruction row on Results
+    expect(headerValues.slice(1).map(String)).toEqual([
+      "Rank",
+      "Firm",
+      "Overall Weighted Total",
+      "TLC Applicant Weighted Total",
+      "WFRC Weighted Total",
+      "Completion",
+    ]);
+  });
+
+  it("cross-references Firm name to the Firms tab and sums Weighted Totals via SUMIF matched by firm name", async () => {
+    const project = buildFixture();
+    const { blob } = await generateCalculationsWorkbook(project);
+    const workbook = await reloadWorkbook(blob);
+    const sheet = workbook.getWorksheet("Results")!;
+
+    // Alpha Co scored (Overall Wtd 3.8) beats Beta Co unscored (Overall Wtd 0), so Alpha is
+    // row 5 (rank 1) and Beta is row 6 (rank 2). Firm name is a direct cross-sheet
+    // reference to the Firms tab, not a hardcoded string.
+    const alphaFirmCell = sheet.getCell("B5");
+    expect(alphaFirmCell.formula).toBe("Firms!A5");
+    expect(alphaFirmCell.result).toBe("Alpha Co");
+    const betaFirmCell = sheet.getCell("B6");
+    expect(betaFirmCell.formula).toBe("Firms!A6");
+    expect(betaFirmCell.result).toBe("Beta Co");
+
+    // Calculations' own data range is rows 6-9 (2 firms x 2 criteria, no totals row). Each
+    // Weighted Total is SUMIF("Calculations' Firm column = this row's own Firm cell",
+    // sum the matching Overall/TLC Applicant/WFRC Wtd cells) — matched by VALUE, not a
+    // fixed row range computed at generation time.
+    const alphaOverallCell = sheet.getCell("C5");
+    expect(alphaOverallCell.formula).toBe(
+      "SUMIF('Calculations'!A$6:A$9,B5,'Calculations'!I$6:I$9)",
+    );
+    expect(alphaOverallCell.result).toBeCloseTo(3.8, 10);
+
+    const alphaApplicantCell = sheet.getCell("D5");
+    expect(alphaApplicantCell.formula).toBe(
+      "SUMIF('Calculations'!A$6:A$9,B5,'Calculations'!J$6:J$9)",
+    );
+    expect(alphaApplicantCell.result).toBe(5);
+
+    const alphaWfrcCell = sheet.getCell("E5");
+    expect(alphaWfrcCell.formula).toBe("SUMIF('Calculations'!A$6:A$9,B5,'Calculations'!K$6:K$9)");
+    expect(alphaWfrcCell.result).toBeCloseTo(2.6, 10);
+
+    // Beta is unscored — SUMIF() against all-blank Wtd cells is a real 0, not an error.
+    const betaOverallCell = sheet.getCell("C6");
+    expect(betaOverallCell.formula).toBe("SUMIF('Calculations'!A$6:A$9,B6,'Calculations'!I$6:I$9)");
+    expect(betaOverallCell.result).toBe(0);
+
+    // Rank is Excel's own RANK() over this sheet's own Overall Weighted Total column — not
+    // a value copied in from calculations.ts's getRank(), even though the cached result
+    // matches it exactly. Plain RANK(), not RANK.EQ() — see this file's own header comment
+    // on why RANK.EQ() written directly into the .xlsx XML (rather than typed into Excel's
+    // UI) shows #NAME? without an `_xlfn.` prefix ExcelJS doesn't add.
+    const alphaRankCell = sheet.getCell("A5");
+    expect(alphaRankCell.formula).toBe("RANK(C5,$C$5:$C$6,0)");
+    expect(alphaRankCell.result).toBe(1);
+    const betaRankCell = sheet.getCell("A6");
+    expect(betaRankCell.result).toBe(2);
+  });
+
+  it("computes Completion via SUMPRODUCT/COUNTIF matched by firm name, cross-referencing the Reviewers tab for the expected count", async () => {
+    const project = buildFixture();
+    const { blob } = await generateCalculationsWorkbook(project);
+    const workbook = await reloadWorkbook(blob);
+    const sheet = workbook.getWorksheet("Results")!;
+
+    // Alpha: fully scored (2 criteria x 2 reviewers = 4/4). Beta: unscored (0/4). Expected
+    // count comes from COUNTA(Reviewers!...), not a hardcoded reviewerCount literal.
+    const alphaCompletionCell = sheet.getCell("F5");
+    expect(alphaCompletionCell.formula).toBe(
+      "(SUMPRODUCT(('Calculations'!A$6:A$9=B5)*ISNUMBER('Calculations'!D$6:D$9))+" +
+        "SUMPRODUCT(('Calculations'!A$6:A$9=B5)*ISNUMBER('Calculations'!E$6:E$9)))" +
+        '&"/"&(COUNTIF(\'Calculations\'!A$6:A$9,B5)*COUNTA(Reviewers!$A$5:$A$6))',
+    );
+    expect(alphaCompletionCell.result).toBe("4/4");
+
+    const betaCompletionCell = sheet.getCell("F6");
+    expect(betaCompletionCell.result).toBe("0/4");
+  });
+});
+
+describe("generateCalculationsWorkbook — config/reference tabs", () => {
+  it("Project Info lists every project-level field", async () => {
+    const project = buildFixture();
+    project.project.localGovContact = "Jane Handler";
+    project.project.procurementAgent = "WFRC PM";
+    project.project.committeeMeetingDate = "2026-08-20";
+    project.project.notes = "Some notes.";
+    const { blob } = await generateCalculationsWorkbook(project);
+    const workbook = await reloadWorkbook(blob);
+    const sheet = workbook.getWorksheet("Project Info")!;
+
+    const fieldValues: Record<string, unknown> = {};
+    for (let r = 5; r <= 9; r++) {
+      const row = sheet.getRow(r);
+      fieldValues[String(row.getCell(1).value)] = row.getCell(2).value;
+    }
+    expect(fieldValues["Project Name"]).toBe("Calc Export Fixture");
+    expect(fieldValues["Local Government Contact"]).toBe("Jane Handler");
+    expect(fieldValues["Procurement Agent (WFRC PM)"]).toBe("WFRC PM");
+    expect(fieldValues["Notes"]).toBe("Some notes.");
+  });
+
+  it("Firms lists every firm's invited/submitted status as Yes/No", async () => {
+    const project = buildFixture();
+    project.firms.push({ id: "firm-3", name: "Gamma Co", invited: true, submitted: false, notes: "" });
+    const { blob } = await generateCalculationsWorkbook(project);
+    const workbook = await reloadWorkbook(blob);
+    const sheet = workbook.getWorksheet("Firms")!;
+
+    expect(sheet.getRow(5).getCell(1).value).toBe("Alpha Co");
+    expect(sheet.getRow(5).getCell(2).value).toBe("Yes"); // invited
+    expect(sheet.getRow(5).getCell(3).value).toBe("Yes"); // submitted
+    expect(sheet.getRow(7).getCell(1).value).toBe("Gamma Co");
+    expect(sheet.getRow(7).getCell(3).value).toBe("No"); // not submitted
+  });
+
+  it("Reviewers shows display labels ('TLC Applicant'/'WFRC'), never the raw internal type value", async () => {
+    const project = buildFixture();
+    const { blob } = await generateCalculationsWorkbook(project);
+    const workbook = await reloadWorkbook(blob);
+    const sheet = workbook.getWorksheet("Reviewers")!;
+
+    expect(sheet.getRow(5).getCell(1).value).toBe("Alice");
+    expect(sheet.getRow(5).getCell(2).value).toBe("TLC Applicant");
+    expect(sheet.getRow(6).getCell(1).value).toBe("Bob");
+    expect(sheet.getRow(6).getCell(2).value).toBe("WFRC");
+  });
+
+  it("Criteria shows each weight as both a decimal and a live percent formula, plus a summed total row", async () => {
+    const project = buildFixture();
+    const { blob } = await generateCalculationsWorkbook(project);
+    const workbook = await reloadWorkbook(blob);
+    const sheet = workbook.getWorksheet("Criteria")!;
+
+    expect(sheet.getRow(5).getCell(1).value).toBe("Approach");
+    expect(sheet.getRow(5).getCell(2).value).toBe(0.6);
+    const pctCell = sheet.getRow(5).getCell(3);
+    expect(pctCell.formula).toBe("B5"); // live reference, not a second hand-typed number
+    expect(pctCell.result).toBe(0.6);
+
+    // Total Weight row, right after the 2 criteria rows (5, 6) -> row 7.
+    const totalRow = sheet.getRow(7);
+    expect(totalRow.getCell(1).value).toBe("Total Weight");
+    expect(totalRow.getCell(2).formula).toBe("SUM(B5:B6)");
+    expect(totalRow.getCell(2).result).toBeCloseTo(1, 10); // 0.6 + 0.4
+  });
+
+  it("Scoring Scale lists every point and states the configured mode", async () => {
+    const project = buildFixture();
+    project.scoringScaleMode = "continuous";
+    const { blob } = await generateCalculationsWorkbook(project);
+    const workbook = await reloadWorkbook(blob);
+    const sheet = workbook.getWorksheet("Scoring Scale")!;
+
+    expect(sheet.getRow(5).getCell(1).value).toBe(1);
+    expect(sheet.getRow(5).getCell(2).value).toBe("No");
+    expect(sheet.getRow(6).getCell(1).value).toBe(5);
+    expect(sheet.getRow(6).getCell(2).value).toBe("Yes");
+
+    // Mode note, right after the 2 scale-point rows (5, 6) -> row 8 (row 7 left blank).
+    const modeCell = sheet.getCell("A8");
+    expect(String(modeCell.value)).toContain("Continuous");
   });
 });

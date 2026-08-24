@@ -1,9 +1,11 @@
 // Persistent header shown above every screen (Load included). Logo variant is chosen by
-// header width, not by screen/area: the horizontal lockup (mark + wordmark, short and wide)
-// fits the 64px bar at normal widths; below 640px it swaps to the abbreviated mark alone so
-// it doesn't crowd "Project Evaluation Scoresheet" and the icon buttons. Color vs. white
-// variant tracks the current theme, not prefers-color-scheme directly, so a manual override
-// stays visually consistent with the rest of the page.
+// header width, not by screen/area, across three tiers: the horizontal lockup (mark +
+// wordmark, short and wide) fits the 64px bar at desktop widths; below 1024px it swaps to
+// the stacked lockup (mark over a single-line wordmark, narrower but taller) so the full
+// name still fits a tablet-width bar; below 640px it swaps again to the abbreviated mark
+// alone so it doesn't crowd "Project Evaluation Scoresheet" and the icon buttons. Color vs.
+// white variant tracks the current theme, not prefers-color-scheme directly, so a manual
+// override stays visually consistent with the rest of the page.
 //
 // Text next to the logo is deliberately "Project Evaluation Scoresheet" only — never the
 // literal string "WFRC" — the logo itself already carries that identity.
@@ -13,6 +15,8 @@ import logoAbbreviatedColor from "../assets/logo/abbreviated/WFRC_logo_abbreviat
 import logoAbbreviatedWhite from "../assets/logo/abbreviated/WFRC_logo_abbreviated_white_transparent.png";
 import logoHorizontalColor from "../assets/logo/horizontal/WFRC_logo_horizontal_color_transparent.png";
 import logoHorizontalWhite from "../assets/logo/horizontal/WFRC_logo_horizontal_white_transparent.png";
+import logoStackedColor from "../assets/logo/stacked/WFRC_logo_stacked_color_transparent.png";
+import logoStackedWhite from "../assets/logo/stacked/WFRC_logo_stacked_white_transparent.png";
 import { useMediaQuery } from "../theme/useMediaQuery";
 import { useTheme } from "../theme/useTheme";
 import { ThemeToggle } from "./ThemeToggle";
@@ -23,15 +27,20 @@ export interface AppHeaderProps {
 
 export function AppHeader({ onOpenHelp }: AppHeaderProps) {
   const { theme, toggleTheme } = useTheme();
-  const isNarrow = useMediaQuery("(max-width: 640px)");
+  const isMobile = useMediaQuery("(max-width: 640px)");
+  const isTablet = useMediaQuery("(max-width: 1024px)");
 
-  const logoSrc = isNarrow
+  const logoSrc = isMobile
     ? theme === "dark"
       ? logoAbbreviatedWhite
       : logoAbbreviatedColor
-    : theme === "dark"
-      ? logoHorizontalWhite
-      : logoHorizontalColor;
+    : isTablet
+      ? theme === "dark"
+        ? logoStackedWhite
+        : logoStackedColor
+      : theme === "dark"
+        ? logoHorizontalWhite
+        : logoHorizontalColor;
 
   return (
     <header className="app-header no-print">

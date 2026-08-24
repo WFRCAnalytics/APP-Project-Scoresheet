@@ -109,7 +109,7 @@ function buildScoringSheet(
   // Row 1: title banner.
   sheet.mergeCells(`A${SCORING_TITLE_ROW}:E${SCORING_TITLE_ROW}`);
   const titleCell = sheet.getCell(`A${SCORING_TITLE_ROW}`);
-  titleCell.value = `Project Evaluation Scoresheet — ${projectName}`;
+  titleCell.value = `Proposal Evaluation Scoresheet — ${projectName}`;
   titleCell.font = { bold: true, size: 14, color: { argb: WHITE_TEXT } };
   titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BRAND_BLUE } };
   titleCell.alignment = { vertical: "middle" };
@@ -252,7 +252,7 @@ export async function generateWorkbookForReviewer(
   const submittedFirms = project.firms.filter((f) => f.submitted);
 
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "Project Evaluation Scoresheet";
+  workbook.creator = "Proposal Evaluation Scoresheet";
   workbook.created = new Date();
 
   const scoringSheet = buildScoringSheet(workbook, project, reviewer, submittedFirms);

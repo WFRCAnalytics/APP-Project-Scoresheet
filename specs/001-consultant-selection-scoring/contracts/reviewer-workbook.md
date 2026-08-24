@@ -20,7 +20,7 @@ agreeing on a hardcoded row number.
 
 **Rows 1–3: title banner** (WFRC-blue fill, white text — row 3 in the WFRC-yellow tint
 that also marks the editable columns below):
-- Row 1: `Project Evaluation Scoresheet — {projectName}`
+- Row 1: `Proposal Evaluation Scoresheet — {projectName}`
 - Row 2: `Reviewer: {reviewer.name}` + the scoring scale legend inline (`value = label`,
   `·`-separated, ascending by value)
 - Row 3: `Only the highlighted Score and Comments cells are editable — everything else is

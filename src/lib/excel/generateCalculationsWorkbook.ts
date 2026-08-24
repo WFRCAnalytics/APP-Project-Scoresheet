@@ -26,7 +26,7 @@ export async function generateCalculationsWorkbook(
   const submittedFirms = project.firms.filter((f) => f.submitted);
 
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "Project Evaluation Scoresheet";
+  workbook.creator = "Proposal Evaluation Scoresheet";
   workbook.created = new Date();
 
   const sheet = workbook.addWorksheet("Calculations");

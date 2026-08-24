@@ -3,11 +3,11 @@
 // wordmark, short and wide) fits the 64px bar at desktop widths; below 1024px it swaps to
 // the stacked lockup (mark over a single-line wordmark, narrower but taller) so the full
 // name still fits a tablet-width bar; below 640px it swaps again to the abbreviated mark
-// alone so it doesn't crowd "Project Evaluation Scoresheet" and the icon buttons. Color vs.
+// alone so it doesn't crowd "Proposal Evaluation Scoresheet" and the icon buttons. Color vs.
 // white variant tracks the current theme, not prefers-color-scheme directly, so a manual
 // override stays visually consistent with the rest of the page.
 //
-// Text next to the logo is deliberately "Project Evaluation Scoresheet" only — never the
+// Text next to the logo is deliberately "Proposal Evaluation Scoresheet" only — never the
 // literal string "WFRC" — the logo itself already carries that identity.
 
 import { CircleHelp } from "lucide-react";
@@ -46,7 +46,7 @@ export function AppHeader({ onOpenHelp }: AppHeaderProps) {
     <header className="app-header no-print">
       <div className="app-header-brand">
         <img src={logoSrc} alt="WFRC" className="app-header-logo" />
-        <span className="app-header-title">Project Evaluation Scoresheet</span>
+        <span className="app-header-title">Proposal Evaluation Scoresheet</span>
       </div>
       <div className="app-header-actions">
         <ThemeToggle theme={theme} onToggle={toggleTheme} />

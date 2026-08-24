@@ -10,6 +10,13 @@
 // literally correct (a computed 1st/2nd/3rd position), so only the app's overall framing
 // language changed, not every occurrence of the word.
 //
+// Second terminology pass: "Project Evaluation Scoresheet" renamed to "Proposal Evaluation
+// Scoresheet" — the app scores each firm's proposal, not the underlying capital project (the
+// project is what the RFP is for; "projectName" the data field is unaffected) or the firm
+// itself. Same scope as before: the branding string everywhere it appears, plus this screen's
+// hero copy below. "Rank"/"Ranked Firms" still stands — ranking the firms by their proposal
+// scores is accurate language, not part of what was wrong.
+//
 // Also fills out what was a near-empty page: a workflow preview strip (same 5 steps as
 // HelpGuideModal, shared via lib/workflowSteps.ts so the two can't drift) and three
 // value-prop cards restating real constitution principles in plain language, not invented
@@ -51,10 +58,10 @@ export function LoadScreen({ onStartNew, onProjectLoaded }: LoadScreenProps) {
   return (
     <section aria-label="Load">
       <div className="load-hero">
-        <h1>Evaluate and Score RFP Submissions</h1>
+        <h1>Evaluate and Score Proposals</h1>
         <p className="page-subtitle">
-          A project evaluation scoresheet for scoring and comparing consulting firms that responded
-          to your RFP.
+          A proposal evaluation scoresheet for scoring and comparing the proposals consulting
+          firms submitted in response to your RFP.
         </p>
         <button
           type="button"

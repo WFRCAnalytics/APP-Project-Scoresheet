@@ -209,6 +209,27 @@ input[type="radio"]:disabled {
   color: var(--color-wfrc-gray);
 }
 
+/* CriteriaEditor's weight cell: the text input plus its live "= 60%" confirmation readout,
+   side by side. The input already picks up the shared `.data-table td input[type="text"]`
+   treatment above (it's a descendant, not a direct child, of that selector) — this only
+   handles the two-element layout, letting the input flex to fill the remaining space rather
+   than fighting that shared rule's own `width: 100%`. */
+.weight-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.weight-cell input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.weight-cell-hint {
+  flex: none;
+  white-space: nowrap;
+}
+
 .page-subtitle {
   font-size: var(--text-lg);
   color: var(--color-wfrc-gray);

@@ -59,9 +59,11 @@ describe("User Story 1 — Configure a New Scoring Project (Load -> Configuratio
 
     goToConfigStep("Criteria");
     fireEvent.click(screen.getByRole("button", { name: "Add criterion" }));
-    fireEvent.change(screen.getByLabelText("Criterion weight (fraction of 1.0)"), {
-      target: { value: "0.7" },
-    });
+    const weightInput = screen.getByLabelText(
+      "Criterion weight — decimal fraction of 1.0, or a percent (e.g. 0.25 or 25%)",
+    );
+    fireEvent.change(weightInput, { target: { value: "0.7" } });
+    fireEvent.blur(weightInput); // the draft commits on blur, not on every keystroke
     // 0.7 alone should not sum to 1.0 -> non-blocking warning banner appears (FR-010).
     expect(screen.getByRole("alert")).toHaveTextContent(/must sum to 1\.0/);
     // And nothing about that warning disables the export button (non-blocking). Export

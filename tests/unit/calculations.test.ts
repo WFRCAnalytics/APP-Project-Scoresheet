@@ -4,8 +4,8 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  cityAvg,
-  cityWeightedTotal,
+  applicantAvg,
+  applicantWeightedTotal,
   completion,
   getRank,
   overallAvg,
@@ -19,16 +19,16 @@ import { createEmptyProject, type Project } from "../../src/types/project";
  * Fixture shape (hand-computable):
  *   Criteria: crit-1 (weight 0.6), crit-2 (weight 0.4)
  *   Firms:    firm-1 (submitted), firm-2 (submitted), firm-3 (NOT submitted)
- *   Reviewers: rev-1 (city), rev-2 (city), rev-3 (wfrc)
+ *   Reviewers: rev-1 (applicant), rev-2 (applicant), rev-3 (wfrc)
  *
  *   firm-1 / crit-1: rev-1=5, rev-2=3, rev-3=5
- *     -> overallAvg = (5+3+5)/3 = 13/3 ≈ 4.3333
- *     -> cityAvg    = (5+3)/2   = 4
+ *     -> overallAvg   = (5+3+5)/3 = 13/3 ≈ 4.3333
+ *     -> applicantAvg = (5+3)/2   = 4
  *   firm-1 / crit-2: rev-1=1, rev-3=3 (rev-2 hasn't scored this cell)
- *     -> overallAvg = (1+3)/2 = 2
- *     -> cityAvg    = 1/1     = 1   (only rev-1, the only city reviewer who scored it)
+ *     -> overallAvg   = (1+3)/2 = 2
+ *     -> applicantAvg = 1/1     = 1   (only rev-1, the only applicant reviewer who scored it)
  *   firm-2 / crit-1: rev-1=3, rev-2=3, rev-3=3
- *     -> overallAvg = 3, cityAvg = 3
+ *     -> overallAvg = 3, applicantAvg = 3
  *   firm-2 / crit-2: no scores at all -> both averages are null
  *   firm-3: not submitted -> excluded from ranking entirely, even though it has no scores
  */
@@ -44,8 +44,8 @@ function buildFixture(): Project {
     { id: "firm-3", name: "Gamma Co", invited: true, submitted: false, notes: "" },
   ];
   project.reviewers = [
-    { id: "rev-1", name: "Alice", type: "city", email: "" },
-    { id: "rev-2", name: "Bob", type: "city", email: "" },
+    { id: "rev-1", name: "Alice", type: "applicant", email: "" },
+    { id: "rev-2", name: "Bob", type: "applicant", email: "" },
     { id: "rev-3", name: "Cory", type: "wfrc", email: "" },
   ];
   project.scores = [
@@ -61,7 +61,7 @@ function buildFixture(): Project {
   return project;
 }
 
-describe("overallAvg / cityAvg", () => {
+describe("overallAvg / applicantAvg", () => {
   const project = buildFixture();
 
   it("computes the overall average across all reviewer types", () => {
@@ -69,16 +69,16 @@ describe("overallAvg / cityAvg", () => {
     expect(overallAvg(project, "firm-1", "crit-2")).toBe(2);
   });
 
-  it("computes the city average from city-type reviewers only", () => {
-    expect(cityAvg(project, "firm-1", "crit-1")).toBe(4);
-    // Only rev-1 (city) scored this cell; rev-2 (also city) never did, and rev-3 (wfrc)
-    // must not count even though it scored.
-    expect(cityAvg(project, "firm-1", "crit-2")).toBe(1);
+  it("computes the applicant average from applicant-type reviewers only", () => {
+    expect(applicantAvg(project, "firm-1", "crit-1")).toBe(4);
+    // Only rev-1 (applicant) scored this cell; rev-2 (also applicant) never did, and rev-3
+    // (wfrc) must not count even though it scored.
+    expect(applicantAvg(project, "firm-1", "crit-2")).toBe(1);
   });
 
   it("returns null (never 0) for a cell nobody has scored yet", () => {
     expect(overallAvg(project, "firm-2", "crit-2")).toBeNull();
-    expect(cityAvg(project, "firm-2", "crit-2")).toBeNull();
+    expect(applicantAvg(project, "firm-2", "crit-2")).toBeNull();
   });
 });
 
@@ -92,10 +92,10 @@ describe("weighted totals", () => {
     expect(overallWeightedTotal(project, "firm-2")).toBeCloseTo(1.8, 10);
   });
 
-  it("computes City Weighted Total the same way, from city averages", () => {
+  it("computes TLC Applicant Weighted Total the same way, from applicant averages", () => {
     // firm-1: 4 * 0.6 + 1 * 0.4 = 2.4 + 0.4 = 2.8
-    expect(cityWeightedTotal(project, "firm-1")).toBeCloseTo(2.8, 10);
-    expect(cityWeightedTotal(project, "firm-2")).toBeCloseTo(1.8, 10);
+    expect(applicantWeightedTotal(project, "firm-1")).toBeCloseTo(2.8, 10);
+    expect(applicantWeightedTotal(project, "firm-2")).toBeCloseTo(1.8, 10);
   });
 });
 
@@ -150,7 +150,7 @@ describe("completion", () => {
       scored: 2,
       expected: 3,
     });
-    expect(completion(project, "firm-1", { criterionId: "crit-2", by: "city" })).toEqual({
+    expect(completion(project, "firm-1", { criterionId: "crit-2", by: "applicant" })).toEqual({
       scored: 1,
       expected: 2,
     });
@@ -180,7 +180,7 @@ describe("orphan handling", () => {
     expect(overallAvg(project, "firm-1", "crit-1")).toBeCloseTo(13 / 3, 10);
   });
 
-  it("excludes scores referencing a deleted reviewer from both overall and city averages", () => {
+  it("excludes scores referencing a deleted reviewer from both overall and applicant averages", () => {
     const project = buildFixture();
     project.scores.push({
       reviewerId: "rev-deleted",
@@ -225,7 +225,7 @@ describe("flexibility: a materially different-shaped project (T054, FR-012/SC-00
       submitted: i < 13, // firm-13 and firm-14 deliberately NOT submitted
       notes: "",
     }));
-    project.reviewers = [{ id: "rev-1", name: "Sole Reviewer", type: "city", email: "" }];
+    project.reviewers = [{ id: "rev-1", name: "Sole Reviewer", type: "applicant", email: "" }];
     // Score cycles through all 7 scale values across the 13 submitted firms:
     // firm-0..firm-12 -> 1,2,3,4,5,6,7,1,2,3,4,5,6
     project.scores = project.firms

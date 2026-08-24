@@ -7,8 +7,8 @@
 // Dashboard uses — same numbers, same source (constitution Principle VI).
 
 import {
-  cityAvg,
-  cityWeightedTotal,
+  applicantAvg,
+  applicantWeightedTotal,
   completion,
   overallAvg,
   overallWeightedTotal,
@@ -36,26 +36,26 @@ export function CalculationsFullTable({ project }: { project: Project }) {
                   <th className="calc-numeric-header">Weight</th>
                   {project.reviewers.map((reviewer) => (
                     <th key={reviewer.id} className="calc-numeric-header">
-                      {reviewer.name} ({reviewer.type})
+                      {reviewer.name} ({reviewer.type === "wfrc" ? "WFRC" : "TLC Applicant"})
                     </th>
                   ))}
                   <th className="calc-numeric-header">Overall Avg</th>
-                  <th className="calc-numeric-header">City Avg</th>
+                  <th className="calc-numeric-header">TLC Applicant Avg</th>
                   <th className="calc-numeric-header">Overall Wtd</th>
-                  <th className="calc-numeric-header">City Wtd</th>
+                  <th className="calc-numeric-header">TLC Applicant Wtd</th>
                   <th>Completion</th>
                 </tr>
               </thead>
               <tbody>
                 {project.criteria.map((criterion) => {
                   const oAvg = overallAvg(project, firm.id, criterion.id);
-                  const cAvg = cityAvg(project, firm.id, criterion.id);
+                  const cAvg = applicantAvg(project, firm.id, criterion.id);
                   const cellCompletion = completion(project, firm.id, {
                     criterionId: criterion.id,
                   });
-                  const cityCompletion = completion(project, firm.id, {
+                  const applicantCompletion = completion(project, firm.id, {
                     criterionId: criterion.id,
-                    by: "city",
+                    by: "applicant",
                   });
                   return (
                     <tr key={criterion.id}>
@@ -84,7 +84,7 @@ export function CalculationsFullTable({ project }: { project: Project }) {
                       </td>
                       <td>
                         {cellCompletion.scored}/{cellCompletion.expected} overall,{" "}
-                        {cityCompletion.scored}/{cityCompletion.expected} city
+                        {applicantCompletion.scored}/{applicantCompletion.expected} applicant
                       </td>
                     </tr>
                   );
@@ -96,14 +96,14 @@ export function CalculationsFullTable({ project }: { project: Project }) {
                   <td colSpan={project.reviewers.length + 2}>
                     <strong>Weighted Totals</strong>
                   </td>
-                  {/* Columns: Overall Avg, City Avg, Overall Wtd, City Wtd = 4. Was
-                      colSpan={2} — left the row 2 columns short of the header, which is
-                      what made the footer visibly not line up with the table above it
-                      once this table got a real border/scroll container. */}
+                  {/* Columns: Overall Avg, TLC Applicant Avg, Overall Wtd, TLC Applicant Wtd
+                      = 4. Was colSpan={2} — left the row 2 columns short of the header,
+                      which is what made the footer visibly not line up with the table above
+                      it once this table got a real border/scroll container. */}
                   <td colSpan={4} className="calc-numeric">
                     <strong>
-                      Overall: {round2(overallWeightedTotal(project, firm.id))} / City:{" "}
-                      {round2(cityWeightedTotal(project, firm.id))}
+                      Overall: {round2(overallWeightedTotal(project, firm.id))} / TLC Applicant:{" "}
+                      {round2(applicantWeightedTotal(project, firm.id))}
                     </strong>
                   </td>
                   {/* Completion column — intentionally blank in the totals row. */}

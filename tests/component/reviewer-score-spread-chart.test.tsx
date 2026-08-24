@@ -6,7 +6,7 @@
 // coverage that limitation pushed there instead).
 //
 // "No criteria configured yet."/"No scoring scale configured yet." are pre-existing, shared
-// hint strings — OverallCityBarChart and CriterionBreakdownChart already show the identical
+// hint strings — OverallApplicantBarChart and CriterionBreakdownChart already show the identical
 // text under the identical conditions (an established app-wide convention, not something
 // this component introduces), so the same guard state legitimately renders that text more
 // than once on screen at once. Queried with getAllByText + a length check rather than the
@@ -22,7 +22,7 @@ function baseProject(): Project {
   const project = createEmptyProject();
   project.project.projectName = "Spread Chart Test";
   project.firms = [{ id: "f1", name: "Alpha Co", invited: true, submitted: true, notes: "" }];
-  project.reviewers = [{ id: "r1", name: "Alice", type: "city", email: "" }];
+  project.reviewers = [{ id: "r1", name: "Alice", type: "applicant", email: "" }];
   return project;
 }
 

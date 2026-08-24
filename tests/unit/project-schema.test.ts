@@ -15,7 +15,7 @@ function validMinimalProjectJson() {
   ];
   project.criteria = [{ id: "crit-1", name: "Approach", weight: 1, description: "" }];
   project.firms = [{ id: "firm-1", name: "Alpha Co", invited: true, submitted: true, notes: "" }];
-  project.reviewers = [{ id: "rev-1", name: "Alice", type: "city", email: "" }];
+  project.reviewers = [{ id: "rev-1", name: "Alice", type: "applicant", email: "" }];
   return JSON.parse(JSON.stringify(project));
 }
 
@@ -70,10 +70,18 @@ describe("validateAndMigrateProject — structural validation (FR-004)", () => {
 
   it("rejects a reviewer with an invalid type value", () => {
     const raw = validMinimalProjectJson();
-    raw.reviewers[0].type = "county"; // not "city" | "wfrc"
+    raw.reviewers[0].type = "county"; // not "applicant" | "wfrc"
     const result = validateAndMigrateProject(raw);
     expect(result.valid).toBe(false);
     if (!result.valid) expect(result.error).toMatch(/reviewer/i);
+  });
+
+  it("migrates a reviewer's old 'city' type value to 'applicant' (pre-rename saved files)", () => {
+    const raw = validMinimalProjectJson();
+    raw.reviewers[0].type = "city";
+    const result = validateAndMigrateProject(raw);
+    expect(result.valid).toBe(true);
+    if (result.valid) expect(result.project.reviewers[0].type).toBe("applicant");
   });
 
   it("rejects a criterion with a non-numeric weight", () => {

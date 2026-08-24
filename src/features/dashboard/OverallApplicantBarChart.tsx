@@ -1,6 +1,10 @@
-// T040: Recharts bar chart comparing submitted firms on Overall vs. City weighted
+// T040: Recharts bar chart comparing submitted firms on Overall vs. TLC Applicant weighted
 // totals (FR-034), colored from the theme's categorical chart tokens (T017/research.md
 // §10) — never invented colors, per constitution Principle VII.
+//
+// Renamed from OverallCityBarChart: "City" generalized to "TLC Applicant" so a county TLC
+// applicant isn't mislabeled — see types/project.ts's ReviewerType comment for the full
+// rationale.
 
 import type { RefObject } from "react";
 import { BarChart3 } from "lucide-react";
@@ -18,9 +22,9 @@ import { EmptyState } from "../../components/EmptyState";
 import { round2 } from "../../lib/calculations";
 import { useChartColors } from "../../theme/chartColors";
 import type { Project } from "../../types/project";
-import { getRank, cityWeightedTotal, overallWeightedTotal } from "../../lib/calculations";
+import { getRank, applicantWeightedTotal, overallWeightedTotal } from "../../lib/calculations";
 
-export interface OverallCityBarChartProps {
+export interface OverallApplicantBarChartProps {
   project: Project;
   /** Exposes the chart's wrapping <div> to the caller (DashboardScreen), which locates the
    * actual rendered <svg> inside it for the "Download PNG/SVG" buttons living in this
@@ -30,8 +34,8 @@ export interface OverallCityBarChartProps {
   containerRef?: RefObject<HTMLDivElement>;
 }
 
-export function OverallCityBarChart({ project, containerRef }: OverallCityBarChartProps) {
-  const { overallColor, cityColor, foregroundColor, borderColor, backgroundColor } =
+export function OverallApplicantBarChart({ project, containerRef }: OverallApplicantBarChartProps) {
+  const { overallColor, applicantColor, foregroundColor, borderColor, backgroundColor } =
     useChartColors();
 
   const data = project.firms
@@ -39,7 +43,7 @@ export function OverallCityBarChart({ project, containerRef }: OverallCityBarCha
     .map((firm) => ({
       name: firm.name,
       Overall: round2(overallWeightedTotal(project, firm.id)),
-      City: round2(cityWeightedTotal(project, firm.id)),
+      "TLC Applicant": round2(applicantWeightedTotal(project, firm.id)),
       overallRank: getRank(project, firm.id, "overall"),
     }))
     .sort((a, b) => (a.overallRank ?? 0) - (b.overallRank ?? 0));
@@ -93,7 +97,7 @@ export function OverallCityBarChart({ project, containerRef }: OverallCityBarCha
           />
           <Legend />
           <Bar dataKey="Overall" fill={overallColor} />
-          <Bar dataKey="City" fill={cityColor} />
+          <Bar dataKey="TLC Applicant" fill={applicantColor} />
         </BarChart>
       </ResponsiveContainer>
     </div>

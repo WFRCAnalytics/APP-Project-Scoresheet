@@ -101,7 +101,7 @@ describe("User Story 1 — Configure a New Scoring Project (Load -> Configuratio
       ],
       criteria: [{ id: "crit-1", name: "Approach", weight: 1, description: "" }],
       firms: [{ id: "firm-1", name: "Alpha Co", invited: true, submitted: true, notes: "" }],
-      reviewers: [{ id: "rev-1", name: "Alice", type: "city", email: "" }],
+      reviewers: [{ id: "rev-1", name: "Alice", type: "applicant", email: "" }],
       scores: [
         { reviewerId: "rev-1", firmId: "firm-1", criterionId: "crit-1", value: 5, comment: "", updatedAt: "" },
       ],

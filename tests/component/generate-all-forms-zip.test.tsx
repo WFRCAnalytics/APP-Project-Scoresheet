@@ -24,7 +24,7 @@ function buildProject(reviewerNames: string[]): Project {
   project.reviewers = reviewerNames.map((name, i) => ({
     id: `rev-${i}`,
     name,
-    type: "city",
+    type: "applicant",
     email: "",
   }));
   return project;

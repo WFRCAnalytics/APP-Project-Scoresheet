@@ -102,8 +102,10 @@ joins (see Score below).
 interface Reviewer {
   id: string;              // e.g. "rev-1"
   name: string;
-  type: "city" | "wfrc";   // explicit field (not inferred) — FR-008; determines City-average
-                            // eligibility (FR-027)
+  type: "applicant" | "wfrc";   // explicit field (not inferred) — FR-008; determines TLC
+                            // Applicant-average eligibility (FR-027). Was "city"; renamed
+                            // ("TLC Applicant" in the UI) so a county TLC applicant isn't
+                            // mislabeled — project-schema.ts migrates old "city" values on load.
   email: string;            // optional, "" if unset — handler's own reference only (never
                             // used by the app to send anything)
 }
@@ -154,10 +156,10 @@ are 100%-reconstructable outputs, which is exactly what constitution Principle V
 | Derived value | Formula | FR |
 |---|---|---|
 | `overallAvg(firm, criterion)` | mean of `Score.value` across all reviewers with a live score for that firm/criterion cell (any type), ignoring firms/criteria removed per the orphan rules above | FR-026 |
-| `cityAvg(firm, criterion)` | same, but only reviewers with `type === "city"` | FR-027 |
+| `applicantAvg(firm, criterion)` | same, but only reviewers with `type === "applicant"` | FR-027 |
 | `overallWeightedTotal(firm)` | `Σ over live criteria of overallAvg(firm, criterion) × criterion.weight` | FR-028 |
-| `cityWeightedTotal(firm)` | `Σ over live criteria of cityAvg(firm, criterion) × criterion.weight` | FR-028 |
-| `rank(firm, by: overall \| city)` | standard competition ranking (ties share a rank, next rank skips) over `submitted === true` firms only, descending by the chosen total | FR-025, FR-029 |
+| `applicantWeightedTotal(firm)` | `Σ over live criteria of applicantAvg(firm, criterion) × criterion.weight` | FR-028 |
+| `rank(firm, by: overall \| applicant)` | standard competition ranking (ties share a rank, next rank skips) over `submitted === true` firms only, descending by the chosen total | FR-025, FR-029 |
 | `completion(firm, criterion \| overall)` | count of reviewers (of the applicable type) who have a live score, vs. count expected | FR-030 |
 
 All six are pure functions of `(Project)` — no hidden state, no memoized cache that could

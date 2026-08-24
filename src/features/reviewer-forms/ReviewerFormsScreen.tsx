@@ -53,7 +53,7 @@ export function ReviewerFormsScreen({
                     <td>{reviewer.name || "Unnamed reviewer"}</td>
                     <td>
                       <Badge variant={reviewer.type === "wfrc" ? "info" : "neutral"}>
-                        {reviewer.type === "wfrc" ? "WFRC" : "City"}
+                        {reviewer.type === "wfrc" ? "WFRC" : "TLC Applicant"}
                       </Badge>
                     </td>
                     <td>

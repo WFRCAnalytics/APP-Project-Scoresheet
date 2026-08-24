@@ -3,7 +3,7 @@
 // rankedRows.ts's precedent), but writing those first surfaced a real environmental limit
 // worth being direct about: jsdom's ResponsiveContainer always measures 0x0, so Recharts
 // renders zero scatter dots/legend items for ANY chart in this whole test suite (verified
-// empirically against the existing OverallCityBarChart/CriterionBreakdownChart too, not
+// empirically against the existing OverallApplicantBarChart/CriterionBreakdownChart too, not
 // specific to this component) — there is no rendered SVG a component test could inspect to
 // prove the per-dot math is correct. `buildSpreadPoints`/`jitterOffsetFor` were exported
 // specifically so this math has real, direct coverage instead of being unverifiable.
@@ -27,9 +27,9 @@ function buildProject(): Project {
     { id: "f2", name: "Beta Co", invited: true, submitted: true, notes: "" },
   ];
   project.reviewers = [
-    { id: "r1", name: "Alice", type: "city", email: "" },
+    { id: "r1", name: "Alice", type: "applicant", email: "" },
     { id: "r2", name: "Bob", type: "wfrc", email: "" },
-    { id: "r3", name: "Carol", type: "city", email: "" },
+    { id: "r3", name: "Carol", type: "applicant", email: "" },
   ];
   return project;
 }
@@ -75,7 +75,7 @@ describe("buildSpreadPoints", () => {
 
     const alicePoint = points.find((p) => p.reviewerName === "Alice")!;
     expect(alicePoint.y).toBe(5);
-    expect(alicePoint.reviewerType).toBe("city");
+    expect(alicePoint.reviewerType).toBe("applicant");
     expect(alicePoint.criterionName).toBe("Approach");
     // Criterion index 0 (Approach) plus a small jitter (< 0.5 in magnitude, never crossing
     // into an adjacent criterion's lane) — checked as a range rather than a rounded exact

@@ -1,4 +1,4 @@
-// T026: Reviewers editor — add/edit/remove, name + explicit type ("city"|"wfrc") +
+// T026: Reviewers editor — add/edit/remove, name + explicit type ("applicant"|"wfrc") +
 // optional email, and a confirmation prompt before removing a reviewer with existing
 // scores (FR-008, FR-041) — mirrors FirmsEditor's (FR-007) and CriteriaEditor's (FR-039)
 // confirm-then-orphan pattern exactly, on purpose: all three follow the same rule.
@@ -84,7 +84,7 @@ export function ReviewersEditor() {
                       })
                     }
                   >
-                    <option value="city">City</option>
+                    <option value="applicant">TLC Applicant</option>
                     <option value="wfrc">WFRC</option>
                   </SelectField>
                 </td>
@@ -131,7 +131,7 @@ export function ReviewersEditor() {
           onClick={() =>
             dispatch({
               type: "ADD_REVIEWER",
-              reviewer: { id: generateId("rev"), name: "", type: "city", email: "" },
+              reviewer: { id: generateId("rev"), name: "", type: "applicant", email: "" },
             })
           }
         >

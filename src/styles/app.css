@@ -967,10 +967,10 @@ table.data-table tbody tr:last-child td {
   flex: none;
 }
 
-/* Rank column: the Overall rank badge, plus a City rank note that only appears when the two
-   lenses actually disagree — typography only (font-weight), no new color, per constitution
-   Principle VII: this must read as "worth a second look," not become a second traffic-light
-   color system next to the badge variants. */
+/* Rank column: the Overall rank badge, plus a TLC Applicant rank note that only appears
+   when the two lenses actually disagree — typography only (font-weight), no new color, per
+   constitution Principle VII: this must read as "worth a second look," not become a second
+   traffic-light color system next to the badge variants. */
 .rank-pair {
   display: flex;
   align-items: center;

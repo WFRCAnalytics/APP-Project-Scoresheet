@@ -53,7 +53,7 @@ export function reviewerFormsZipFilename(projectName: string): string {
 }
 
 /** Default filename for a Dashboard chart's PNG/SVG download — sanitized project name +
- * sanitized chart label (e.g. "Very_Good_Project_Overall_vs_City.png"), reusing the same
+ * sanitized chart label (e.g. "Very_Good_Project_Overall_vs_TLC_Applicant.png"), reusing the same
  * sanitization rule as every other export point here. `chartLabel` reused through
  * sanitizeProjectName rather than a second copy of the same punctuation-stripping rule. */
 export function chartExportFilename(

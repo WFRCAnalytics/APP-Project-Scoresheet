@@ -12,12 +12,13 @@
 // variance) anywhere — explicit non-goals for this item.
 //
 // Color convention: reuses the exact same two hex values (--chart-1/--chart-2) the radar and
-// bar charts already use for "Overall"/"City", rather than picking two new colors from the
-// RTP/Wasatch palette — City reviewers count toward both Overall and City, WFRC reviewers
-// toward Overall only, so "the reviewers who also feed the green City line are colored green"
-// is a coherent reuse of already brand-verified values (constitution Principle VII). The
-// legend text says "City reviewers" / "WFRC reviewers" specifically (not "Overall"/"City")
-// so it never reads as if it means the same thing as the radar's legend one component up.
+// bar charts already use for "Overall"/"TLC Applicant", rather than picking two new colors
+// from the RTP/Wasatch palette — TLC Applicant reviewers count toward both Overall and TLC
+// Applicant, WFRC reviewers toward Overall only, so "the reviewers who also feed the green
+// TLC Applicant line are colored green" is a coherent reuse of already brand-verified values
+// (constitution Principle VII). The legend text says "TLC Applicant reviewers" / "WFRC
+// reviewers" specifically (not "Overall"/"TLC Applicant") so it never reads as if it means
+// the same thing as the radar's legend one component up.
 //
 // Readability pass (found by manual review of a real screenshot, not a data bug): the
 // original version had no Y-axis label, and CartesianGrid's default vertical lines land at
@@ -75,7 +76,7 @@ import { ChartExportButtons } from "./ChartExportButtons";
 import { buildSpreadPoints, type SpreadPoint } from "./reviewerScoreSpread";
 
 export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project; firmId: string }) {
-  const { overallColor, cityColor, foregroundColor, borderColor, backgroundColor } =
+  const { overallColor, applicantColor, foregroundColor, borderColor, backgroundColor } =
     useChartColors();
   const containerRef = useRef<HTMLDivElement>(null);
   const firm = project.firms.find((f) => f.id === firmId);
@@ -103,7 +104,7 @@ export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project
   // comment for why), Recharts' auto-legend would show one generic entry instead of the two
   // color-coded ones a viewer actually needs.
   const legendPayload = [
-    { value: "City reviewers", type: "circle" as const, color: cityColor },
+    { value: "TLC Applicant reviewers", type: "circle" as const, color: applicantColor },
     { value: "WFRC reviewers", type: "circle" as const, color: overallColor },
   ];
 
@@ -114,7 +115,7 @@ export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project
     if (!active || !payload || payload.length === 0) return null;
     const point = payload[0]?.payload as SpreadPoint | undefined;
     if (!point) return null;
-    const typeLabel = point.reviewerType === "wfrc" ? "WFRC" : "City";
+    const typeLabel = point.reviewerType === "wfrc" ? "WFRC" : "TLC Applicant";
     return (
       <div
         style={{
@@ -201,9 +202,10 @@ export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project
               <Tooltip cursor={{ strokeDasharray: "3 3" }} content={renderTooltipContent} />
               {/* Explicit height/icon size so the legend can't end up squeezed illegibly
                   small — this is the ONLY place on screen naming what each dot color means
-                  (city vs. WFRC), so it has to actually register, not just technically
-                  render. payload is explicit (see const above) since there's now only one
-                  underlying <Scatter> series for Recharts to auto-derive a legend from. */}
+                  (TLC Applicant vs. WFRC), so it has to actually register, not just
+                  technically render. payload is explicit (see const above) since there's now
+                  only one underlying <Scatter> series for Recharts to auto-derive a legend
+                  from. */}
               <Legend
                 verticalAlign="bottom"
                 height={32}
@@ -216,7 +218,7 @@ export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project
                   point its own color by reviewer type without needing a second series. */}
               <Scatter data={points}>
                 {points.map((p, i) => (
-                  <Cell key={i} fill={p.reviewerType === "wfrc" ? overallColor : cityColor} />
+                  <Cell key={i} fill={p.reviewerType === "wfrc" ? overallColor : applicantColor} />
                 ))}
               </Scatter>
             </ScatterChart>

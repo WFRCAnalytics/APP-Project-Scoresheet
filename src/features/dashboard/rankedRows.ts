@@ -3,16 +3,21 @@
 // built from this one pass over calculations.ts's existing pure functions, nothing new is
 // computed here beyond zipping already-derived values together per firm.
 
-import { cityWeightedTotal, completion, getRank, overallWeightedTotal } from "../../lib/calculations";
+import {
+  applicantWeightedTotal,
+  completion,
+  getRank,
+  overallWeightedTotal,
+} from "../../lib/calculations";
 import type { CompletionCount } from "../../lib/calculations.types";
 import type { Firm, Project } from "../../types/project";
 
 export interface RankedRow {
   firm: Firm;
   overallRank: number;
-  cityRank: number;
+  applicantRank: number;
   overallTotal: number;
-  cityTotal: number;
+  applicantTotal: number;
   comp: CompletionCount;
 }
 
@@ -29,9 +34,9 @@ export function buildRankedRows(project: Project): RankedRow[] {
       // Every submitted firm is always ranked (rankFirms ranks all of them, never `null`)
       // — the `?? 0` fallback only guards the type, it can't actually be hit here.
       overallRank: getRank(project, firm.id, "overall") ?? 0,
-      cityRank: getRank(project, firm.id, "city") ?? 0,
+      applicantRank: getRank(project, firm.id, "applicant") ?? 0,
       overallTotal: overallWeightedTotal(project, firm.id),
-      cityTotal: cityWeightedTotal(project, firm.id),
+      applicantTotal: applicantWeightedTotal(project, firm.id),
       comp: completion(project, firm.id),
     }));
   rows.sort((a, b) => a.overallRank - b.overallRank);

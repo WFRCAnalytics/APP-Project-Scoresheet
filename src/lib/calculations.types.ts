@@ -15,4 +15,4 @@ export interface RankedFirm {
   rank: number;
 }
 
-export type WeightBasis = "overall" | "city";
+export type WeightBasis = "overall" | "applicant";

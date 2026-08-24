@@ -1,5 +1,5 @@
-// T009: The calculation engine — pure, framework-free functions computing Overall/City
-// averages, weighted totals, competition-style ranks, and completion counts.
+// T009: The calculation engine — pure, framework-free functions computing Overall/TLC
+// Applicant averages, weighted totals, competition-style ranks, and completion counts.
 //
 // This module has NO React import and NO hidden state: every function is a pure function
 // of the `Project` object passed in. That is deliberate — constitution Principle VI
@@ -25,7 +25,9 @@ function mean(values: number[]): number | null {
 
 /** Reviewers to consider for a given weight basis (FR-026, FR-027). */
 function reviewersFor(project: Project, by: WeightBasis) {
-  return by === "city" ? project.reviewers.filter((r) => r.type === "city") : project.reviewers;
+  return by === "applicant"
+    ? project.reviewers.filter((r) => r.type === "applicant")
+    : project.reviewers;
 }
 
 /**
@@ -55,10 +57,10 @@ export function overallAvg(project: Project, firmId: string, criterionId: string
   return mean(liveScoresFor(project, firmId, criterionId, "overall").map((s) => s.value));
 }
 
-/** City Avg for a firm/criterion: mean of live `type: "city"` reviewers' scores only
- * (FR-027). wfrc-type reviewers never contribute here. */
-export function cityAvg(project: Project, firmId: string, criterionId: string): number | null {
-  return mean(liveScoresFor(project, firmId, criterionId, "city").map((s) => s.value));
+/** TLC Applicant Avg for a firm/criterion: mean of live `type: "applicant"` reviewers'
+ * scores only (FR-027). wfrc-type reviewers never contribute here. */
+export function applicantAvg(project: Project, firmId: string, criterionId: string): number | null {
+  return mean(liveScoresFor(project, firmId, criterionId, "applicant").map((s) => s.value));
 }
 
 /** Overall Weighted Total for a firm: sum across criteria of overallAvg × weight
@@ -72,10 +74,11 @@ export function overallWeightedTotal(project: Project, firmId: string): number {
   }, 0);
 }
 
-/** City Weighted Total for a firm: sum across criteria of cityAvg × weight (FR-028). */
-export function cityWeightedTotal(project: Project, firmId: string): number {
+/** TLC Applicant Weighted Total for a firm: sum across criteria of applicantAvg × weight
+ * (FR-028). */
+export function applicantWeightedTotal(project: Project, firmId: string): number {
   return project.criteria.reduce((total, c) => {
-    const avg = cityAvg(project, firmId, c.id);
+    const avg = applicantAvg(project, firmId, c.id);
     return total + (avg ?? 0) * c.weight;
   }, 0);
 }
@@ -102,7 +105,10 @@ export function rankFirms(project: Project, by: WeightBasis): RankedFirm[] {
     .filter((f) => f.submitted)
     .map((f) => ({
       firmId: f.id,
-      total: by === "city" ? cityWeightedTotal(project, f.id) : overallWeightedTotal(project, f.id),
+      total:
+        by === "applicant"
+          ? applicantWeightedTotal(project, f.id)
+          : overallWeightedTotal(project, f.id),
     }));
 
   totals.sort((a, b) => b.total - a.total);

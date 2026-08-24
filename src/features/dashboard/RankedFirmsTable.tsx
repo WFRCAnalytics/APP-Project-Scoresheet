@@ -21,7 +21,7 @@ import { CriterionBreakdownChart } from "./CriterionBreakdownChart";
 import { FirmCommentsTable } from "./FirmCommentsTable";
 import { ReviewerScoreSpreadChart } from "./ReviewerScoreSpreadChart";
 
-type SortKey = "rank" | "firm" | "overall" | "city" | "completion";
+type SortKey = "rank" | "firm" | "overall" | "applicant" | "completion";
 type SortDirection = "asc" | "desc";
 
 // Clicking a not-yet-active column header starts from the direction that's most useful for
@@ -31,7 +31,7 @@ const DEFAULT_DIRECTION: Record<SortKey, SortDirection> = {
   rank: "asc",
   firm: "asc",
   overall: "desc",
-  city: "desc",
+  applicant: "desc",
   completion: "desc",
 };
 
@@ -47,8 +47,8 @@ function compareRows(a: RankedRow, b: RankedRow, key: SortKey): number {
       return a.firm.name.localeCompare(b.firm.name);
     case "overall":
       return a.overallTotal - b.overallTotal;
-    case "city":
-      return a.cityTotal - b.cityTotal;
+    case "applicant":
+      return a.applicantTotal - b.applicantTotal;
     case "completion":
       return completionFraction(a) - completionFraction(b);
   }
@@ -172,8 +172,8 @@ export function RankedFirmsTable({ project }: { project: Project }) {
               onSort={toggleSort}
             />
             <SortableHeader
-              label="City Weighted Total"
-              sortKey="city"
+              label="TLC Applicant Weighted Total"
+              sortKey="applicant"
               activeKey={sortKey}
               direction={direction}
               onSort={toggleSort}
@@ -191,7 +191,7 @@ export function RankedFirmsTable({ project }: { project: Project }) {
           {displayRows.map((row) => {
             const isExpanded = isPrinting || expandedIds.has(row.firm.id);
             const detailId = `firm-detail-${row.firm.id}`;
-            const diverges = row.overallRank !== row.cityRank;
+            const diverges = row.overallRank !== row.applicantRank;
             return (
               <Fragment key={row.firm.id}>
                 <tr>
@@ -219,13 +219,15 @@ export function RankedFirmsTable({ project }: { project: Project }) {
                         {row.overallRank}
                       </Badge>
                       {diverges && (
-                        <span className="rank-divergence">· City #{row.cityRank}</span>
+                        <span className="rank-divergence">
+                          · TLC Applicant #{row.applicantRank}
+                        </span>
                       )}
                     </div>
                   </td>
                   <td>{row.firm.name}</td>
                   <td>{round2(row.overallTotal)}</td>
-                  <td>{round2(row.cityTotal)}</td>
+                  <td>{round2(row.applicantTotal)}</td>
                   <td>
                     <CompletionBar {...row.comp} />
                   </td>

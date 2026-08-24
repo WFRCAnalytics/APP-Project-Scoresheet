@@ -1,7 +1,8 @@
-// T041: Per-firm breakdown chart — a radar chart showing Overall Avg vs. City Avg per
-// criterion for one firm (FR-034), so a viewer can see WHY a firm ranked where it did, not
-// just the final number. Uses the same two metric colors as OverallCityBarChart (Overall =
-// chart-1, City = chart-2) for a consistent legend meaning across the whole Dashboard.
+// T041: Per-firm breakdown chart — a radar chart showing Overall Avg vs. TLC Applicant Avg
+// per criterion for one firm (FR-034), so a viewer can see WHY a firm ranked where it did,
+// not just the final number. Uses the same two metric colors as OverallApplicantBarChart
+// (Overall = chart-1, TLC Applicant = chart-2) for a consistent legend meaning across the
+// whole Dashboard.
 //
 // Takes a fixed `firmId` rather than owning its own firm picker — since the 003 Dashboard
 // redesign, this only ever renders inside a RankedFirmsTable row's expanded detail, where
@@ -19,13 +20,13 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { cityAvg, overallAvg, round2 } from "../../lib/calculations";
+import { applicantAvg, overallAvg, round2 } from "../../lib/calculations";
 import { useChartColors } from "../../theme/chartColors";
 import type { Project } from "../../types/project";
 import { ChartExportButtons } from "./ChartExportButtons";
 
 export function CriterionBreakdownChart({ project, firmId }: { project: Project; firmId: string }) {
-  const { overallColor, cityColor, foregroundColor, borderColor, backgroundColor } =
+  const { overallColor, applicantColor, foregroundColor, borderColor, backgroundColor } =
     useChartColors();
   const containerRef = useRef<HTMLDivElement>(null);
   const firm = project.firms.find((f) => f.id === firmId);
@@ -52,7 +53,7 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
 
   const data = project.criteria.map((criterion) => {
     const overall = overallAvg(project, firm.id, criterion.id);
-    const city = cityAvg(project, firm.id, criterion.id);
+    const applicant = applicantAvg(project, firm.id, criterion.id);
     return {
       criterion: criterion.name,
       // A not-yet-scored criterion is plotted at the scale FLOOR, not 0 — with the domain
@@ -64,9 +65,9 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
       // below discloses the true state on hover rather than silently misrepresenting it as
       // an earned score (FR-026: absence means not yet scored, never zero).
       Overall: overall !== null ? round2(overall) : scaleMin,
-      City: city !== null ? round2(city) : scaleMin,
+      "TLC Applicant": applicant !== null ? round2(applicant) : scaleMin,
       OverallScored: overall !== null,
-      CityScored: city !== null,
+      ApplicantScored: applicant !== null,
     };
   });
 
@@ -99,10 +100,10 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
               fillOpacity={0.35}
             />
             <Radar
-              name="City"
-              dataKey="City"
-              stroke={cityColor}
-              fill={cityColor}
+              name="TLC Applicant"
+              dataKey="TLC Applicant"
+              stroke={applicantColor}
+              fill={applicantColor}
               fillOpacity={0.25}
             />
             <Legend />
@@ -119,7 +120,7 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
               itemStyle={{ color: foregroundColor }}
               labelStyle={{ color: foregroundColor }}
               formatter={(value, name, entry) => {
-                const scoredKey = name === "Overall" ? "OverallScored" : "CityScored";
+                const scoredKey = name === "Overall" ? "OverallScored" : "ApplicantScored";
                 const scored = (entry.payload as { [key: string]: unknown })[scoredKey];
                 return scored ? value : "Not yet scored";
               }}

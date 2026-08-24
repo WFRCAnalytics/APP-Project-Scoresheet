@@ -27,7 +27,7 @@ function buildUnscoredProject(): Project {
     { id: "firm-2", name: "Beta Co", invited: true, submitted: true, notes: "" },
   ];
   project.reviewers = [
-    { id: "rev-1", name: "Alice", type: "city", email: "" },
+    { id: "rev-1", name: "Alice", type: "applicant", email: "" },
     { id: "rev-2", name: "Bob", type: "wfrc", email: "" },
   ];
   return project;
@@ -90,7 +90,7 @@ describe("User Story 3 — Import Returned Scores and View Ranked Results", () =
     fireEvent.click(screen.getByRole("button", { name: "Generate reviewer forms" }));
     await screen.findByRole("heading", { name: "Reviewer Forms" });
 
-    // Alice (city): Alpha=5, Beta=1. Bob (wfrc): Alpha=1, Beta=5.
+    // Alice (applicant): Alpha=5, Beta=1. Bob (wfrc): Alpha=1, Beta=5.
     const aliceFile = await buildCompletedWorkbookFile(project, "rev-1", {
       "firm-1": 5,
       "firm-2": 1,
@@ -112,14 +112,14 @@ describe("User Story 3 — Import Returned Scores and View Ranked Results", () =
     await screen.findByRole("heading", { name: "Dashboard" });
 
     // Overall Avg: Alpha = (5+1)/2 = 3, Beta = (1+5)/2 = 3 -> TIE, both rank 1.
-    // City Avg (Alice only): Alpha = 5, Beta = 1 -> Alpha ranks 1, Beta ranks 2.
+    // TLC Applicant Avg (Alice only): Alpha = 5, Beta = 1 -> Alpha ranks 1, Beta ranks 2.
     // Queried by accessible name (aria-label="Ranked firms") rather than DOM
     // position/order — robust to other <table> elements an expanded row's comments table
     // may add to the tree.
     const rankedTable = screen.getByRole("table", { name: "Ranked firms" });
     const rows = within(rankedTable).getAllByRole("row").slice(1); // skip header
     // Cell 0 is the row-expand toggle, 1 is Rank, 2 is Firm, 3 is Overall Weighted Total,
-    // 4 is City Weighted Total, 5 is Completion.
+    // 4 is TLC Applicant Weighted Total, 5 is Completion.
     const cellsByFirm = Object.fromEntries(
       rows.map((row) => {
         const cells = within(row).getAllByRole("cell");
@@ -127,17 +127,17 @@ describe("User Story 3 — Import Returned Scores and View Ranked Results", () =
       }),
     );
 
-    // Alpha: overall rank 1, city rank 1 — the two lenses AGREE, so the rank cell shows
-    // just the overall rank with no "diverges" note.
+    // Alpha: overall rank 1, applicant rank 1 — the two lenses AGREE, so the rank cell
+    // shows just the overall rank with no "diverges" note.
     expect(within(cellsByFirm["Alpha Co"][1]).getByText("1")).toBeInTheDocument();
-    expect(within(cellsByFirm["Alpha Co"][1]).queryByText(/City #/)).not.toBeInTheDocument();
+    expect(within(cellsByFirm["Alpha Co"][1]).queryByText(/TLC Applicant #/)).not.toBeInTheDocument();
     expect(cellsByFirm["Alpha Co"][3].textContent).toBe("3"); // Overall Weighted Total
-    expect(cellsByFirm["Alpha Co"][4].textContent).toBe("5"); // City Weighted Total
+    expect(cellsByFirm["Alpha Co"][4].textContent).toBe("5"); // TLC Applicant Weighted Total
 
-    // Beta: tied overall rank 1, but city rank 2 — the lenses DISAGREE, so the rank cell
-    // must also surface the city rank.
+    // Beta: tied overall rank 1, but applicant rank 2 — the lenses DISAGREE, so the rank
+    // cell must also surface the applicant rank.
     expect(within(cellsByFirm["Beta Co"][1]).getByText("1")).toBeInTheDocument();
-    expect(within(cellsByFirm["Beta Co"][1]).getByText(/City #2/)).toBeInTheDocument();
+    expect(within(cellsByFirm["Beta Co"][1]).getByText(/TLC Applicant #2/)).toBeInTheDocument();
     expect(cellsByFirm["Beta Co"][3].textContent).toBe("3");
     expect(cellsByFirm["Beta Co"][4].textContent).toBe("1");
 
@@ -156,10 +156,11 @@ describe("User Story 3 — Import Returned Scores and View Ranked Results", () =
     const calcTable = within(calcView).getAllByRole("table")[0];
     const dataRow = within(calcTable).getAllByRole("row")[1];
     const dataCells = within(dataRow).getAllByRole("cell");
-    // Columns: Criterion, Weight, Alice(city), Bob(wfrc), Overall Avg, City Avg, ...
+    // Columns: Criterion, Weight, Alice(applicant), Bob(wfrc), Overall Avg,
+    // TLC Applicant Avg, ...
     expect(dataCells[2].textContent).toBe("5"); // Alice's raw score
     expect(dataCells[3].textContent).toBe("1"); // Bob's raw score
     expect(dataCells[4].textContent).toBe("3"); // Overall Avg
-    expect(dataCells[5].textContent).toBe("5"); // City Avg
+    expect(dataCells[5].textContent).toBe("5"); // TLC Applicant Avg
   });
 });

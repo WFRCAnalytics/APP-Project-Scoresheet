@@ -34,13 +34,16 @@ export interface Firm {
   notes: string;
 }
 
-export type ReviewerType = "city" | "wfrc";
+export type ReviewerType = "applicant" | "wfrc";
 
 export interface Reviewer {
   id: string;
   name: string;
-  /** Explicit field (not inferred) — FR-008; determines City-average eligibility
-   * (FR-027). */
+  /** Explicit field (not inferred) — FR-008; determines TLC Applicant-average
+   * eligibility (FR-027). Stored as "applicant" (labeled "TLC Applicant" in the UI —
+   * generalized from the original "city" value/label so a county TLC applicant isn't
+   * mislabeled; project-schema.ts migrates any file still carrying the old "city"
+   * literal on load). */
   type: ReviewerType;
   /** Optional; "" if unset. Handler's own reference only — the app never sends email. */
   email: string;

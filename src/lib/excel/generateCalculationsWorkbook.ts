@@ -8,8 +8,8 @@
 import ExcelJS from "exceljs";
 import { calculationsWorkbookFilename } from "../filenames";
 import {
-  cityAvg,
-  cityWeightedTotal,
+  applicantAvg,
+  applicantWeightedTotal,
   completion,
   overallAvg,
   overallWeightedTotal,
@@ -35,11 +35,11 @@ export async function generateCalculationsWorkbook(
     "Firm",
     "Criterion",
     "Weight",
-    ...project.reviewers.map((r) => `${r.name} (${r.type})`),
+    ...project.reviewers.map((r) => `${r.name} (${r.type === "wfrc" ? "WFRC" : "TLC Applicant"})`),
     "Overall Avg",
-    "City Avg",
+    "TLC Applicant Avg",
     "Overall Wtd",
-    "City Wtd",
+    "TLC Applicant Wtd",
     "Completion",
   ];
 
@@ -63,7 +63,7 @@ export async function generateCalculationsWorkbook(
   for (const firm of submittedFirms) {
     for (const criterion of project.criteria) {
       const oAvg = overallAvg(project, firm.id, criterion.id);
-      const cAvg = cityAvg(project, firm.id, criterion.id);
+      const cAvg = applicantAvg(project, firm.id, criterion.id);
       const row = sheet.getRow(r);
       let c = 1;
       row.getCell(c++).value = firm.name;
@@ -86,17 +86,18 @@ export async function generateCalculationsWorkbook(
     }
 
     // One bold totals row per firm, right under its criteria rows.
-    // Column layout: Firm, Criterion, Weight, [reviewers...], Overall Avg, City Avg,
-    // Overall Wtd, City Wtd, Completion — so Overall Wtd sits at column (6 + reviewerCount).
+    // Column layout: Firm, Criterion, Weight, [reviewers...], Overall Avg, TLC Applicant Avg,
+    // Overall Wtd, TLC Applicant Wtd, Completion — so Overall Wtd sits at column
+    // (6 + reviewerCount).
     const totalsRow = sheet.getRow(r);
     totalsRow.getCell(1).value = `${firm.name} — Weighted Totals`;
     totalsRow.getCell(1).font = { bold: true };
     const overallWtdCol = 6 + reviewerCount;
-    const cityWtdCol = overallWtdCol + 1;
+    const applicantWtdCol = overallWtdCol + 1;
     totalsRow.getCell(overallWtdCol).value = round2(overallWeightedTotal(project, firm.id));
     totalsRow.getCell(overallWtdCol).font = { bold: true };
-    totalsRow.getCell(cityWtdCol).value = round2(cityWeightedTotal(project, firm.id));
-    totalsRow.getCell(cityWtdCol).font = { bold: true };
+    totalsRow.getCell(applicantWtdCol).value = round2(applicantWeightedTotal(project, firm.id));
+    totalsRow.getCell(applicantWtdCol).font = { bold: true };
     r++;
   }
 

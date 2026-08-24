@@ -46,6 +46,18 @@ export function validateAndMigrateProject(raw: unknown): ValidationResult {
   }
 
   let migrated: Record<string, unknown> = { ...obj, schemaVersion: version };
+
+  // Reviewer.type value rename ("city" -> "applicant", labeled "TLC Applicant" in the UI —
+  // generalizes the old city-only assumption so a county TLC applicant isn't mislabeled).
+  // Not a schemaVersion bump — the shape is unchanged, only this one literal — so it's
+  // applied unconditionally here rather than through the MIGRATIONS table, letting any
+  // previously saved "1.0" file with the old value keep loading correctly.
+  if (Array.isArray(migrated.reviewers)) {
+    migrated.reviewers = migrated.reviewers.map((r) =>
+      isPlainObject(r) && r.type === "city" ? { ...r, type: "applicant" } : r,
+    );
+  }
+
   let cursor = version;
   let guard = 0;
   while (cursor !== CURRENT_SCHEMA_VERSION) {
@@ -136,10 +148,10 @@ function describeStructuralError(obj: Record<string, unknown>): string | null {
       !isPlainObject(r) ||
       !isStringField(r, "id") ||
       !isStringField(r, "name") ||
-      (r.type !== "city" && r.type !== "wfrc") ||
+      (r.type !== "applicant" && r.type !== "wfrc") ||
       !isStringField(r, "email")
     ) {
-      return 'Every reviewer needs an id, name, type ("city" or "wfrc"), and email field.';
+      return 'Every reviewer needs an id, name, type ("applicant" or "wfrc"), and email field.';
     }
   }
 

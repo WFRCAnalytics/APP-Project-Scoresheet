@@ -32,7 +32,7 @@ function buildLargeProject(): Project {
     submitted: i < 13,
     notes: "",
   }));
-  project.reviewers = [{ id: "rev-1", name: "Sole Reviewer", type: "city", email: "" }];
+  project.reviewers = [{ id: "rev-1", name: "Sole Reviewer", type: "applicant", email: "" }];
   return project;
 }
 

@@ -19,6 +19,9 @@ import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
 function buildProject(): Project {
   const project = createEmptyProject();
   project.project.projectName = "US5 Flow Test";
+  // Explicit: this suite specifically tests the discrete <select>'s structural guarantee
+  // ("only ever offers the configured scale values"), not continuous's free-text entry.
+  project.scoringScaleMode = "discrete";
   project.scoringScale = [
     { value: 1, label: "No" },
     { value: 3, label: "Maybe" },

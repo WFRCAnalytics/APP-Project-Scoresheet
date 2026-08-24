@@ -46,7 +46,7 @@ matching is by ID).
 | A: Firm | `Firm.name` | No — locked (FR-017) | Pale gray fill, zebra-striped |
 | B: Criterion | `Criterion.name` | No — locked | Pale gray fill, zebra-striped |
 | C: Criterion Description | `Criterion.description` | No — locked | Pale gray fill, zebra-striped |
-| D: Score | reviewer input | Yes — restricted to `scoringScale[].value` via a data-validation dropdown list (FR-017) | WFRC-yellow tint + border |
+| D: Score | reviewer input | Yes — discrete mode: restricted to `scoringScale[].value` via a data-validation dropdown list (FR-017). Continuous mode (post-launch, `Project.scoringScaleMode`): a decimal-range validation (min/max of `scoringScale[].value`, not the list itself) — the configured points become labeled reference anchors instead of the only allowed values. | WFRC-yellow tint + border |
 | E: Comments | reviewer input | Yes — free text, one cell per row/score, not one box per firm (FR-016) | WFRC-yellow tint + border |
 
 **Hidden columns** (same header row, positioned after column E, `hidden: true` on the
@@ -89,8 +89,9 @@ plus a per-file summary count, shown to the handler before anything commits (FR-
 - `"added"` — a valid, present Score value; queued for commit.
 - `"skipped"` — the row's IDs all resolve fine, but the Score cell is blank (the reviewer
   hasn't gotten to it yet). Nothing to commit; NOT reported as an error.
-- `"failed"` — an ID that no longer resolves to a live entity, or a Score value that isn't
-  one of the current scale's values; excluded, reported to the handler.
+- `"failed"` — an ID that no longer resolves to a live entity, or a Score value invalid for
+  the current scale (discrete: not one of its values; continuous: outside its min/max range)
+  — excluded, reported to the handler.
 
 0. Locate the header row by scanning column A for the literal text "Firm" (bounded scan,
    not the whole sheet) rather than assuming any fixed row number — the banner rows above
@@ -109,9 +110,15 @@ For each data row on the "Scoring" sheet (i.e. every row after the located heade
    resolves → row status `failed`, reason e.g. "criterion no longer exists in this project."
 3. If the Score cell is blank → row status `skipped` ("not yet scored" is a normal, expected
    state — the same sparsity the whole data model treats as default, not an error).
-4. Otherwise, validate the Score cell value is one of the current project's
-   `scoringScale[].value` (re-checked against the *current* scale, same rationale as step 2)
-   → otherwise `failed`, reason e.g. "3.5 is not a valid score for this project's scale."
+4. Otherwise, validate the Score cell value against the current project's scale mode
+   (`lib/scoreScale.ts` — the single rule both this file and `ManualEntryGrid.tsx` share,
+   re-checked against the *current* scale/mode, same rationale as step 2): discrete requires
+   an exact match to one of `scoringScale[].value`; continuous requires the value to fall
+   within `scoringScale[].value`'s min/max, and — unlike discrete — ROUNDS it to one decimal
+   place rather than rejecting extra precision (a mistyped 3.14 becomes 3.1, committed, not a
+   `failed` row). Only a genuinely out-of-range continuous value, or a non-exact-match
+   discrete value, becomes `failed` (e.g. "3.5 is not a valid score for this project's
+   scale.").
 5. Rows passing both checks become `Score` objects (`comment` from column E, `updatedAt` =
    import time) queued for commit.
 

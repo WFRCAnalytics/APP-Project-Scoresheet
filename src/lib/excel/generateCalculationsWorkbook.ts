@@ -234,6 +234,16 @@ export async function generateCalculationsWorkbook(
     applicantTotalCell.numFmt = DECIMAL_FORMAT;
     applicantTotalCell.font = { bold: true };
 
+    // Thick rule under the totals row, spanning every column — caps off this firm's block
+    // before the next firm's criteria rows start, the same visual break the reviewer
+    // workbook (generateWorkbook.ts) puts between firms via a top border instead (this file
+    // already ends each firm on its own bold totals row, so a bottom border here reads more
+    // naturally than a top border on the next firm's first row would).
+    for (let c = 1; c <= completionCol; c++) {
+      const cell = totalsRow.getCell(c);
+      cell.border = { ...cell.border, bottom: { style: "thick", color: { argb: BRAND_BLUE } } };
+    }
+
     r++;
   }
 

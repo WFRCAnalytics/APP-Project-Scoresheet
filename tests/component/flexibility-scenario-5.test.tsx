@@ -20,6 +20,8 @@ import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
 function buildLargeProject(): Project {
   const project = createEmptyProject();
   project.project.projectName = "Scenario 5 Flexibility Test";
+  // Explicit: "offering all 7 scale values" tests the discrete dropdown specifically.
+  project.scoringScaleMode = "discrete";
   project.criteria = [{ id: "crit-1", name: "Only Criterion", weight: 1.0, description: "" }];
   project.scoringScale = Array.from({ length: 7 }, (_, i) => ({
     value: i + 1,

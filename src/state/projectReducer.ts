@@ -6,7 +6,16 @@
 // No Redux/Zustand — this is plain React `useReducer` state (research.md §5), scoped to
 // exactly one in-memory `Project` at a time (constitution Principle III).
 
-import type { Criterion, Firm, Project, ProjectInfo, Reviewer, Score, ScoringScalePoint } from "../types/project";
+import type {
+  Criterion,
+  Firm,
+  Project,
+  ProjectInfo,
+  Reviewer,
+  Score,
+  ScoringScaleMode,
+  ScoringScalePoint,
+} from "../types/project";
 
 export type ProjectState = Project | null;
 
@@ -26,6 +35,7 @@ export type ProjectAction =
   | { type: "ADD_SCALE_POINT"; point: ScoringScalePoint }
   | { type: "UPDATE_SCALE_POINT"; value: number; patch: Partial<ScoringScalePoint> }
   | { type: "REMOVE_SCALE_POINT"; value: number }
+  | { type: "SET_SCORING_SCALE_MODE"; mode: ScoringScaleMode }
   /** Upserts one or more scores, matched and overwritten by (reviewerId, firmId,
    * criterionId) — the single code path both workbook import and manual entry funnel
    * through, so FR-023's overwrite rule can never drift between the two entry methods. */
@@ -113,6 +123,11 @@ export function projectReducer(state: ProjectState, action: ProjectAction): Proj
         ...state,
         scoringScale: state.scoringScale.filter((p) => p.value !== action.value),
       };
+    case "SET_SCORING_SCALE_MODE":
+      // Switching modes never touches scoringScale or scores — a raw Score.value is just a
+      // number either way (lib/scoreScale.ts), and the configured points remain meaningful
+      // as either an exact-match list (discrete) or labeled anchors (continuous).
+      return { ...state, scoringScaleMode: action.mode };
 
     case "UPSERT_SCORES":
       return { ...state, scores: upsertScores(state.scores, action.scores) };

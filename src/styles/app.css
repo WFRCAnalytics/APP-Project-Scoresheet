@@ -209,6 +209,39 @@ input[type="radio"]:disabled {
   color: var(--color-wfrc-gray);
 }
 
+/* ScoringScaleEditor's discrete/continuous mode toggle — a native <fieldset>/radio group
+   (same "native control over a custom widget" convention as the Firms editor's Invited/
+   Submitted checkboxes), reset to lose the browser's default fieldset border/padding box.
+   Not `display: flex` on the fieldset itself — <legend>'s box behavior inside a flex
+   fieldset is inconsistent across browsers, so it stays block-level (its own line, above
+   the options) and only the two label+radio pairs are flexed, in their own wrapper. */
+.scale-mode-toggle {
+  border: none;
+  padding: 0;
+  margin: 0 0 var(--space-3) 0;
+}
+
+.scale-mode-toggle legend {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-sm);
+  padding: 0;
+  margin-bottom: var(--space-2);
+}
+
+.scale-mode-toggle-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.scale-mode-toggle label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
 /* CriteriaEditor's weight cell: the text input plus its live "= 60%" confirmation readout,
    side by side. The input already picks up the shared `.data-table td input[type="text"]`
    treatment above (it's a descendant, not a direct child, of that selector) — this only

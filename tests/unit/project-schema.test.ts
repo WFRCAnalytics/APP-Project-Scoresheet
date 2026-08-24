@@ -84,6 +84,24 @@ describe("validateAndMigrateProject — structural validation (FR-004)", () => {
     if (result.valid) expect(result.project.reviewers[0].type).toBe("applicant");
   });
 
+  it("migrates a missing scoringScaleMode to 'discrete' (pre-continuous-mode saved files)", () => {
+    const raw = validMinimalProjectJson();
+    delete raw.scoringScaleMode;
+    const result = validateAndMigrateProject(raw);
+    expect(result.valid).toBe(true);
+    // Not "continuous" (createEmptyProject's default for brand-new projects) — an old file
+    // predates this option, so it's migrated to what it already meant: exact-match only.
+    if (result.valid) expect(result.project.scoringScaleMode).toBe("discrete");
+  });
+
+  it("rejects an invalid scoringScaleMode value", () => {
+    const raw = validMinimalProjectJson();
+    raw.scoringScaleMode = "linear"; // not "discrete" | "continuous"
+    const result = validateAndMigrateProject(raw);
+    expect(result.valid).toBe(false);
+    if (!result.valid) expect(result.error).toMatch(/scoringScaleMode/i);
+  });
+
   it("rejects a criterion with a non-numeric weight", () => {
     const raw = validMinimalProjectJson();
     raw.criteria[0].weight = "a lot";

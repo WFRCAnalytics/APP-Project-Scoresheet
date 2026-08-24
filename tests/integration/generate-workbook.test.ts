@@ -34,6 +34,9 @@ import { createEmptyProject, type Project } from "../../src/types/project";
 function buildFixture(): Project {
   const project = createEmptyProject();
   project.project.projectName = "Quickstart Test";
+  // Explicit: this file specifically tests the discrete dropdown/exact-match behavior, so
+  // it doesn't rely on createEmptyProject()'s "continuous" default for new projects.
+  project.scoringScaleMode = "discrete";
   project.scoringScale = [
     { value: 1, label: "No" },
     { value: 3, label: "Maybe" },
@@ -189,6 +192,36 @@ describe("generateWorkbookForReviewer", () => {
     expect(scoring.getCell(`D${r}`).border).toBeTruthy();
   });
 
+  it("marks the first row of each new firm with a thick top border, but not within a firm's own rows", async () => {
+    const project = buildFixture();
+    const result = await generateWorkbookForReviewer(project, project.reviewers[0]);
+    if (!result.ok) throw new Error("expected ok");
+
+    const workbook = await reloadWorkbook(result.blob);
+    const scoring = workbook.getWorksheet("Scoring")!;
+    // Row order: firm-1/crit-1, firm-1/crit-2, firm-2/crit-1, firm-2/crit-2 (buildFixture).
+    const firstAlphaRow = SCORING_FIRST_DATA_ROW;
+    const secondAlphaRow = SCORING_FIRST_DATA_ROW + 1;
+    const firstBetaRow = SCORING_FIRST_DATA_ROW + 2; // the actual firm boundary
+
+    // No divider above the very first data row (nothing to separate it from) or between
+    // two rows belonging to the SAME firm.
+    expect(scoring.getCell(`A${firstAlphaRow}`).border?.top?.style).not.toBe("thick");
+    expect(scoring.getCell(`A${secondAlphaRow}`).border?.top?.style).not.toBe("thick");
+
+    // The boundary row gets a thick top border on both a locked column (A) and an
+    // editable one (D) — the editable column's usual thin yellow border on the other
+    // three sides must survive untouched.
+    const lockedBorder = scoring.getCell(`A${firstBetaRow}`).border;
+    expect(lockedBorder?.top?.style).toBe("thick");
+
+    const editableBorder = scoring.getCell(`D${firstBetaRow}`).border;
+    expect(editableBorder?.top?.style).toBe("thick");
+    expect(editableBorder?.bottom?.style).toBe("thin");
+    expect(editableBorder?.left?.style).toBe("thin");
+    expect(editableBorder?.right?.style).toBe("thin");
+  });
+
   it("freezes the header row so it stays visible while scrolling", async () => {
     const project = buildFixture();
     const result = await generateWorkbookForReviewer(project, project.reviewers[0]);
@@ -228,5 +261,39 @@ describe("generateWorkbookForReviewer", () => {
     project.criteria[0].weight = 0.9; // total now 1.3, not 1.0
     const result = await generateWorkbookForReviewer(project, project.reviewers[0]);
     expect(result.ok).toBe(true);
+  });
+
+  describe("continuous scoring scale mode", () => {
+    it("uses Excel's built-in decimal-between validation instead of a dropdown list", async () => {
+      const project = buildFixture();
+      project.scoringScaleMode = "continuous"; // range [1, 5] from the same 1/3/5 points
+      const result = await generateWorkbookForReviewer(project, project.reviewers[0]);
+      if (!result.ok) throw new Error("expected ok");
+
+      const workbook = await reloadWorkbook(result.blob);
+      const scoring = workbook.getWorksheet("Scoring")!;
+      const validation = scoring.getCell(`D${SCORING_FIRST_DATA_ROW}`).dataValidation;
+
+      expect(validation?.type).toBe("decimal");
+      expect(validation?.operator).toBe("between");
+      expect(validation?.formulae).toEqual([1, 5]);
+    });
+
+    it("notes in the legend that any value in range is accepted, not just the listed points", async () => {
+      const project = buildFixture();
+      project.scoringScaleMode = "continuous";
+      const result = await generateWorkbookForReviewer(project, project.reviewers[0]);
+      if (!result.ok) throw new Error("expected ok");
+
+      const workbook = await reloadWorkbook(result.blob);
+      const scoring = workbook.getWorksheet("Scoring")!;
+      const subtitleText = String(scoring.getCell(`A${SCORING_SUBTITLE_ROW}`).value);
+
+      // Still lists the configured points as reference anchors...
+      expect(subtitleText).toContain("1 = No");
+      expect(subtitleText).toContain("5 = Yes");
+      // ...but also says the range itself is what's actually accepted.
+      expect(subtitleText).toContain("1 to 5");
+    });
   });
 });

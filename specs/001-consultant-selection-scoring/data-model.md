@@ -19,6 +19,13 @@ interface Project {
     notes: string;
   };
   scoringScale: ScoringScalePoint[];  // >= 2 entries required (FR-011)
+  scoringScaleMode: "discrete" | "continuous";  // added post-launch — see ScoringScalePoint
+                                                  // below. Missing on an old saved file ->
+                                                  // migrated to "discrete" (project-schema.ts),
+                                                  // not the "continuous" default new projects
+                                                  // get (createEmptyProject), since a file
+                                                  // predating this option was, in effect,
+                                                  // already discrete.
   criteria: Criterion[];
   firms: Firm[];
   reviewers: Reviewer[];
@@ -46,9 +53,18 @@ interface Project {
 
 ## ScoringScalePoint
 
+**Discrete vs. continuous** (post-launch addition, `Project.scoringScaleMode`): in
+`"discrete"` mode (the original, still-default-for-old-files behavior) these points are the
+ONLY values `Score.value` may take. In `"continuous"` mode they're labeled reference anchors
+along a range instead — any value between the lowest and highest configured point is valid,
+rounded to one decimal place (`lib/scoreScale.ts`, the single source of truth both
+`parseWorkbook.ts` and `ManualEntryGrid.tsx` validate against). Same shape, same CRUD, same
+>= 2 floor either way — only how a `Score.value` is validated against it differs.
+
 ```ts
 interface ScoringScalePoint {
-  value: number;   // e.g. 1, 3, 5 — the only values Score.value may take (FR-017, FR-021)
+  value: number;   // e.g. 1, 3, 5 — discrete: the only values Score.value may take
+                    // (FR-017, FR-021); continuous: a labeled reference point, not exclusive
   label: string;   // e.g. "Completely unqualified"
 }
 ```
@@ -124,7 +140,9 @@ interface Score {
   reviewerId: string;   // Reviewer.id
   firmId: string;       // Firm.id
   criterionId: string;  // Criterion.id
-  value: number;         // MUST be one of scoringScale[].value (FR-017, FR-021)
+  value: number;         // discrete: MUST be one of scoringScale[].value (FR-017, FR-021).
+                          // continuous: any value between the lowest/highest configured
+                          // scoringScale[] points, rounded to one decimal (lib/scoreScale.ts)
   comment: string;       // "" if none; one comment per individual score (FR-016), not per firm
   updatedAt: string;     // ISO datetime — set on manual entry (FR-024) or import (FR-023)
 }

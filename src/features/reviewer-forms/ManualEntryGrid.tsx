@@ -5,11 +5,15 @@
 // firm × criterion cell.
 //
 // Score-value validation (FR-024's "applying the same score-value validation" as
-// parseWorkbook.ts): the Score input is a native <select> constrained to exactly the
-// project's configured scale values — structurally impossible to enter an out-of-scale
-// value through this UI, which is a stronger guarantee than parseWorkbook.ts's runtime
-// check needs to be (that one defends against a workbook edited outside its own
-// dropdown's constraint; this grid has no such external-edit surface).
+// parseWorkbook.ts, via the shared lib/scoreScale.ts both now go through): discrete mode's
+// Score input is a native <select> constrained to exactly the project's configured scale
+// values — structurally impossible to enter an out-of-scale value through this UI, a
+// stronger guarantee than parseWorkbook.ts's runtime check needs to be (that one defends
+// against a workbook edited outside its own dropdown's constraint; this grid has no such
+// external-edit surface). Continuous mode's Score input is a free-text field instead (a
+// dropdown can't offer "any value," only a fixed list) — normalizeScoreValue() enforces the
+// same range-and-round-to-one-decimal rule on commit that parseWorkbook.ts applies on
+// import, so the two entry paths can't drift on what a valid continuous score is.
 //
 // Commit path (T048): every change dispatches the exact same `UPSERT_SCORES` reducer
 // action `ImportScoresPanel.tsx` uses to commit imported rows — not a separate update
@@ -21,8 +25,9 @@
 
 import { useMemo, useState } from "react";
 import { SelectField } from "../../components/SelectField";
+import { normalizeScoreValue, scaleRange } from "../../lib/scoreScale";
 import { useLoadedProject } from "../../state/ProjectContext";
-import type { Score } from "../../types/project";
+import type { Project, Score } from "../../types/project";
 
 interface CellDraft {
   value: number | "";
@@ -31,6 +36,53 @@ interface CellDraft {
 
 function cellKey(firmId: string, criterionId: string): string {
   return `${firmId}:${criterionId}`;
+}
+
+/** Continuous mode's Score cell — a free-text field with its own local draft buffer, not
+ * `value`/`onCommit` reflected straight through on every keystroke, so a handler can type
+ * transitional text ("3.") without each character re-formatting the field out from under
+ * them. Commits (normalizes + calls `onCommit`) on blur; unparseable or out-of-range text
+ * reverts to the last-committed value instead of being stored, same pattern
+ * CriteriaEditor's WeightCell uses for its own free-text-but-numeric field. */
+function ContinuousScoreCell({
+  project,
+  value,
+  ariaLabel,
+  onCommit,
+}: {
+  project: Project;
+  value: number | "";
+  ariaLabel: string;
+  onCommit: (value: number | "") => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const displayValue = draft ?? (value === "" ? "" : String(value));
+
+  function commit() {
+    if (draft === null) return;
+    const trimmed = draft.trim();
+    if (trimmed === "") {
+      onCommit("");
+    } else {
+      const parsed = Number(trimmed);
+      const normalized = Number.isFinite(parsed) ? normalizeScoreValue(project, parsed) : null;
+      if (normalized !== null) onCommit(normalized);
+      // else: invalid/out-of-range text is discarded, snapping back to the last-committed
+      // value below rather than storing it.
+    }
+    setDraft(null);
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      aria-label={ariaLabel}
+      value={displayValue}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+    />
+  );
 }
 
 export function ManualEntryGrid() {
@@ -95,6 +147,7 @@ export function ManualEntryGrid() {
     () => [...project.scoringScale].sort((a, b) => a.value - b.value),
     [project.scoringScale],
   );
+  const { min: scaleMin, max: scaleMax } = scaleRange(project);
 
   if (project.reviewers.length === 0) {
     return <p className="field-hint">No reviewers configured yet.</p>;
@@ -113,6 +166,12 @@ export function ManualEntryGrid() {
       <p className="field-hint">
         For scores reported back by phone, email, or paper instead of a returned workbook.
       </p>
+      {project.scoringScaleMode === "continuous" && (
+        <p className="field-hint">
+          Continuous scale — enter any value from {scaleMin} to {scaleMax}, rounded to one
+          decimal place.
+        </p>
+      )}
 
       <div className="field" style={{ maxWidth: "20rem" }}>
         <label htmlFor="manual-entry-reviewer">Reviewer</label>
@@ -148,22 +207,31 @@ export function ManualEntryGrid() {
                   <td>{firm.name}</td>
                   <td>{criterion.name}</td>
                   <td>
-                    <SelectField
-                      aria-label={`Score for ${firm.name} / ${criterion.name}`}
-                      value={draft.value}
-                      onChange={(e) =>
-                        updateDraft(firm.id, criterion.id, {
-                          value: e.target.value === "" ? "" : Number(e.target.value),
-                        })
-                      }
-                    >
-                      <option value="">—</option>
-                      {scaleOptions.map((point) => (
-                        <option key={point.value} value={point.value}>
-                          {point.value} — {point.label}
-                        </option>
-                      ))}
-                    </SelectField>
+                    {project.scoringScaleMode === "discrete" ? (
+                      <SelectField
+                        aria-label={`Score for ${firm.name} / ${criterion.name}`}
+                        value={draft.value}
+                        onChange={(e) =>
+                          updateDraft(firm.id, criterion.id, {
+                            value: e.target.value === "" ? "" : Number(e.target.value),
+                          })
+                        }
+                      >
+                        <option value="">—</option>
+                        {scaleOptions.map((point) => (
+                          <option key={point.value} value={point.value}>
+                            {point.value} — {point.label}
+                          </option>
+                        ))}
+                      </SelectField>
+                    ) : (
+                      <ContinuousScoreCell
+                        project={project}
+                        value={draft.value}
+                        ariaLabel={`Score for ${firm.name} / ${criterion.name}`}
+                        onCommit={(value) => updateDraft(firm.id, criterion.id, { value })}
+                      />
+                    )}
                   </td>
                   <td>
                     <input

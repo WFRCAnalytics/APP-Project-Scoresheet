@@ -25,6 +25,9 @@ import { createEmptyProject, type Project } from "../../src/types/project";
 function buildFixture(): Project {
   const project = createEmptyProject();
   project.project.projectName = "Round Trip Fixture";
+  // Explicit: "3a. an out-of-scale Score value produces a failed row" specifically tests
+  // discrete's exact-match rejection, not continuous's range check.
+  project.scoringScaleMode = "discrete";
   project.scoringScale = [
     { value: 1, label: "No" },
     { value: 3, label: "Maybe" },
@@ -330,6 +333,57 @@ describe("Excel round trip: generateWorkbook -> parseWorkbook", () => {
 
       expect(result.rows[0].overwrites).toBeUndefined();
       expect(result.overwriteCount).toBe(0);
+    });
+  });
+
+  describe("continuous scoring scale mode", () => {
+    it("accepts a decimal value between the configured points, not just the points themselves", async () => {
+      const project = buildFixture();
+      project.scoringScaleMode = "continuous"; // range [1, 5] from the same 1/3/5 points
+      const generated = await generateWorkbookForReviewer(project, project.reviewers[0]);
+      if (!generated.ok) throw new Error(generated.error);
+
+      const workbook = await loadWorkbookFromBlob(generated.blob);
+      const sheet = workbook.getWorksheet("Scoring")!;
+      sheet.getCell(`D${SCORING_FIRST_DATA_ROW}`).value = 3.7; // not one of 1/3/5, but in range
+
+      const result = parseScoringWorkbook(project, workbook, generated.filename);
+
+      expect(result.rows[0].status).toBe("added");
+      expect(result.rows[0].score?.value).toBe(3.7);
+    });
+
+    it("rounds a value with more than one decimal place instead of rejecting it", async () => {
+      const project = buildFixture();
+      project.scoringScaleMode = "continuous";
+      const generated = await generateWorkbookForReviewer(project, project.reviewers[0]);
+      if (!generated.ok) throw new Error(generated.error);
+
+      const workbook = await loadWorkbookFromBlob(generated.blob);
+      const sheet = workbook.getWorksheet("Scoring")!;
+      sheet.getCell(`D${SCORING_FIRST_DATA_ROW}`).value = 3.14;
+
+      const result = parseScoringWorkbook(project, workbook, generated.filename);
+
+      expect(result.rows[0].status).toBe("added");
+      expect(result.rows[0].score?.value).toBe(3.1); // rounded, not rejected
+    });
+
+    it("still fails a value outside the configured min/max range", async () => {
+      const project = buildFixture();
+      project.scoringScaleMode = "continuous";
+      const generated = await generateWorkbookForReviewer(project, project.reviewers[0]);
+      if (!generated.ok) throw new Error(generated.error);
+
+      const workbook = await loadWorkbookFromBlob(generated.blob);
+      const sheet = workbook.getWorksheet("Scoring")!;
+      sheet.getCell(`D${SCORING_FIRST_DATA_ROW}`).value = 99;
+
+      const result = parseScoringWorkbook(project, workbook, generated.filename);
+
+      expect(result.rows[0].status).toBe("failed");
+      expect(result.rows[0].reason).toMatch(/not between this project's configured scale range/);
+      expect(result.rows[0].score).toBeUndefined();
     });
   });
 });

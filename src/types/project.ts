@@ -7,12 +7,26 @@
 export const CURRENT_SCHEMA_VERSION = "1.0";
 
 export interface ScoringScalePoint {
-  /** e.g. 1, 3, 5 — the only values Score.value may take (FR-017, FR-021). Must be
-   * unique within a project's scoringScale array. */
+  /** e.g. 1, 3, 5. In "discrete" mode (scoringScaleMode) these are the only values
+   * Score.value may take (FR-017, FR-021). In "continuous" mode they're labeled reference
+   * anchors along the range instead — any value between the lowest and highest configured
+   * point is valid, not just the points themselves (lib/scoreScale.ts). Must be unique
+   * within a project's scoringScale array either way. */
   value: number;
   /** e.g. "Completely unqualified" */
   label: string;
 }
+
+/** "discrete": a reviewer must pick one of the exact scoringScale[] values (the original,
+ * still-default-for-old-files behavior). "continuous": a reviewer may enter any value
+ * between the lowest and highest configured scoringScale[] points, in steps of 0.1 — those
+ * points become labeled reference anchors rather than a restrictive list. See
+ * lib/scoreScale.ts for the shared validation both entry paths (Excel import, manual entry)
+ * use. New projects default to "continuous" (createEmptyProject below); a saved project.json
+ * with no scoringScaleMode field is migrated to "discrete" (project-schema.ts) — preserving
+ * exactly what an old exact-match scale already meant, rather than silently loosening
+ * validation for data that predates this option. */
+export type ScoringScaleMode = "discrete" | "continuous";
 
 export interface Criterion {
   /** Stable identity used by Score.criterionId and the reviewer workbook's hidden ID
@@ -56,7 +70,9 @@ export interface Score {
   firmId: string;
   /** Criterion.id */
   criterionId: string;
-  /** MUST be one of scoringScale[].value (FR-017, FR-021). */
+  /** Discrete mode: MUST be one of scoringScale[].value (FR-017, FR-021). Continuous mode:
+   * any value between the lowest and highest configured scoringScale[] points, rounded to
+   * one decimal place (lib/scoreScale.ts). */
   value: number;
   /** "" if none; one comment per individual score (FR-016), not per firm. */
   comment: string;
@@ -80,8 +96,10 @@ export interface Project {
   /** e.g. "1.0" — FR-038. Present on every exported file. */
   schemaVersion: string;
   project: ProjectInfo;
-  /** >= 2 entries required (FR-011). */
+  /** >= 2 entries required (FR-011) in either mode. */
   scoringScale: ScoringScalePoint[];
+  /** See ScoringScaleMode above. */
+  scoringScaleMode: ScoringScaleMode;
   criteria: Criterion[];
   firms: Firm[];
   reviewers: Reviewer[];
@@ -101,6 +119,7 @@ export function createEmptyProject(): Project {
       notes: "",
     },
     scoringScale: [],
+    scoringScaleMode: "continuous",
     criteria: [],
     firms: [],
     reviewers: [],

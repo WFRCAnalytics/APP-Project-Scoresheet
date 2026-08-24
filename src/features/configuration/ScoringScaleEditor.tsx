@@ -20,23 +20,75 @@
 // (preserves position for every entry except the one being edited, which keeps its
 // index), so index is a valid stable identity here — the same role `id` plays in the
 // other three editors, just without persisting one to the data model.
+//
+// Discrete vs. continuous (lib/scoreScale.ts): the points table below is IDENTICAL either
+// way — add/remove/edit value+label, same 2-point floor — because in continuous mode those
+// points are labeled reference anchors along the range rather than a restrictive list, not
+// a different data shape. Only the mode toggle above the table, and how downstream
+// consumers (generateWorkbook.ts, parseWorkbook.ts, ManualEntryGrid.tsx) validate a Score
+// against it, differ.
 
 import { useLoadedProject } from "../../state/ProjectContext";
+import type { ScoringScaleMode } from "../../types/project";
 
 const MIN_SCALE_POINTS = 2;
 
 export function ScoringScaleEditor() {
   const { project, dispatch } = useLoadedProject();
   const canRemove = project.scoringScale.length > MIN_SCALE_POINTS;
+  const mode = project.scoringScaleMode;
+  const sortedValues = [...project.scoringScale.map((p) => p.value)].sort((a, b) => a - b);
+  const scaleMin = sortedValues[0];
+  const scaleMax = sortedValues[sortedValues.length - 1];
 
   function nextDefaultValue(): number {
     if (project.scoringScale.length === 0) return 1;
     return Math.max(...project.scoringScale.map((p) => p.value)) + 1;
   }
 
+  function setMode(next: ScoringScaleMode) {
+    dispatch({ type: "SET_SCORING_SCALE_MODE", mode: next });
+  }
+
   return (
     <div className="card">
       <h2>Scoring Scale</h2>
+
+      <fieldset className="scale-mode-toggle">
+        <legend>Scale type</legend>
+        <div className="scale-mode-toggle-options">
+          <label>
+            <input
+              type="radio"
+              name="scoringScaleMode"
+              value="discrete"
+              checked={mode === "discrete"}
+              onChange={() => setMode("discrete")}
+            />
+            Discrete — reviewers pick one of the listed values
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="scoringScaleMode"
+              value="continuous"
+              checked={mode === "continuous"}
+              onChange={() => setMode("continuous")}
+            />
+            Continuous — reviewers may enter any value between the lowest and highest listed
+            values, in steps of 0.1
+          </label>
+        </div>
+      </fieldset>
+
+      {mode === "continuous" && project.scoringScale.length >= MIN_SCALE_POINTS && (
+        <p className="field-hint">
+          The listed values below are labeled reference points, not the only choices —
+          reviewers may enter anything from {scaleMin} to {scaleMax} (e.g. {scaleMin + 0.1}
+          ), rounded to one decimal place.
+        </p>
+      )}
+
       {project.scoringScale.length <= MIN_SCALE_POINTS && (
         <p className="field-hint">At least {MIN_SCALE_POINTS} points are required.</p>
       )}

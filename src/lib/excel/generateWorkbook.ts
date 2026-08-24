@@ -23,6 +23,7 @@
 
 import ExcelJS from "exceljs";
 import { reviewerWorkbookFilename } from "../filenames";
+import { scaleRange } from "../scoreScale";
 import type { Criterion, Firm, Project, Reviewer } from "../../types/project";
 
 export type GenerateWorkbookResult =
@@ -104,7 +105,16 @@ function buildScoringSheet(
 
   const projectName = project.project.projectName || "Untitled Project";
   const sortedScale = [...project.scoringScale].sort((a, b) => a.value - b.value);
-  const scaleLegend = sortedScale.map((p) => `${p.value} = ${p.label}`).join("   ·   ");
+  const { min: scaleMin, max: scaleMax } = scaleRange(project);
+  // Continuous mode: the configured points are labeled reference anchors, not the only
+  // choices (lib/scoreScale.ts) — the legend says so explicitly, since a reviewer seeing
+  // "1 = Poor   ·   5 = Excellent" with no other cue would reasonably assume those are the
+  // only two entries the dropdown-less Score cell will accept.
+  const scaleLegend =
+    sortedScale.map((p) => `${p.value} = ${p.label}`).join("   ·   ") +
+    (project.scoringScaleMode === "continuous"
+      ? ` (enter any value from ${scaleMin} to ${scaleMax}, one decimal place)`
+      : "");
 
   // Row 1: title banner.
   sheet.mergeCells(`A${SCORING_TITLE_ROW}:E${SCORING_TITLE_ROW}`);
@@ -168,11 +178,46 @@ function buildScoringSheet(
 
   const scaleValues = project.scoringScale.map((p) => p.value);
   const dropdownFormula = `"${scaleValues.join(",")}"`;
+  // Continuous mode: Excel's own built-in "decimal between" range check, not a custom
+  // formula (lib/scoreScale.ts's rounding-to-one-decimal happens app-side, on import/manual
+  // entry — this only guards the min/max range, same call made for weightInput.ts's
+  // percent-vs-decimal question: keep the Excel-side rule simple, do the precision handling
+  // in one place in the app instead of duplicating it into a fragile custom Excel formula).
+  const scoreValidation: ExcelJS.DataValidation =
+    project.scoringScaleMode === "discrete"
+      ? {
+          type: "list",
+          allowBlank: true,
+          formulae: [dropdownFormula],
+          showErrorMessage: true,
+          errorStyle: "error",
+          errorTitle: "Invalid score",
+          error: "Please choose one of the listed scale values.",
+        }
+      : {
+          type: "decimal",
+          operator: "between",
+          allowBlank: true,
+          formulae: [scaleMin, scaleMax],
+          showErrorMessage: true,
+          errorStyle: "error",
+          errorTitle: "Invalid score",
+          error: `Please enter a number between ${scaleMin} and ${scaleMax}.`,
+        };
+
+  // Tracks the previous row's firm so a thick top border can mark the FIRST row of every
+  // firm after the first — a visual break between one firm's block of criteria rows and
+  // the next, on a sheet that otherwise has no other cue where one firm's rows end and
+  // another's begin besides re-reading column A on every row.
+  let previousFirmId: string | null = null;
 
   plan.forEach(({ firm, criterion }, index) => {
     const r = SCORING_FIRST_DATA_ROW + index;
     const row = sheet.getRow(r);
     row.height = 18;
+    const isFirmBoundary = previousFirmId !== null && firm.id !== previousFirmId;
+    previousFirmId = firm.id;
+
     row.getCell(1).value = firm.name;
     row.getCell(2).value = criterion.name;
     row.getCell(3).value = criterion.description;
@@ -191,19 +236,27 @@ function buildScoringSheet(
       cell.protection = { locked: true };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: lockedFill } };
       cell.alignment = { vertical: "top", wrapText: true };
+      if (isFirmBoundary) {
+        cell.border = { top: { style: "thick", color: { argb: BRAND_BLUE } } };
+      }
     }
     // Hidden ID columns stay locked, no visual treatment needed (never seen).
     for (const c of [6, 7, 8]) {
       row.getCell(c).protection = { locked: true };
     }
 
-    // Editable columns: WFRC-yellow tint + border — the primary "type here" cue.
+    // Editable columns: WFRC-yellow tint + border — the primary "type here" cue. The firm-
+    // boundary top border overrides just that one side (thick blue instead of thin yellow)
+    // rather than replacing the whole border, so the yellow "editable" cue survives intact
+    // on the other three sides.
     for (const c of [4, 5]) {
       const cell = row.getCell(c);
       cell.protection = { locked: false };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BRAND_YELLOW_TINT } };
       cell.border = {
-        top: { style: "thin", color: { argb: BRAND_YELLOW_BORDER } },
+        top: isFirmBoundary
+          ? { style: "thick", color: { argb: BRAND_BLUE } }
+          : { style: "thin", color: { argb: BRAND_YELLOW_BORDER } },
         bottom: { style: "thin", color: { argb: BRAND_YELLOW_BORDER } },
         left: { style: "thin", color: { argb: BRAND_YELLOW_BORDER } },
         right: { style: "thin", color: { argb: BRAND_YELLOW_BORDER } },
@@ -211,16 +264,9 @@ function buildScoringSheet(
       cell.alignment = { vertical: "middle", wrapText: true };
     }
 
-    // Score dropdown restricted to the project's configured scale values (FR-017).
-    row.getCell(4).dataValidation = {
-      type: "list",
-      allowBlank: true,
-      formulae: [dropdownFormula],
-      showErrorMessage: true,
-      errorStyle: "error",
-      errorTitle: "Invalid score",
-      error: "Please choose one of the listed scale values.",
-    };
+    // Score input restricted to the project's configured scale (FR-017) — a dropdown of
+    // exact values in discrete mode, a min/max decimal range in continuous mode.
+    row.getCell(4).dataValidation = scoreValidation;
   });
 
   // Hidden ID columns (F, G, H) — never re-derived from visible text on import.

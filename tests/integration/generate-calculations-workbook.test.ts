@@ -202,4 +202,25 @@ describe("generateCalculationsWorkbook", () => {
     expect(totalsRow.getCell(8).result).toBe(0); // SUM() of all-blank cells is 0, not an error
     expect(totalsRow.getCell(9).result).toBe(0); // TLC Applicant Wtd column
   });
+
+  it("puts a thick rule under every firm's totals row, spanning every column", async () => {
+    const project = buildFixture();
+    const { blob } = await generateCalculationsWorkbook(project);
+    const workbook = await reloadWorkbook(blob);
+    const sheet = workbook.getWorksheet("Calculations")!;
+
+    // Alpha Co's totals row (4) and Beta Co's (7) — 10 columns total: Firm, Criterion,
+    // Weight, Alice, Bob, Overall Avg, TLC Applicant Avg, Overall Wtd, TLC Applicant Wtd,
+    // Completion.
+    for (const rowNum of [4, 7]) {
+      const totalsRow = sheet.getRow(rowNum);
+      for (let c = 1; c <= 10; c++) {
+        expect(totalsRow.getCell(c).border?.bottom?.style).toBe("thick");
+      }
+    }
+
+    // A criteria row (not a totals row) must NOT have this rule — it's specific to the
+    // boundary between one firm's block and the next.
+    expect(sheet.getRow(2).getCell(1).border?.bottom?.style).not.toBe("thick");
+  });
 });

@@ -27,6 +27,7 @@
 // contracts/reviewer-workbook.md is updated to match.
 
 import ExcelJS from "exceljs";
+import { normalizeScoreValue, scaleRange } from "../scoreScale";
 import type { Project, Score } from "../../types/project";
 
 export type RowStatus = "added" | "skipped" | "failed";
@@ -90,6 +91,17 @@ function parseScoreCellValue(raw: unknown): number | null {
   return Number.isFinite(num) ? num : NaN; // NaN signals "present but not a number"
 }
 
+/** Human-readable reason for a "failed" row whose Score cell didn't normalize
+ * (lib/scoreScale.ts) — mode-specific, since discrete rejects anything off the exact list
+ * while continuous only rejects values outside the configured range. */
+function invalidScoreReason(project: Project, rawScore: unknown): string {
+  if (project.scoringScaleMode === "discrete") {
+    return `"${String(rawScore)}" is not one of this project's configured scale values.`;
+  }
+  const { min, max } = scaleRange(project);
+  return `"${String(rawScore)}" is not between this project's configured scale range (${min} to ${max}).`;
+}
+
 /** Scans the sheet's column A for the literal "Firm" header text (generateWorkbook.ts's
  * SCORING_HEADER_ROW content) and returns that row number, or null if not found within a
  * reasonable scan range. Bounded scan (not the full sheet) so a corrupted/unrelated file
@@ -148,7 +160,6 @@ export function parseScoringWorkbook(
     };
   }
 
-  const scaleValues = new Set(project.scoringScale.map((p) => p.value));
   const rows: ParsedRow[] = [];
   let reviewerName: string | undefined;
   const now = new Date().toISOString();
@@ -209,12 +220,13 @@ export function parseScoringWorkbook(
       rows.push({ row: r, status: "skipped", reason: "No score entered yet." });
       continue;
     }
-    if (Number.isNaN(scoreValue) || !scaleValues.has(scoreValue)) {
-      rows.push({
-        row: r,
-        status: "failed",
-        reason: `"${String(rawScore)}" is not one of this project's configured scale values.`,
-      });
+    // Discrete: must exactly match one of the configured values. Continuous: must fall
+    // within [min, max] — normalizeScoreValue also rounds it to one decimal place here, so
+    // a reviewer who typed e.g. 3.14 gets 3.1 committed rather than the import failing over
+    // a hundredth of a point (lib/scoreScale.ts).
+    const normalized = Number.isNaN(scoreValue) ? null : normalizeScoreValue(project, scoreValue);
+    if (normalized === null) {
+      rows.push({ row: r, status: "failed", reason: invalidScoreReason(project, rawScore) });
       continue;
     }
 
@@ -232,7 +244,7 @@ export function parseScoringWorkbook(
     rows.push({
       row: r,
       status: "added",
-      score: { reviewerId, firmId, criterionId, value: scoreValue, comment, updatedAt: now },
+      score: { reviewerId, firmId, criterionId, value: normalized, comment, updatedAt: now },
       overwrites: existing
         ? {
             previousValue: existing.value,

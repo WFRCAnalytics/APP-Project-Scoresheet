@@ -58,6 +58,17 @@ export function validateAndMigrateProject(raw: unknown): ValidationResult {
     );
   }
 
+  // scoringScaleMode addition (discrete vs. continuous scales — types/project.ts). Not a
+  // schemaVersion bump either: every file saved before this option existed was, in effect,
+  // discrete (a reviewer could only pick one of the exact configured values), so a missing
+  // field is migrated to "discrete" explicitly — preserving that file's actual prior
+  // behavior — rather than defaulting to "continuous" (createEmptyProject's default for
+  // brand-new projects only) and silently loosening validation for data nobody asked to
+  // loosen.
+  if (typeof migrated.scoringScaleMode !== "string") {
+    migrated.scoringScaleMode = "discrete";
+  }
+
   let cursor = version;
   let guard = 0;
   while (cursor !== CURRENT_SCHEMA_VERSION) {
@@ -113,6 +124,9 @@ function describeStructuralError(obj: Record<string, unknown>): string | null {
     if (!isPlainObject(point) || typeof point.value !== "number" || typeof point.label !== "string") {
       return "Every scoring scale entry needs a numeric value and a text label.";
     }
+  }
+  if (obj.scoringScaleMode !== "discrete" && obj.scoringScaleMode !== "continuous") {
+    return 'Project field "scoringScaleMode" must be "discrete" or "continuous".';
   }
 
   if (!Array.isArray(obj.criteria)) return '"criteria" must be a list.';

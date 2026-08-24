@@ -1154,24 +1154,6 @@ table.data-table tbody tr:last-child td {
   flex: none;
 }
 
-/* Rank column: the Overall rank badge, plus a TLC Applicant rank note that only appears
-   when the two lenses actually disagree — typography only (font-weight), no new color, per
-   constitution Principle VII: this must read as "worth a second look," not become a second
-   traffic-light color system next to the badge variants. */
-.rank-pair {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.rank-divergence {
-  font-size: var(--text-xs);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-foreground);
-  white-space: nowrap;
-}
-
 .firm-detail-row td {
   background: color-mix(in srgb, var(--color-foreground) 2.5%, transparent);
   border-bottom: 2px solid var(--color-border);

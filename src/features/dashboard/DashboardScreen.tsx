@@ -76,14 +76,16 @@ function CompletionStatusBanner({ scored, expected }: { scored: number; expected
 }
 
 /** Top-of-page orientation strip: how many firms are in the running, who's leading, and
- * whether the two rank lenses (Overall vs. TLC Applicant) ever disagree — before the full
- * ranked table. Included in the printable region too, since it's a useful at-a-glance
- * summary for the procurement record, not just an on-screen convenience. */
+ * whether either of the other two rank lenses (TLC Applicant, WFRC) ever disagrees with
+ * Overall — before the full ranked table. Included in the printable region too, since it's a
+ * useful at-a-glance summary for the procurement record, not just an on-screen convenience. */
 function DashboardSummary({ project }: { project: Project }) {
   const rows = buildRankedRows(project);
   const topRank = rows[0]?.overallRank ?? null;
   const leaders = topRank !== null ? rows.filter((r) => r.overallRank === topRank) : [];
-  const divergentCount = rows.filter((r) => r.overallRank !== r.applicantRank).length;
+  const divergentCount = rows.filter(
+    (r) => r.overallRank !== r.applicantRank || r.overallRank !== r.wfrcRank,
+  ).length;
 
   return (
     <div className="summary-strip">
@@ -166,11 +168,11 @@ export const PrintableDashboard = forwardRef<HTMLDivElement, { project: Project 
 
         <div className="card">
           <div className="chart-controls-row">
-            <h2>Overall vs. TLC Applicant Weighted Totals</h2>
+            <h2>Overall vs. TLC Applicant vs. WFRC Weighted Totals</h2>
             <ChartExportButtons
               getSvg={() => barChartContainerRef.current?.querySelector("svg") ?? null}
               projectName={project.project.projectName}
-              chartLabel="Overall vs TLC Applicant Weighted Totals"
+              chartLabel="Overall vs TLC Applicant vs WFRC Weighted Totals"
               backgroundColor={backgroundColor}
             />
           </div>

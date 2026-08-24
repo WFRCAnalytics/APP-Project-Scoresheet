@@ -51,7 +51,7 @@ describe("useChartColors re-resolves when the effective theme changes", () => {
     stubComputedStyle(LIGHT_TOKENS);
     const { result } = renderHook(() => useChartColors());
 
-    expect(result.current.overallColor).toBe(LIGHT_TOKENS["--chart-1"]);
+    expect(result.current.wfrcColor).toBe(LIGHT_TOKENS["--chart-1"]);
     expect(result.current.foregroundColor).toBe(LIGHT_TOKENS["--color-foreground"]);
 
     // Simulates exactly what useTheme.ts's toggleTheme() does on a manual toggle: flip the
@@ -65,7 +65,7 @@ describe("useChartColors re-resolves when the effective theme changes", () => {
     // MutationObserver callbacks run as a microtask, not synchronously with the mutation —
     // waitFor lets that settle instead of asserting immediately.
     await waitFor(() => {
-      expect(result.current.overallColor).toBe(DARK_TOKENS["--chart-1"]);
+      expect(result.current.wfrcColor).toBe(DARK_TOKENS["--chart-1"]);
     });
     expect(result.current.foregroundColor).toBe(DARK_TOKENS["--color-foreground"]);
     expect(result.current.borderColor).toBe(DARK_TOKENS["--color-border"]);
@@ -75,7 +75,7 @@ describe("useChartColors re-resolves when the effective theme changes", () => {
   it("still re-reads on beforeprint/afterprint (the pre-existing PDF color carve-out)", async () => {
     stubComputedStyle(DARK_TOKENS);
     const { result } = renderHook(() => useChartColors());
-    expect(result.current.overallColor).toBe(DARK_TOKENS["--chart-1"]);
+    expect(result.current.wfrcColor).toBe(DARK_TOKENS["--chart-1"]);
 
     // Printing doesn't touch data-theme — tokens.css's own `@media print` block forces
     // light-mode values regardless of the on-screen theme (constitution Principle VII's
@@ -86,7 +86,7 @@ describe("useChartColors re-resolves when the effective theme changes", () => {
       window.dispatchEvent(new Event("beforeprint"));
     });
     await waitFor(() => {
-      expect(result.current.overallColor).toBe(LIGHT_TOKENS["--chart-1"]);
+      expect(result.current.wfrcColor).toBe(LIGHT_TOKENS["--chart-1"]);
     });
 
     stubComputedStyle(DARK_TOKENS);
@@ -94,7 +94,7 @@ describe("useChartColors re-resolves when the effective theme changes", () => {
       window.dispatchEvent(new Event("afterprint"));
     });
     await waitFor(() => {
-      expect(result.current.overallColor).toBe(DARK_TOKENS["--chart-1"]);
+      expect(result.current.wfrcColor).toBe(DARK_TOKENS["--chart-1"]);
     });
   });
 });

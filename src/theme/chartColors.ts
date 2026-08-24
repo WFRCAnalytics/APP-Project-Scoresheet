@@ -22,14 +22,17 @@ function readColorToken(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-/** The full categorical palette plus the two semantic "metric" colors this dashboard's
- * Overall-vs-TLC-Applicant charts use consistently (Overall = chart-1, TLC Applicant =
- * chart-2) — both charts compare the same two metrics rather than many firms at once, so
- * a fixed metric->color mapping reads more clearly than reassigning colors per firm while
- * still drawing exclusively from the mandated palette.
+/** The full categorical palette plus the three semantic "metric" colors this dashboard's
+ * Overall/TLC-Applicant/WFRC charts use consistently (Overall = chart-3/rtp-mustard
+ * (orange), TLC Applicant = chart-2/rtp-green, WFRC = chart-1/rtp-blue) — these charts
+ * compare the same three metrics rather than many firms at once, so a fixed metric->color
+ * mapping reads more clearly than reassigning colors per firm while still drawing
+ * exclusively from the mandated palette. WFRC deliberately gets the blue slot (its own
+ * brand color is blue — see --color-wfrc-blue in tokens.css) rather than Overall, which
+ * would otherwise be the "default" pick for the first/broadest series.
  *
  * Also resolves foreground/border/background to literal hex, for the same reason
- * overall/applicantColor are resolved rather than left as `var(--chart-1)`: Recharts bakes
+ * overall/applicant/wfrcColor are resolved rather than left as `var(--chart-1)`: Recharts bakes
  * whatever string it's given straight into an SVG `fill`/`stroke` attribute. A literal
  * `var(--color-foreground)` string works fine on-screen (the SVG is embedded in the app's
  * own page, where :root defines that variable), but breaks the moment that SVG is used
@@ -60,8 +63,9 @@ function readColorToken(name: string): string {
  *    listener regardless of the MutationObserver above. */
 export function useChartColors() {
   const [palette, setPalette] = useState<string[]>(() => readChartPalette());
-  const [overallColor, setOverallColor] = useState(() => readColorToken("--chart-1"));
+  const [overallColor, setOverallColor] = useState(() => readColorToken("--chart-3"));
   const [applicantColor, setApplicantColor] = useState(() => readColorToken("--chart-2"));
+  const [wfrcColor, setWfrcColor] = useState(() => readColorToken("--chart-1"));
   const [foregroundColor, setForegroundColor] = useState(() =>
     readColorToken("--color-foreground"),
   );
@@ -73,8 +77,9 @@ export function useChartColors() {
   useEffect(() => {
     const refresh = () => {
       setPalette(readChartPalette());
-      setOverallColor(readColorToken("--chart-1"));
+      setOverallColor(readColorToken("--chart-3"));
       setApplicantColor(readColorToken("--chart-2"));
+      setWfrcColor(readColorToken("--chart-1"));
       setForegroundColor(readColorToken("--color-foreground"));
       setBorderColor(readColorToken("--color-border"));
       setBackgroundColor(readColorToken("--color-background"));
@@ -95,5 +100,13 @@ export function useChartColors() {
     };
   }, []);
 
-  return { palette, overallColor, applicantColor, foregroundColor, borderColor, backgroundColor };
+  return {
+    palette,
+    overallColor,
+    applicantColor,
+    wfrcColor,
+    foregroundColor,
+    borderColor,
+    backgroundColor,
+  };
 }

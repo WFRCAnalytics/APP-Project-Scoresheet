@@ -113,13 +113,14 @@ describe("User Story 3 — Import Returned Scores and View Ranked Results", () =
 
     // Overall Avg: Alpha = (5+1)/2 = 3, Beta = (1+5)/2 = 3 -> TIE, both rank 1.
     // TLC Applicant Avg (Alice only): Alpha = 5, Beta = 1 -> Alpha ranks 1, Beta ranks 2.
+    // WFRC Avg (Bob only): Alpha = 1, Beta = 5 -> Beta ranks 1, Alpha ranks 2.
     // Queried by accessible name (aria-label="Ranked firms") rather than DOM
     // position/order — robust to other <table> elements an expanded row's comments table
     // may add to the tree.
     const rankedTable = screen.getByRole("table", { name: "Ranked firms" });
     const rows = within(rankedTable).getAllByRole("row").slice(1); // skip header
     // Cell 0 is the row-expand toggle, 1 is Rank, 2 is Firm, 3 is Overall Weighted Total,
-    // 4 is TLC Applicant Weighted Total, 5 is Completion.
+    // 4 is TLC Applicant Weighted Total, 5 is WFRC Weighted Total, 6 is Completion.
     const cellsByFirm = Object.fromEntries(
       rows.map((row) => {
         const cells = within(row).getAllByRole("cell");
@@ -127,22 +128,21 @@ describe("User Story 3 — Import Returned Scores and View Ranked Results", () =
       }),
     );
 
-    // Alpha: overall rank 1, applicant rank 1 — the two lenses AGREE, so the rank cell
-    // shows just the overall rank with no "diverges" note.
+    // Alpha: overall rank 1 (a viewer wanting the TLC Applicant/WFRC rank lenses sorts by
+    // those columns directly rather than reading an inline divergence note in the Rank cell).
     expect(within(cellsByFirm["Alpha Co"][1]).getByText("1")).toBeInTheDocument();
-    expect(within(cellsByFirm["Alpha Co"][1]).queryByText(/TLC Applicant #/)).not.toBeInTheDocument();
     expect(cellsByFirm["Alpha Co"][3].textContent).toBe("3"); // Overall Weighted Total
     expect(cellsByFirm["Alpha Co"][4].textContent).toBe("5"); // TLC Applicant Weighted Total
+    expect(cellsByFirm["Alpha Co"][5].textContent).toBe("1"); // WFRC Weighted Total
 
-    // Beta: tied overall rank 1, but applicant rank 2 — the lenses DISAGREE, so the rank
-    // cell must also surface the applicant rank.
+    // Beta: tied overall rank 1.
     expect(within(cellsByFirm["Beta Co"][1]).getByText("1")).toBeInTheDocument();
-    expect(within(cellsByFirm["Beta Co"][1]).getByText(/TLC Applicant #2/)).toBeInTheDocument();
     expect(cellsByFirm["Beta Co"][3].textContent).toBe("3");
     expect(cellsByFirm["Beta Co"][4].textContent).toBe("1");
+    expect(cellsByFirm["Beta Co"][5].textContent).toBe("5"); // WFRC Weighted Total
 
     // Completion: both firms fully scored by both reviewers (1 criterion * 2 reviewers).
-    expect(cellsByFirm["Alpha Co"][5].textContent).toContain("2/2");
+    expect(cellsByFirm["Alpha Co"][6].textContent).toContain("2/2");
 
     // Toggle "show calculations" and confirm the raw per-reviewer scores are traceable.
     // (Since Phase 7, the Calculations view also hosts the manual entry grid, which
@@ -157,10 +157,11 @@ describe("User Story 3 — Import Returned Scores and View Ranked Results", () =
     const dataRow = within(calcTable).getAllByRole("row")[1];
     const dataCells = within(dataRow).getAllByRole("cell");
     // Columns: Criterion, Weight, Alice(applicant), Bob(wfrc), Overall Avg,
-    // TLC Applicant Avg, ...
+    // TLC Applicant Avg, WFRC Avg, ...
     expect(dataCells[2].textContent).toBe("5"); // Alice's raw score
     expect(dataCells[3].textContent).toBe("1"); // Bob's raw score
     expect(dataCells[4].textContent).toBe("3"); // Overall Avg
     expect(dataCells[5].textContent).toBe("5"); // TLC Applicant Avg
+    expect(dataCells[6].textContent).toBe("1"); // WFRC Avg
   });
 });

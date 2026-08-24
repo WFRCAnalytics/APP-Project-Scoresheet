@@ -11,12 +11,12 @@
 // already uses. No calculations.ts changes and no statistical summary (mean/stddev/
 // variance) anywhere — explicit non-goals for this item.
 //
-// Color convention: reuses the exact same two hex values (--chart-1/--chart-2) the radar and
-// bar charts already use for "Overall"/"TLC Applicant", rather than picking two new colors
-// from the RTP/Wasatch palette — TLC Applicant reviewers count toward both Overall and TLC
-// Applicant, WFRC reviewers toward Overall only, so "the reviewers who also feed the green
-// TLC Applicant line are colored green" is a coherent reuse of already brand-verified values
-// (constitution Principle VII). The legend text says "TLC Applicant reviewers" / "WFRC
+// Color convention: reuses the exact same two hex values (wfrcColor/applicantColor) the
+// radar and bar charts already use for "WFRC"/"TLC Applicant", rather than picking two new
+// colors from the RTP/Wasatch palette (constitution Principle VII) — a dot here is one
+// specific reviewer's score, and that reviewer is one specific type, so coloring it by the
+// same token that type's own averaged series uses elsewhere is a direct, literal match, not
+// just a thematically-similar reuse. The legend text says "TLC Applicant reviewers" / "WFRC
 // reviewers" specifically (not "Overall"/"TLC Applicant") so it never reads as if it means
 // the same thing as the radar's legend one component up.
 //
@@ -76,7 +76,7 @@ import { ChartExportButtons } from "./ChartExportButtons";
 import { buildSpreadPoints, type SpreadPoint } from "./reviewerScoreSpread";
 
 export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project; firmId: string }) {
-  const { overallColor, applicantColor, foregroundColor, borderColor, backgroundColor } =
+  const { applicantColor, wfrcColor, foregroundColor, borderColor, backgroundColor } =
     useChartColors();
   const containerRef = useRef<HTMLDivElement>(null);
   const firm = project.firms.find((f) => f.id === firmId);
@@ -105,7 +105,7 @@ export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project
   // color-coded ones a viewer actually needs.
   const legendPayload = [
     { value: "TLC Applicant reviewers", type: "circle" as const, color: applicantColor },
-    { value: "WFRC reviewers", type: "circle" as const, color: overallColor },
+    { value: "WFRC reviewers", type: "circle" as const, color: wfrcColor },
   ];
 
   // Custom content, not formatter/labelFormatter — see this file's header comment on bug #2.
@@ -218,7 +218,7 @@ export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project
                   point its own color by reviewer type without needing a second series. */}
               <Scatter data={points}>
                 {points.map((p, i) => (
-                  <Cell key={i} fill={p.reviewerType === "wfrc" ? overallColor : applicantColor} />
+                  <Cell key={i} fill={p.reviewerType === "wfrc" ? wfrcColor : applicantColor} />
                 ))}
               </Scatter>
             </ScatterChart>

@@ -182,7 +182,7 @@ export function ManualEntryGrid() {
         >
           {project.reviewers.map((reviewer) => (
             <option key={reviewer.id} value={reviewer.id}>
-              {reviewer.name} ({reviewer.type})
+              {reviewer.name} ({reviewer.type === "wfrc" ? "WFRC" : "TLC Applicant"})
             </option>
           ))}
         </SelectField>

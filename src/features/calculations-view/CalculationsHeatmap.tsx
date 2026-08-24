@@ -92,7 +92,7 @@ export function CalculationsHeatmap({ project }: { project: Project }) {
               <th>Criterion</th>
               {project.reviewers.map((reviewer) => (
                 <th key={reviewer.id}>
-                  {reviewer.name} ({reviewer.type})
+                  {reviewer.name} ({reviewer.type === "wfrc" ? "WFRC" : "TLC Applicant"})
                 </th>
               ))}
             </tr>

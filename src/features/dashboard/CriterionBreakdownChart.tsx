@@ -1,8 +1,12 @@
-// T041: Per-firm breakdown chart — a radar chart showing Overall Avg vs. TLC Applicant Avg
-// per criterion for one firm (FR-034), so a viewer can see WHY a firm ranked where it did,
-// not just the final number. Uses the same two metric colors as OverallApplicantBarChart
-// (Overall = chart-1, TLC Applicant = chart-2) for a consistent legend meaning across the
-// whole Dashboard.
+// T041: Per-firm breakdown chart — a radar chart showing Overall/TLC Applicant/WFRC Avg per
+// criterion for one firm (FR-034), so a viewer can see WHY a firm ranked where it did, not
+// just the final number. Uses the same three metric colors as OverallApplicantBarChart
+// (Overall = chart-3/rtp-mustard (orange), TLC Applicant = chart-2/rtp-green, WFRC =
+// chart-1/rtp-blue — WFRC gets the blue slot since that's WFRC's own brand color) for a
+// consistent legend meaning across the whole Dashboard. TLC Applicant and WFRC are each
+// "only" that reviewer type (applicantAvg/wfrcAvg never count the other's scores); Overall
+// is every live reviewer regardless of type, so it's not simply the other two averaged
+// together.
 //
 // Takes a fixed `firmId` rather than owning its own firm picker — since the 003 Dashboard
 // redesign, this only ever renders inside a RankedFirmsTable row's expanded detail, where
@@ -20,13 +24,13 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { applicantAvg, overallAvg, round2 } from "../../lib/calculations";
+import { applicantAvg, overallAvg, wfrcAvg, round2 } from "../../lib/calculations";
 import { useChartColors } from "../../theme/chartColors";
 import type { Project } from "../../types/project";
 import { ChartExportButtons } from "./ChartExportButtons";
 
 export function CriterionBreakdownChart({ project, firmId }: { project: Project; firmId: string }) {
-  const { overallColor, applicantColor, foregroundColor, borderColor, backgroundColor } =
+  const { overallColor, applicantColor, wfrcColor, foregroundColor, borderColor, backgroundColor } =
     useChartColors();
   const containerRef = useRef<HTMLDivElement>(null);
   const firm = project.firms.find((f) => f.id === firmId);
@@ -54,6 +58,7 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
   const data = project.criteria.map((criterion) => {
     const overall = overallAvg(project, firm.id, criterion.id);
     const applicant = applicantAvg(project, firm.id, criterion.id);
+    const wfrc = wfrcAvg(project, firm.id, criterion.id);
     return {
       criterion: criterion.name,
       // A not-yet-scored criterion is plotted at the scale FLOOR, not 0 — with the domain
@@ -66,8 +71,10 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
       // an earned score (FR-026: absence means not yet scored, never zero).
       Overall: overall !== null ? round2(overall) : scaleMin,
       "TLC Applicant": applicant !== null ? round2(applicant) : scaleMin,
+      WFRC: wfrc !== null ? round2(wfrc) : scaleMin,
       OverallScored: overall !== null,
       ApplicantScored: applicant !== null,
+      WfrcScored: wfrc !== null,
     };
   });
 
@@ -106,6 +113,13 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
               fill={applicantColor}
               fillOpacity={0.25}
             />
+            <Radar
+              name="WFRC"
+              dataKey="WFRC"
+              stroke={wfrcColor}
+              fill={wfrcColor}
+              fillOpacity={0.2}
+            />
             <Legend />
             {/* itemStyle/labelStyle explicitly set, not just contentStyle: Recharts
                 defaults itemStyle to an inline `color: #000`, which overrides inherited
@@ -120,7 +134,12 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
               itemStyle={{ color: foregroundColor }}
               labelStyle={{ color: foregroundColor }}
               formatter={(value, name, entry) => {
-                const scoredKey = name === "Overall" ? "OverallScored" : "ApplicantScored";
+                const scoredKey =
+                  name === "Overall"
+                    ? "OverallScored"
+                    : name === "TLC Applicant"
+                      ? "ApplicantScored"
+                      : "WfrcScored";
                 const scored = (entry.payload as { [key: string]: unknown })[scoredKey];
                 return scored ? value : "Not yet scored";
               }}

@@ -12,6 +12,8 @@ import {
   overallWeightedTotal,
   rankFirms,
   round2,
+  wfrcAvg,
+  wfrcWeightedTotal,
 } from "../../src/lib/calculations";
 import { createEmptyProject, type Project } from "../../src/types/project";
 
@@ -24,12 +26,14 @@ import { createEmptyProject, type Project } from "../../src/types/project";
  *   firm-1 / crit-1: rev-1=5, rev-2=3, rev-3=5
  *     -> overallAvg   = (5+3+5)/3 = 13/3 ≈ 4.3333
  *     -> applicantAvg = (5+3)/2   = 4
+ *     -> wfrcAvg      = 5/1       = 5   (only rev-3, the only wfrc reviewer)
  *   firm-1 / crit-2: rev-1=1, rev-3=3 (rev-2 hasn't scored this cell)
  *     -> overallAvg   = (1+3)/2 = 2
  *     -> applicantAvg = 1/1     = 1   (only rev-1, the only applicant reviewer who scored it)
+ *     -> wfrcAvg      = 3/1     = 3
  *   firm-2 / crit-1: rev-1=3, rev-2=3, rev-3=3
- *     -> overallAvg = 3, applicantAvg = 3
- *   firm-2 / crit-2: no scores at all -> both averages are null
+ *     -> overallAvg = 3, applicantAvg = 3, wfrcAvg = 3
+ *   firm-2 / crit-2: no scores at all -> all three averages are null
  *   firm-3: not submitted -> excluded from ranking entirely, even though it has no scores
  */
 function buildFixture(): Project {
@@ -79,6 +83,23 @@ describe("overallAvg / applicantAvg", () => {
   it("returns null (never 0) for a cell nobody has scored yet", () => {
     expect(overallAvg(project, "firm-2", "crit-2")).toBeNull();
     expect(applicantAvg(project, "firm-2", "crit-2")).toBeNull();
+    expect(wfrcAvg(project, "firm-2", "crit-2")).toBeNull();
+  });
+});
+
+describe("wfrcAvg", () => {
+  const project = buildFixture();
+
+  it("computes the WFRC average from wfrc-type reviewers only — the mirror of applicantAvg", () => {
+    expect(wfrcAvg(project, "firm-1", "crit-1")).toBe(5);
+    expect(wfrcAvg(project, "firm-1", "crit-2")).toBe(3);
+    expect(wfrcAvg(project, "firm-2", "crit-1")).toBe(3);
+  });
+
+  it("never counts applicant-type reviewers, even when they're the only ones who scored", () => {
+    // firm-1/crit-2: only rev-1 (applicant) and rev-3 (wfrc) scored — rev-2 (applicant)
+    // didn't. wfrcAvg must reflect only rev-3's score (3), not be pulled toward rev-1's.
+    expect(wfrcAvg(project, "firm-1", "crit-2")).toBe(3);
   });
 });
 
@@ -96,6 +117,13 @@ describe("weighted totals", () => {
     // firm-1: 4 * 0.6 + 1 * 0.4 = 2.4 + 0.4 = 2.8
     expect(applicantWeightedTotal(project, "firm-1")).toBeCloseTo(2.8, 10);
     expect(applicantWeightedTotal(project, "firm-2")).toBeCloseTo(1.8, 10);
+  });
+
+  it("computes WFRC Weighted Total the same way, from wfrc averages", () => {
+    // firm-1: 5 * 0.6 + 3 * 0.4 = 3.0 + 1.2 = 4.2
+    expect(wfrcWeightedTotal(project, "firm-1")).toBeCloseTo(4.2, 10);
+    // firm-2: 3 * 0.6 + (null -> 0) * 0.4 = 1.8
+    expect(wfrcWeightedTotal(project, "firm-2")).toBeCloseTo(1.8, 10);
   });
 });
 
@@ -135,6 +163,15 @@ describe("rankFirms / getRank", () => {
     expect(byFirm["firm-1"]).toBe(1);
     expect(byFirm["firm-2"]).toBe(1); // tied with firm-1
     expect(byFirm["firm-4"]).toBe(3); // next distinct rank skips 2
+  });
+
+  it("ranks by the wfrc basis too — rankFirms' three-way dispatch, not just overall/applicant", () => {
+    const project = buildFixture();
+    // wfrc totals: firm-1 = 4.2, firm-2 = 1.8 (from the weighted-totals describe above) —
+    // same order as overall here, but computed from an entirely different basis.
+    const ranked = rankFirms(project, "wfrc");
+    expect(ranked.find((r) => r.firmId === "firm-1")?.rank).toBe(1);
+    expect(ranked.find((r) => r.firmId === "firm-2")?.rank).toBe(2);
   });
 });
 

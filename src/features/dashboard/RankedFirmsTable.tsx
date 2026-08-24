@@ -21,7 +21,7 @@ import { CriterionBreakdownChart } from "./CriterionBreakdownChart";
 import { FirmCommentsTable } from "./FirmCommentsTable";
 import { ReviewerScoreSpreadChart } from "./ReviewerScoreSpreadChart";
 
-type SortKey = "rank" | "firm" | "overall" | "applicant" | "completion";
+type SortKey = "rank" | "firm" | "overall" | "applicant" | "wfrc" | "completion";
 type SortDirection = "asc" | "desc";
 
 // Clicking a not-yet-active column header starts from the direction that's most useful for
@@ -32,6 +32,7 @@ const DEFAULT_DIRECTION: Record<SortKey, SortDirection> = {
   firm: "asc",
   overall: "desc",
   applicant: "desc",
+  wfrc: "desc",
   completion: "desc",
 };
 
@@ -49,6 +50,8 @@ function compareRows(a: RankedRow, b: RankedRow, key: SortKey): number {
       return a.overallTotal - b.overallTotal;
     case "applicant":
       return a.applicantTotal - b.applicantTotal;
+    case "wfrc":
+      return a.wfrcTotal - b.wfrcTotal;
     case "completion":
       return completionFraction(a) - completionFraction(b);
   }
@@ -179,6 +182,13 @@ export function RankedFirmsTable({ project }: { project: Project }) {
               onSort={toggleSort}
             />
             <SortableHeader
+              label="WFRC Weighted Total"
+              sortKey="wfrc"
+              activeKey={sortKey}
+              direction={direction}
+              onSort={toggleSort}
+            />
+            <SortableHeader
               label="Completion"
               sortKey="completion"
               activeKey={sortKey}
@@ -191,7 +201,6 @@ export function RankedFirmsTable({ project }: { project: Project }) {
           {displayRows.map((row) => {
             const isExpanded = isPrinting || expandedIds.has(row.firm.id);
             const detailId = `firm-detail-${row.firm.id}`;
-            const diverges = row.overallRank !== row.applicantRank;
             return (
               <Fragment key={row.firm.id}>
                 <tr>
@@ -214,27 +223,21 @@ export function RankedFirmsTable({ project }: { project: Project }) {
                     </button>
                   </td>
                   <td>
-                    <div className="rank-pair">
-                      <Badge variant={row.overallRank === topOverallRank ? "info" : "neutral"}>
-                        {row.overallRank}
-                      </Badge>
-                      {diverges && (
-                        <span className="rank-divergence">
-                          · TLC Applicant #{row.applicantRank}
-                        </span>
-                      )}
-                    </div>
+                    <Badge variant={row.overallRank === topOverallRank ? "info" : "neutral"}>
+                      {row.overallRank}
+                    </Badge>
                   </td>
                   <td>{row.firm.name}</td>
                   <td>{round2(row.overallTotal)}</td>
                   <td>{round2(row.applicantTotal)}</td>
+                  <td>{round2(row.wfrcTotal)}</td>
                   <td>
                     <CompletionBar {...row.comp} />
                   </td>
                 </tr>
                 {isExpanded && (
                   <tr id={detailId} className="firm-detail-row">
-                    <td colSpan={6}>
+                    <td colSpan={7}>
                       <div className="firm-detail">
                         <CriterionBreakdownChart project={project} firmId={row.firm.id} />
                         <ReviewerScoreSpreadChart project={project} firmId={row.firm.id} />

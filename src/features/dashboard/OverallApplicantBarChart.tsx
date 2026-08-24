@@ -1,10 +1,16 @@
-// T040: Recharts bar chart comparing submitted firms on Overall vs. TLC Applicant weighted
-// totals (FR-034), colored from the theme's categorical chart tokens (T017/research.md
-// §10) — never invented colors, per constitution Principle VII.
+// T040: Recharts bar chart comparing submitted firms on Overall vs. TLC Applicant vs. WFRC
+// weighted totals (FR-034), colored from the theme's categorical chart tokens
+// (T017/research.md §10) — never invented colors, per constitution Principle VII. TLC
+// Applicant and WFRC are each "only" that reviewer type's scores (applicantWeightedTotal/
+// wfrcWeightedTotal never count the other's) — Overall isn't the two of them combined, it's
+// every live reviewer regardless of type.
 //
 // Renamed from OverallCityBarChart: "City" generalized to "TLC Applicant" so a county TLC
 // applicant isn't mislabeled — see types/project.ts's ReviewerType comment for the full
-// rationale.
+// rationale. Component name kept as OverallApplicantBarChart even after the WFRC bar was
+// added — still accurate (it does show Overall and TLC Applicant, among others), and a
+// third rename would've meant editing this file's own imports everywhere else for a name
+// that's already correctly not-wrong, just not maximally descriptive.
 
 import type { RefObject } from "react";
 import { BarChart3 } from "lucide-react";
@@ -22,7 +28,12 @@ import { EmptyState } from "../../components/EmptyState";
 import { round2 } from "../../lib/calculations";
 import { useChartColors } from "../../theme/chartColors";
 import type { Project } from "../../types/project";
-import { getRank, applicantWeightedTotal, overallWeightedTotal } from "../../lib/calculations";
+import {
+  getRank,
+  applicantWeightedTotal,
+  overallWeightedTotal,
+  wfrcWeightedTotal,
+} from "../../lib/calculations";
 
 export interface OverallApplicantBarChartProps {
   project: Project;
@@ -35,7 +46,7 @@ export interface OverallApplicantBarChartProps {
 }
 
 export function OverallApplicantBarChart({ project, containerRef }: OverallApplicantBarChartProps) {
-  const { overallColor, applicantColor, foregroundColor, borderColor, backgroundColor } =
+  const { overallColor, applicantColor, wfrcColor, foregroundColor, borderColor, backgroundColor } =
     useChartColors();
 
   const data = project.firms
@@ -44,6 +55,7 @@ export function OverallApplicantBarChart({ project, containerRef }: OverallAppli
       name: firm.name,
       Overall: round2(overallWeightedTotal(project, firm.id)),
       "TLC Applicant": round2(applicantWeightedTotal(project, firm.id)),
+      WFRC: round2(wfrcWeightedTotal(project, firm.id)),
       overallRank: getRank(project, firm.id, "overall"),
     }))
     .sort((a, b) => (a.overallRank ?? 0) - (b.overallRank ?? 0));
@@ -98,6 +110,7 @@ export function OverallApplicantBarChart({ project, containerRef }: OverallAppli
           <Legend />
           <Bar dataKey="Overall" fill={overallColor} />
           <Bar dataKey="TLC Applicant" fill={applicantColor} />
+          <Bar dataKey="WFRC" fill={wfrcColor} />
         </BarChart>
       </ResponsiveContainer>
     </div>

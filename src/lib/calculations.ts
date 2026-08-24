@@ -1,5 +1,6 @@
 // T009: The calculation engine — pure, framework-free functions computing Overall/TLC
-// Applicant averages, weighted totals, competition-style ranks, and completion counts.
+// Applicant/WFRC averages, weighted totals, competition-style ranks, and completion
+// counts.
 //
 // This module has NO React import and NO hidden state: every function is a pure function
 // of the `Project` object passed in. That is deliberate — constitution Principle VI
@@ -23,11 +24,12 @@ function mean(values: number[]): number | null {
   return values.reduce((sum, v) => sum + v, 0) / values.length;
 }
 
-/** Reviewers to consider for a given weight basis (FR-026, FR-027). */
+/** Reviewers to consider for a given weight basis (FR-026, FR-027). "overall" is every
+ * live reviewer regardless of type; "applicant"/"wfrc" each restrict to that one type
+ * only — symmetric treatment, neither is a fallback/default for the other. */
 function reviewersFor(project: Project, by: WeightBasis) {
-  return by === "applicant"
-    ? project.reviewers.filter((r) => r.type === "applicant")
-    : project.reviewers;
+  if (by === "overall") return project.reviewers;
+  return project.reviewers.filter((r) => r.type === by);
 }
 
 /**
@@ -63,6 +65,12 @@ export function applicantAvg(project: Project, firmId: string, criterionId: stri
   return mean(liveScoresFor(project, firmId, criterionId, "applicant").map((s) => s.value));
 }
 
+/** WFRC Avg for a firm/criterion: mean of live `type: "wfrc"` reviewers' scores only —
+ * the mirror image of applicantAvg. applicant-type reviewers never contribute here. */
+export function wfrcAvg(project: Project, firmId: string, criterionId: string): number | null {
+  return mean(liveScoresFor(project, firmId, criterionId, "wfrc").map((s) => s.value));
+}
+
 /** Overall Weighted Total for a firm: sum across criteria of overallAvg × weight
  * (FR-028). Criteria with no scores yet contribute 0 to the running sum — the total is
  * therefore a legitimate partial value, not an error state; pair it with `completion()`
@@ -79,6 +87,15 @@ export function overallWeightedTotal(project: Project, firmId: string): number {
 export function applicantWeightedTotal(project: Project, firmId: string): number {
   return project.criteria.reduce((total, c) => {
     const avg = applicantAvg(project, firmId, c.id);
+    return total + (avg ?? 0) * c.weight;
+  }, 0);
+}
+
+/** WFRC Weighted Total for a firm: sum across criteria of wfrcAvg × weight — the mirror
+ * image of applicantWeightedTotal. */
+export function wfrcWeightedTotal(project: Project, firmId: string): number {
+  return project.criteria.reduce((total, c) => {
+    const avg = wfrcAvg(project, firmId, c.id);
     return total + (avg ?? 0) * c.weight;
   }, 0);
 }
@@ -101,14 +118,13 @@ const TIE_EPSILON = 1e-9;
  * skips accordingly (1, 1, 3 — not 1, 1, 2) (FR-029).
  */
 export function rankFirms(project: Project, by: WeightBasis): RankedFirm[] {
+  const weightedTotal =
+    by === "applicant" ? applicantWeightedTotal : by === "wfrc" ? wfrcWeightedTotal : overallWeightedTotal;
   const totals = project.firms
     .filter((f) => f.submitted)
     .map((f) => ({
       firmId: f.id,
-      total:
-        by === "applicant"
-          ? applicantWeightedTotal(project, f.id)
-          : overallWeightedTotal(project, f.id),
+      total: weightedTotal(project, f.id),
     }));
 
   totals.sort((a, b) => b.total - a.total);

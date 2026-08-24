@@ -4,11 +4,11 @@
 // test specifically asserts the totals row lines up under the SAME header text it's meant
 // to be under, not just that some value exists somewhere in the row.
 //
-// Every derived cell (Overall/TLC Applicant Avg, Overall/TLC Applicant Wtd, Completion, and
-// each firm's totals row) is a real formula now, not a hardcoded snapshot number — see
-// generateCalculationsWorkbook.ts's own header comment for the full design. These tests
-// assert both the FORMULA TEXT (so a handler opening the file in real Excel can audit/
-// recalculate it) and the cached RESULT (what shows before Excel's own recalculation).
+// Every derived cell (Overall/TLC Applicant/WFRC Avg, Overall/TLC Applicant/WFRC Wtd,
+// Completion, and each firm's totals row) is a real formula now, not a hardcoded snapshot
+// number — see generateCalculationsWorkbook.ts's own header comment for the full design.
+// These tests assert both the FORMULA TEXT (so a handler opening the file in real Excel can
+// audit/recalculate it) and the cached RESULT (what shows before Excel's own recalculation).
 // @vitest-environment node
 
 import ExcelJS from "exceljs";
@@ -80,7 +80,7 @@ async function reloadWorkbook(blob: Blob): Promise<ExcelJS.Workbook> {
 }
 
 describe("generateCalculationsWorkbook", () => {
-  it("has a header row matching Firm/Criterion/Weight/[reviewers]/Overall Avg/TLC Applicant Avg/Overall Wtd/TLC Applicant Wtd/Completion", async () => {
+  it("has a header row matching Firm/Criterion/Weight/[reviewers]/Overall Avg/TLC Applicant Avg/WFRC Avg/Overall Wtd/TLC Applicant Wtd/WFRC Wtd/Completion", async () => {
     const project = buildFixture();
     const { blob } = await generateCalculationsWorkbook(project);
     const workbook = await reloadWorkbook(blob);
@@ -97,13 +97,15 @@ describe("generateCalculationsWorkbook", () => {
       "Bob (WFRC)",
       "Overall Avg",
       "TLC Applicant Avg",
+      "WFRC Avg",
       "Overall Wtd",
       "TLC Applicant Wtd",
+      "WFRC Wtd",
       "Completion",
     ]);
   });
 
-  it("computes Overall/TLC Applicant Avg and Wtd via real formulas, not hardcoded numbers", async () => {
+  it("computes Overall/TLC Applicant/WFRC Avg and Wtd via real formulas, not hardcoded numbers", async () => {
     const project = buildFixture();
     const { blob } = await generateCalculationsWorkbook(project);
     const workbook = await reloadWorkbook(blob);
@@ -119,15 +121,24 @@ describe("generateCalculationsWorkbook", () => {
     expect(applicantAvgCell.formula).toBe('IFERROR(AVERAGE(D2),"")');
     expect(applicantAvgCell.result).toBe(5);
 
-    const overallWtdCell = sheet.getCell("H2");
+    const wfrcAvgCell = sheet.getCell("H2");
+    // WFRC-only average references Bob's cell directly, not a range including Alice.
+    expect(wfrcAvgCell.formula).toBe('IFERROR(AVERAGE(E2),"")');
+    expect(wfrcAvgCell.result).toBe(1);
+
+    const overallWtdCell = sheet.getCell("I2");
     expect(overallWtdCell.formula).toBe('IFERROR(F2*C2,"")'); // Avg cell x Weight cell
     expect(overallWtdCell.result).toBeCloseTo(1.8, 10); // 3 * 0.6
 
-    const applicantWtdCell = sheet.getCell("I2");
+    const applicantWtdCell = sheet.getCell("J2");
     expect(applicantWtdCell.formula).toBe('IFERROR(G2*C2,"")');
     expect(applicantWtdCell.result).toBeCloseTo(3, 10); // 5 * 0.6
 
-    const completionCell = sheet.getCell("J2");
+    const wfrcWtdCell = sheet.getCell("K2");
+    expect(wfrcWtdCell.formula).toBe('IFERROR(H2*C2,"")');
+    expect(wfrcWtdCell.result).toBeCloseTo(0.6, 10); // 1 * 0.6
+
+    const completionCell = sheet.getCell("L2");
     // Denominator is COLUMNS(D2:E2), not a hardcoded "2" — stays correct on its own even if
     // the reviewer range it's paired with ever did.
     expect(completionCell.formula).toBe('COUNT(D2:E2)&"/"&COLUMNS(D2:E2)');
@@ -147,29 +158,34 @@ describe("generateCalculationsWorkbook", () => {
     // accepted here rather than over-asserting a serialization quirk.
     expect(sheet.getCell("F5").result ?? "").toBe(""); // Overall Avg
     expect(sheet.getCell("G5").result ?? "").toBe(""); // TLC Applicant Avg
-    expect(sheet.getCell("H5").result ?? "").toBe(""); // Overall Wtd
-    expect(sheet.getCell("I5").result ?? "").toBe(""); // TLC Applicant Wtd
-    expect(sheet.getCell("J5").result).toBe("0/2"); // Completion — COUNT still resolves to 0
+    expect(sheet.getCell("H5").result ?? "").toBe(""); // WFRC Avg
+    expect(sheet.getCell("I5").result ?? "").toBe(""); // Overall Wtd
+    expect(sheet.getCell("J5").result ?? "").toBe(""); // TLC Applicant Wtd
+    expect(sheet.getCell("K5").result ?? "").toBe(""); // WFRC Wtd
+    expect(sheet.getCell("L5").result).toBe("0/2"); // Completion — COUNT still resolves to 0
   });
 
-  it("puts each firm's totals row formulas directly under the Overall Wtd / TLC Applicant Wtd header columns, not offset", async () => {
+  it("puts each firm's totals row formulas directly under the Overall Wtd / TLC Applicant Wtd / WFRC Wtd header columns, not offset", async () => {
     const project = buildFixture();
     const { blob } = await generateCalculationsWorkbook(project);
     const workbook = await reloadWorkbook(blob);
     const sheet = workbook.getWorksheet("Calculations")!;
 
-    // Locate the header row's Overall Wtd / TLC Applicant Wtd columns dynamically, rather
+    // Locate the header row's Overall/TLC Applicant/WFRC Wtd columns dynamically, rather
     // than hardcoding a column letter a second time in this test.
     const headerRow = sheet.getRow(1);
     let overallWtdCol = -1;
     let applicantWtdCol = -1;
+    let wfrcWtdCol = -1;
     for (let c = 1; c <= headerRow.cellCount; c++) {
       const value = headerRow.getCell(c).value;
       if (value === "Overall Wtd") overallWtdCol = c;
       if (value === "TLC Applicant Wtd") applicantWtdCol = c;
+      if (value === "WFRC Wtd") wfrcWtdCol = c;
     }
     expect(overallWtdCol).toBeGreaterThan(0);
     expect(applicantWtdCol).toBeGreaterThan(0);
+    expect(wfrcWtdCol).toBeGreaterThan(0);
 
     // Alpha Co: 2 criteria rows (rows 2-3) then its totals row (row 4).
     const totalsRow = sheet.getRow(4);
@@ -177,15 +193,19 @@ describe("generateCalculationsWorkbook", () => {
 
     const overallTotalCell = totalsRow.getCell(overallWtdCol);
     const applicantTotalCell = totalsRow.getCell(applicantWtdCol);
+    const wfrcTotalCell = totalsRow.getCell(wfrcWtdCol);
     // SUM() over exactly this firm's own criteria rows (2-3), not the whole column.
-    expect(overallTotalCell.formula).toBe("SUM(H2:H3)");
-    expect(applicantTotalCell.formula).toBe("SUM(I2:I3)");
+    expect(overallTotalCell.formula).toBe("SUM(I2:I3)");
+    expect(applicantTotalCell.formula).toBe("SUM(J2:J3)");
+    expect(wfrcTotalCell.formula).toBe("SUM(K2:K3)");
 
-    // Overall Wtd = 3*0.6 + 5*0.4 = 3.8; TLC Applicant Wtd (Alice only) = 5*0.6 + 5*0.4 = 5.
+    // Overall Wtd = 3*0.6 + 5*0.4 = 3.8; TLC Applicant Wtd (Alice only) = 5*0.6 + 5*0.4 = 5;
+    // WFRC Wtd (Bob only) = 1*0.6 + 5*0.4 = 2.6.
     expect(overallTotalCell.result).toBeCloseTo(3.8, 10);
     expect(applicantTotalCell.result).toBe(5);
-    // And the cell immediately left of Overall Wtd (TLC Applicant Avg) must NOT hold the
-    // totals value — this is exactly the off-by-one this test was written to catch.
+    expect(wfrcTotalCell.result).toBeCloseTo(2.6, 10);
+    // And the cell immediately left of Overall Wtd (WFRC Avg) must NOT hold the totals
+    // value — this is exactly the off-by-one this test was written to catch.
     expect(totalsRow.getCell(overallWtdCol - 1).value).not.toBe(3.8);
   });
 
@@ -198,9 +218,10 @@ describe("generateCalculationsWorkbook", () => {
     // Beta Co: rows 5-6 (criteria), row 7 (totals) — nothing scored for Beta at all.
     const totalsRow = sheet.getRow(7);
     expect(totalsRow.getCell(1).value).toBe("Beta Co — Weighted Totals");
-    expect(totalsRow.getCell(8).formula).toBe("SUM(H5:H6)"); // Overall Wtd column
-    expect(totalsRow.getCell(8).result).toBe(0); // SUM() of all-blank cells is 0, not an error
-    expect(totalsRow.getCell(9).result).toBe(0); // TLC Applicant Wtd column
+    expect(totalsRow.getCell(9).formula).toBe("SUM(I5:I6)"); // Overall Wtd column
+    expect(totalsRow.getCell(9).result).toBe(0); // SUM() of all-blank cells is 0, not an error
+    expect(totalsRow.getCell(10).result).toBe(0); // TLC Applicant Wtd column
+    expect(totalsRow.getCell(11).result).toBe(0); // WFRC Wtd column
   });
 
   it("puts a thick rule under every firm's totals row, spanning every column", async () => {
@@ -209,12 +230,12 @@ describe("generateCalculationsWorkbook", () => {
     const workbook = await reloadWorkbook(blob);
     const sheet = workbook.getWorksheet("Calculations")!;
 
-    // Alpha Co's totals row (4) and Beta Co's (7) — 10 columns total: Firm, Criterion,
-    // Weight, Alice, Bob, Overall Avg, TLC Applicant Avg, Overall Wtd, TLC Applicant Wtd,
-    // Completion.
+    // Alpha Co's totals row (4) and Beta Co's (7) — 12 columns total: Firm, Criterion,
+    // Weight, Alice, Bob, Overall Avg, TLC Applicant Avg, WFRC Avg, Overall Wtd, TLC
+    // Applicant Wtd, WFRC Wtd, Completion.
     for (const rowNum of [4, 7]) {
       const totalsRow = sheet.getRow(rowNum);
-      for (let c = 1; c <= 10; c++) {
+      for (let c = 1; c <= 12; c++) {
         expect(totalsRow.getCell(c).border?.bottom?.style).toBe("thick");
       }
     }

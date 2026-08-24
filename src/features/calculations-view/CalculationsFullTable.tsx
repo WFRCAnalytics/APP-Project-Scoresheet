@@ -13,6 +13,8 @@ import {
   overallAvg,
   overallWeightedTotal,
   round2,
+  wfrcAvg,
+  wfrcWeightedTotal,
 } from "../../lib/calculations";
 import type { Project } from "../../types/project";
 
@@ -41,8 +43,10 @@ export function CalculationsFullTable({ project }: { project: Project }) {
                   ))}
                   <th className="calc-numeric-header">Overall Avg</th>
                   <th className="calc-numeric-header">TLC Applicant Avg</th>
+                  <th className="calc-numeric-header">WFRC Avg</th>
                   <th className="calc-numeric-header">Overall Wtd</th>
                   <th className="calc-numeric-header">TLC Applicant Wtd</th>
+                  <th className="calc-numeric-header">WFRC Wtd</th>
                   <th>Completion</th>
                 </tr>
               </thead>
@@ -50,6 +54,7 @@ export function CalculationsFullTable({ project }: { project: Project }) {
                 {project.criteria.map((criterion) => {
                   const oAvg = overallAvg(project, firm.id, criterion.id);
                   const cAvg = applicantAvg(project, firm.id, criterion.id);
+                  const wAvg = wfrcAvg(project, firm.id, criterion.id);
                   const cellCompletion = completion(project, firm.id, {
                     criterionId: criterion.id,
                   });
@@ -76,11 +81,15 @@ export function CalculationsFullTable({ project }: { project: Project }) {
                       })}
                       <td className="calc-numeric">{oAvg !== null ? round2(oAvg) : "—"}</td>
                       <td className="calc-numeric">{cAvg !== null ? round2(cAvg) : "—"}</td>
+                      <td className="calc-numeric">{wAvg !== null ? round2(wAvg) : "—"}</td>
                       <td className="calc-numeric">
                         {oAvg !== null ? round2(oAvg * criterion.weight) : "—"}
                       </td>
                       <td className="calc-numeric">
                         {cAvg !== null ? round2(cAvg * criterion.weight) : "—"}
+                      </td>
+                      <td className="calc-numeric">
+                        {wAvg !== null ? round2(wAvg * criterion.weight) : "—"}
                       </td>
                       <td>
                         {cellCompletion.scored}/{cellCompletion.expected} overall,{" "}
@@ -96,14 +105,15 @@ export function CalculationsFullTable({ project }: { project: Project }) {
                   <td colSpan={project.reviewers.length + 2}>
                     <strong>Weighted Totals</strong>
                   </td>
-                  {/* Columns: Overall Avg, TLC Applicant Avg, Overall Wtd, TLC Applicant Wtd
-                      = 4. Was colSpan={2} — left the row 2 columns short of the header,
-                      which is what made the footer visibly not line up with the table above
-                      it once this table got a real border/scroll container. */}
-                  <td colSpan={4} className="calc-numeric">
+                  {/* Columns: Overall Avg, TLC Applicant Avg, WFRC Avg, Overall Wtd, TLC
+                      Applicant Wtd, WFRC Wtd = 6. Was colSpan={2} — left the row short of the
+                      header, which is what made the footer visibly not line up with the
+                      table above it once this table got a real border/scroll container. */}
+                  <td colSpan={6} className="calc-numeric">
                     <strong>
                       Overall: {round2(overallWeightedTotal(project, firm.id))} / TLC Applicant:{" "}
-                      {round2(applicantWeightedTotal(project, firm.id))}
+                      {round2(applicantWeightedTotal(project, firm.id))} / WFRC:{" "}
+                      {round2(wfrcWeightedTotal(project, firm.id))}
                     </strong>
                   </td>
                   {/* Completion column — intentionally blank in the totals row. */}

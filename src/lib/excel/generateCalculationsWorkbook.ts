@@ -5,8 +5,8 @@
 // numbers that already exist, generated the same way (ExcelJS, brand-sourced header color)
 // as everything else in this app's Excel pipeline.
 //
-// Every DERIVED column (Overall Avg, TLC Applicant Avg, Overall Wtd, TLC Applicant Wtd,
-// Completion, and each firm's totals row) is a real Excel formula, not a hardcoded snapshot
+// Every DERIVED column (Overall Avg, TLC Applicant Avg, WFRC Avg, Overall Wtd, TLC Applicant
+// Wtd, WFRC Wtd, Completion, and each firm's totals row) is a real Excel formula, not a hardcoded snapshot
 // number — constitution Principle VI (Transparency) requires every number to be traceable
 // back to raw inputs, and a static value pasted into a cell can't be interrogated or
 // recalculated inside Excel itself the way a formula can. RAW inputs (Firm, Criterion,
@@ -22,9 +22,9 @@
 //  - Overall Avg = AVERAGE() across the (contiguous) full reviewer-score range for that row.
 //    AVERAGE() ignores blank cells on its own, which is exactly liveScoresFor's "mean of
 //    reviewers who actually scored this cell" — an unscored row naturally averages nothing.
-//  - TLC Applicant Avg = AVERAGE() of just the applicant-type reviewers' score cells
+//  - TLC Applicant Avg / WFRC Avg = AVERAGE() of just that type's reviewers' score cells
 //    (usually non-contiguous, so listed individually rather than as one range).
-//  - Both wrapped in IFERROR(...,"") — AVERAGE() of an all-blank set is #DIV/0!, not blank,
+//  - All wrapped in IFERROR(...,"") — AVERAGE() of an all-blank set is #DIV/0!, not blank,
 //    which IFERROR converts back to the same "nothing to show yet" blank the app's own
 //    overallAvg/applicantAvg return as `null`.
 //  - Wtd columns = that row's Avg cell × its Weight cell, IFERROR-wrapped the same way (an
@@ -47,7 +47,15 @@
 
 import ExcelJS from "exceljs";
 import { calculationsWorkbookFilename } from "../filenames";
-import { applicantAvg, applicantWeightedTotal, completion, overallAvg, overallWeightedTotal } from "../calculations";
+import {
+  applicantAvg,
+  applicantWeightedTotal,
+  completion,
+  overallAvg,
+  overallWeightedTotal,
+  wfrcAvg,
+  wfrcWeightedTotal,
+} from "../calculations";
 import type { Project } from "../../types/project";
 
 const BRAND_BLUE = "FF023C5B"; // --color-wfrc-blue
@@ -84,8 +92,10 @@ export async function generateCalculationsWorkbook(
     ...project.reviewers.map((r) => `${r.name} (${r.type === "wfrc" ? "WFRC" : "TLC Applicant"})`),
     "Overall Avg",
     "TLC Applicant Avg",
+    "WFRC Avg",
     "Overall Wtd",
     "TLC Applicant Wtd",
+    "WFRC Wtd",
     "Completion",
   ];
 
@@ -105,25 +115,33 @@ export async function generateCalculationsWorkbook(
   sheet.views = [{ state: "frozen", ySplit: 1 }];
 
   // Column layout — fixed for the whole sheet: Firm, Criterion, Weight, [reviewers...],
-  // Overall Avg, TLC Applicant Avg, Overall Wtd, TLC Applicant Wtd, Completion.
+  // Overall Avg, TLC Applicant Avg, WFRC Avg, Overall Wtd, TLC Applicant Wtd, WFRC Wtd,
+  // Completion.
   const reviewerCount = project.reviewers.length;
   const weightCol = 3;
   const firstReviewerCol = 4;
   const lastReviewerCol = 3 + reviewerCount;
   const overallAvgCol = 4 + reviewerCount;
   const applicantAvgCol = 5 + reviewerCount;
-  const overallWtdCol = 6 + reviewerCount;
-  const applicantWtdCol = 7 + reviewerCount;
-  const completionCol = 8 + reviewerCount;
+  const wfrcAvgCol = 6 + reviewerCount;
+  const overallWtdCol = 7 + reviewerCount;
+  const applicantWtdCol = 8 + reviewerCount;
+  const wfrcWtdCol = 9 + reviewerCount;
+  const completionCol = 10 + reviewerCount;
 
   const weightColLetter = columnLetter(weightCol);
   const overallAvgColLetter = columnLetter(overallAvgCol);
   const applicantAvgColLetter = columnLetter(applicantAvgCol);
-  // Every applicant-type reviewer's column letter — usually non-contiguous, so AVERAGE()
-  // lists them individually rather than assuming a range.
+  const wfrcAvgColLetter = columnLetter(wfrcAvgCol);
+  // Every applicant-/wfrc-type reviewer's column letter — usually non-contiguous, so
+  // AVERAGE() lists them individually rather than assuming a range.
   const applicantReviewerColLetters = project.reviewers
     .map((reviewer, i) => ({ reviewer, colLetter: columnLetter(firstReviewerCol + i) }))
     .filter(({ reviewer }) => reviewer.type === "applicant")
+    .map(({ colLetter }) => colLetter);
+  const wfrcReviewerColLetters = project.reviewers
+    .map((reviewer, i) => ({ reviewer, colLetter: columnLetter(firstReviewerCol + i) }))
+    .filter(({ reviewer }) => reviewer.type === "wfrc")
     .map(({ colLetter }) => colLetter);
 
   let r = 2;
@@ -132,6 +150,7 @@ export async function generateCalculationsWorkbook(
     for (const criterion of project.criteria) {
       const oAvg = overallAvg(project, firm.id, criterion.id);
       const cAvg = applicantAvg(project, firm.id, criterion.id);
+      const wAvg = wfrcAvg(project, firm.id, criterion.id);
       const row = sheet.getRow(r);
       let c = 1;
       row.getCell(c++).value = firm.name;
@@ -165,6 +184,15 @@ export async function generateCalculationsWorkbook(
       }
       applicantAvgCell.numFmt = DECIMAL_FORMAT;
 
+      const wfrcAvgCell = row.getCell(wfrcAvgCol);
+      if (wfrcReviewerColLetters.length > 0) {
+        const cellRefs = wfrcReviewerColLetters.map((col) => `${col}${r}`).join(",");
+        wfrcAvgCell.value = { formula: `IFERROR(AVERAGE(${cellRefs}),"")`, result: wAvg ?? "" };
+      } else {
+        wfrcAvgCell.value = null;
+      }
+      wfrcAvgCell.numFmt = DECIMAL_FORMAT;
+
       const overallWtdCell = row.getCell(overallWtdCol);
       if (reviewerCount > 0) {
         overallWtdCell.value = {
@@ -186,6 +214,17 @@ export async function generateCalculationsWorkbook(
         applicantWtdCell.value = null;
       }
       applicantWtdCell.numFmt = DECIMAL_FORMAT;
+
+      const wfrcWtdCell = row.getCell(wfrcWtdCol);
+      if (wfrcReviewerColLetters.length > 0) {
+        wfrcWtdCell.value = {
+          formula: `IFERROR(${wfrcAvgColLetter}${r}*${weightColLetter}${r},"")`,
+          result: wAvg !== null ? wAvg * criterion.weight : "",
+        };
+      } else {
+        wfrcWtdCell.value = null;
+      }
+      wfrcWtdCell.numFmt = DECIMAL_FORMAT;
 
       const cellCompletion = completion(project, firm.id, { criterionId: criterion.id });
       const completionCell = row.getCell(completionCol);
@@ -209,15 +248,16 @@ export async function generateCalculationsWorkbook(
     const firmLastRow = r - 1;
 
     // One bold totals row per firm, right under its criteria rows — SUM() over this firm's
-    // own Overall Wtd / TLC Applicant Wtd rows, which naturally treats any still-blank
-    // (not-yet-scored) criterion as a 0 contribution, same as overallWeightedTotal /
-    // applicantWeightedTotal do in JS.
+    // own Overall Wtd / TLC Applicant Wtd / WFRC Wtd rows, which naturally treats any
+    // still-blank (not-yet-scored) criterion as a 0 contribution, same as
+    // overallWeightedTotal / applicantWeightedTotal / wfrcWeightedTotal do in JS.
     const totalsRow = sheet.getRow(r);
     totalsRow.getCell(1).value = `${firm.name} — Weighted Totals`;
     totalsRow.getCell(1).font = { bold: true };
 
     const overallWtdColLetter = columnLetter(overallWtdCol);
     const applicantWtdColLetter = columnLetter(applicantWtdCol);
+    const wfrcWtdColLetter = columnLetter(wfrcWtdCol);
     const overallTotalCell = totalsRow.getCell(overallWtdCol);
     overallTotalCell.value = {
       formula: `SUM(${overallWtdColLetter}${firmFirstRow}:${overallWtdColLetter}${firmLastRow})`,
@@ -233,6 +273,14 @@ export async function generateCalculationsWorkbook(
     };
     applicantTotalCell.numFmt = DECIMAL_FORMAT;
     applicantTotalCell.font = { bold: true };
+
+    const wfrcTotalCell = totalsRow.getCell(wfrcWtdCol);
+    wfrcTotalCell.value = {
+      formula: `SUM(${wfrcWtdColLetter}${firmFirstRow}:${wfrcWtdColLetter}${firmLastRow})`,
+      result: wfrcWeightedTotal(project, firm.id),
+    };
+    wfrcTotalCell.numFmt = DECIMAL_FORMAT;
+    wfrcTotalCell.font = { bold: true };
 
     // Thick rule under the totals row, spanning every column — caps off this firm's block
     // before the next firm's criteria rows start, the same visual break the reviewer

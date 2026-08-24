@@ -31,3 +31,34 @@ if (typeof window !== "undefined" && !window.matchMedia) {
     dispatchEvent: () => false,
   }) as MediaQueryList;
 }
+
+// window.localStorage is also unavailable in this jsdom/vitest combination (confirmed empty
+// rather than throwing) — used by theme/useTheme.ts for local-only persistence. A minimal
+// in-memory Storage polyfill, not a claim about real persistence semantics (no cross-tab
+// storage events, no quota) — same "satisfies the API so tests can render past it" spirit as
+// the ResizeObserver/matchMedia polyfills above. Lives for the lifetime of one test file's
+// jsdom window; tests that need isolation between individual `it()` blocks should call
+// `window.localStorage.clear()` in their own `beforeEach`.
+if (typeof window !== "undefined" && !window.localStorage) {
+  const store = new Map<string, string>();
+  const localStoragePolyfill: Storage = {
+    getItem: (key) => (store.has(key) ? (store.get(key) as string) : null),
+    setItem: (key, value) => {
+      store.set(key, String(value));
+    },
+    removeItem: (key) => {
+      store.delete(key);
+    },
+    clear: () => {
+      store.clear();
+    },
+    key: (index) => [...store.keys()][index] ?? null,
+    get length() {
+      return store.size;
+    },
+  };
+  Object.defineProperty(window, "localStorage", {
+    value: localStoragePolyfill,
+    configurable: true,
+  });
+}

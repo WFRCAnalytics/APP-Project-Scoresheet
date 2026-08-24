@@ -1,10 +1,19 @@
 // T025: Firms editor — add/edit/remove, invited/submitted flags, notes, and a
 // confirmation prompt before removing a firm with existing scores (FR-006, FR-007).
+//
+// Name field is a searchable-and-creatable combobox (post-launch improvement,
+// components/ComboBox.tsx) — suggestions come from lib/knownFirms.ts, a static bundled
+// list. Typing a name that isn't on the list is fine (it's still a plain free-text field
+// under the hood) and applies only to this project — there's no separate "firms directory"
+// to save it to or manage; a custom name here is exactly as session-local as it already was
+// before this field became searchable.
 
 import { useState } from "react";
+import { ComboBox } from "../../components/ComboBox";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { findDuplicateNames } from "../../lib/duplicateNames";
 import { generateId } from "../../lib/id";
+import { KNOWN_FIRMS } from "../../lib/knownFirms";
 import { useLoadedProject } from "../../state/ProjectContext";
 import { firmHasScores } from "../../state/projectReducer";
 
@@ -57,15 +66,15 @@ export function FirmsEditor() {
             {project.firms.map((firm) => (
               <tr key={firm.id}>
                 <td>
-                  <input
-                    type="text"
-                    aria-label="Firm name"
+                  <ComboBox
+                    ariaLabel="Firm name"
+                    options={KNOWN_FIRMS}
                     value={firm.name}
-                    onChange={(e) =>
+                    onChange={(name) =>
                       dispatch({
                         type: "UPDATE_FIRM",
                         firmId: firm.id,
-                        patch: { name: e.target.value },
+                        patch: { name },
                       })
                     }
                   />

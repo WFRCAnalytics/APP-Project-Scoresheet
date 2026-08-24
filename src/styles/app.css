@@ -209,6 +209,50 @@ input[type="radio"]:disabled {
   color: var(--color-wfrc-gray);
 }
 
+/* ComboBox (components/ComboBox.tsx) — Firms editor's searchable Name field. The <input>
+   itself already picks up the shared `.data-table td input[type="text"]` treatment above
+   (it's a descendant, not a direct child, of that selector); this only styles the wrapper
+   and the floating suggestion panel, replacing the browser's unstyleable native <datalist>
+   UI it used to render. The panel is `position: fixed` (portaled to document.body — see
+   that file's own comment for why) with its top/left/width set inline per-instance from
+   getBoundingClientRect, so only the parts that don't vary per-instance live here. */
+.combobox {
+  position: relative;
+}
+
+.combobox-listbox {
+  position: fixed;
+  z-index: 20;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1);
+  list-style: none;
+  max-height: 14rem;
+  overflow-y: auto;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+}
+
+.combobox-option {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+
+.combobox-option.is-highlighted {
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+}
+
+.combobox-empty {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-wfrc-gray);
+  cursor: default;
+}
+
 /* ScoringScaleEditor's discrete/continuous mode toggle — a native <fieldset>/radio group
    (same "native control over a custom widget" convention as the Firms editor's Invited/
    Submitted checkboxes), reset to lose the browser's default fieldset border/padding box.

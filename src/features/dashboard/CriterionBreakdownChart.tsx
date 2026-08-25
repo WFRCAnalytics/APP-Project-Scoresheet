@@ -24,10 +24,12 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
+import type { TooltipProps } from "recharts";
 import { applicantAvg, overallAvg, wfrcAvg, round2 } from "../../lib/calculations";
 import { useChartColors } from "../../theme/chartColors";
 import type { Project } from "../../types/project";
 import { ChartExportButtons } from "./ChartExportButtons";
+import { ChartTooltipContent } from "./ChartTooltip";
 
 export function CriterionBreakdownChart({ project, firmId }: { project: Project; firmId: string }) {
   const { overallColor, applicantColor, wfrcColor, foregroundColor, borderColor, backgroundColor } =
@@ -121,28 +123,32 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
               fillOpacity={0.2}
             />
             <Legend />
-            {/* itemStyle/labelStyle explicitly set, not just contentStyle: Recharts
-                defaults itemStyle to an inline `color: #000`, which overrides inherited
-                theme color entirely regardless of what contentStyle's own background/border
-                resolve to — found and fixed on ReviewerScoreSpreadChart's identical tooltip
-                setup first; same omission here, same fix. */}
+            {/* Custom content (ChartTooltip.tsx), not contentStyle/itemStyle/labelStyle/
+                formatter — gives each row a bold VALUE colored to match its own radar area
+                (Overall=orange, TLC Applicant=green, WFRC=blue), and renders "Not yet
+                scored" in italic rather than as plain text indistinguishable from a real
+                number (the earlier `formatter` prop swapped the text but not the styling —
+                still correct in substance, just superseded by owning the whole row's
+                layout via `formatEntry` here instead of only its text). */}
             <Tooltip
-              contentStyle={{
-                background: backgroundColor,
-                border: `1px solid ${borderColor}`,
-              }}
-              itemStyle={{ color: foregroundColor }}
-              labelStyle={{ color: foregroundColor }}
-              formatter={(value, name, entry) => {
-                const scoredKey =
-                  name === "Overall"
-                    ? "OverallScored"
-                    : name === "TLC Applicant"
-                      ? "ApplicantScored"
-                      : "WfrcScored";
-                const scored = (entry.payload as { [key: string]: unknown })[scoredKey];
-                return scored ? value : "Not yet scored";
-              }}
+              content={(props: TooltipProps<number, string>) => (
+                <ChartTooltipContent
+                  {...props}
+                  backgroundColor={backgroundColor}
+                  borderColor={borderColor}
+                  foregroundColor={foregroundColor}
+                  formatEntry={(entry) => {
+                    const scoredKey =
+                      entry.name === "Overall"
+                        ? "OverallScored"
+                        : entry.name === "TLC Applicant"
+                          ? "ApplicantScored"
+                          : "WfrcScored";
+                    const scored = (entry.payload as { [key: string]: unknown })[scoredKey];
+                    return scored ? { text: entry.value } : { text: "Not yet scored", italic: true };
+                  }}
+                />
+              )}
             />
           </RadarChart>
         </ResponsiveContainer>

@@ -24,6 +24,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { TooltipProps } from "recharts";
 import { EmptyState } from "../../components/EmptyState";
 import { round2 } from "../../lib/calculations";
 import { useChartColors } from "../../theme/chartColors";
@@ -34,6 +35,7 @@ import {
   overallWeightedTotal,
   wfrcWeightedTotal,
 } from "../../lib/calculations";
+import { ChartTooltipContent } from "./ChartTooltip";
 
 export interface OverallApplicantBarChartProps {
   project: Project;
@@ -97,15 +99,22 @@ export function OverallApplicantBarChart({ project, containerRef }: OverallAppli
               style: { textAnchor: "middle" },
             }}
           />
-          {/* itemStyle/labelStyle explicitly set, not just contentStyle: Recharts defaults
-              itemStyle to an inline `color: #000`, which overrides inherited theme color
-              entirely regardless of what contentStyle's own background/border resolve to —
-              found and fixed on ReviewerScoreSpreadChart's identical tooltip setup first;
-              same omission here, same fix. */}
+          {/* Custom content (ChartTooltip.tsx), not contentStyle/itemStyle/labelStyle — gives
+              each row a bold VALUE colored to match its own bar (Overall=orange, TLC
+              Applicant=green, WFRC=blue), not just a plain-colored number next to a color
+              swatch, which is all Recharts' own default tooltip layout offers even with
+              itemStyle/labelStyle set (the fix an earlier pass here made, for reference —
+              still correct, just superseded by owning the whole layout instead of patching
+              Recharts' default one). */}
           <Tooltip
-            contentStyle={{ background: backgroundColor, border: `1px solid ${borderColor}` }}
-            itemStyle={{ color: foregroundColor }}
-            labelStyle={{ color: foregroundColor }}
+            content={(props: TooltipProps<number, string>) => (
+              <ChartTooltipContent
+                {...props}
+                backgroundColor={backgroundColor}
+                borderColor={borderColor}
+                foregroundColor={foregroundColor}
+              />
+            )}
           />
           <Legend />
           <Bar dataKey="Overall" fill={overallColor} />

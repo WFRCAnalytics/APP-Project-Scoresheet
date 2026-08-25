@@ -73,6 +73,8 @@ import type { TooltipProps } from "recharts";
 import { useChartColors } from "../../theme/chartColors";
 import type { Project } from "../../types/project";
 import { ChartExportButtons } from "./ChartExportButtons";
+import { TooltipHeading, TooltipRow } from "./ChartTooltip";
+import { tooltipCardStyle } from "./chartTooltipStyle";
 import { buildSpreadPoints, type SpreadPoint } from "./reviewerScoreSpread";
 
 export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project; firmId: string }) {
@@ -110,23 +112,28 @@ export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project
 
   // Custom content, not formatter/labelFormatter — see this file's header comment on bug #2.
   // Reads payload[0] directly (the single hovered point) instead of letting Recharts iterate
-  // one item per axis dataKey (x, y), which is what produced the duplicate row.
+  // one item per axis dataKey (x, y), which is what produced the duplicate row. Styled via
+  // the same tooltipCardStyle/TooltipHeading/TooltipRow pieces the other two Dashboard
+  // charts' tooltips use (ChartTooltip.tsx) — this chart's one-point-per-hover shape doesn't
+  // fit that shared component's per-series-array model, but it should still read as the
+  // same tooltip family: a bold header (which criterion), then a colored swatch + bold
+  // colored score value matching that reviewer's own dot color on the chart.
   const renderTooltipContent = ({ active, payload }: TooltipProps<number, string>) => {
     if (!active || !payload || payload.length === 0) return null;
     const point = payload[0]?.payload as SpreadPoint | undefined;
     if (!point) return null;
     const typeLabel = point.reviewerType === "wfrc" ? "WFRC" : "TLC Applicant";
+    const color = point.reviewerType === "wfrc" ? wfrcColor : applicantColor;
     return (
-      <div
-        style={{
-          background: backgroundColor,
-          border: `1px solid ${borderColor}`,
-          color: foregroundColor,
-          padding: "6px 10px",
-          fontSize: 13,
-        }}
-      >
-        {point.reviewerName} ({typeLabel}) — {point.criterionName} : {point.y}
+      <div style={tooltipCardStyle(backgroundColor, borderColor)}>
+        <TooltipHeading color={foregroundColor}>{point.criterionName}</TooltipHeading>
+        <TooltipRow
+          swatchColor={color}
+          label={`${point.reviewerName} (${typeLabel})`}
+          labelColor={foregroundColor}
+          value={point.y}
+          valueColor={color}
+        />
       </div>
     );
   };

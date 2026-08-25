@@ -54,6 +54,11 @@ describe("ScoringScaleEditor — discrete/continuous mode toggle", () => {
     let valueInputs = screen.getAllByLabelText("Scale point value") as HTMLInputElement[];
     expect(valueInputs).toHaveLength(2);
 
+    // "1.0"/"2.0" here in Continuous, plain "1"/"2" once switched to Discrete — this is
+    // legitimate mode-DEPENDENT DISPLAY formatting (see ScoringScaleEditor's header comment
+    // on value precision: Continuous always shows one decimal, Discrete only does once some
+    // point is genuinely fractional), not the points themselves changing — the underlying
+    // values stay exactly 1 and 2 the whole time; only how they're rendered differs.
     fireEvent.click(screen.getByLabelText(/^Discrete/));
     valueInputs = screen.getAllByLabelText("Scale point value") as HTMLInputElement[];
     expect(valueInputs).toHaveLength(2);
@@ -62,6 +67,6 @@ describe("ScoringScaleEditor — discrete/continuous mode toggle", () => {
     fireEvent.click(screen.getByLabelText(/^Continuous/));
     valueInputs = screen.getAllByLabelText("Scale point value") as HTMLInputElement[];
     expect(valueInputs).toHaveLength(2);
-    expect(valueInputs.map((i) => i.value)).toEqual(["1", "2"]);
+    expect(valueInputs.map((i) => i.value)).toEqual(["1.0", "2.0"]);
   });
 });

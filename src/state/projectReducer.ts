@@ -33,8 +33,18 @@ export type ProjectAction =
   | { type: "UPDATE_CRITERION"; criterionId: string; patch: Partial<Omit<Criterion, "id">> }
   | { type: "REMOVE_CRITERION"; criterionId: string }
   | { type: "ADD_SCALE_POINT"; point: ScoringScalePoint }
-  | { type: "UPDATE_SCALE_POINT"; value: number; patch: Partial<ScoringScalePoint> }
-  | { type: "REMOVE_SCALE_POINT"; value: number }
+  /** Identified by array INDEX, not `value` — `value` is exactly the field this action
+   * usually edits, and ScoringScalePoint has no separate `id` (data-model.md: matched by
+   * `value` in project.json on purpose). Matching the action to a row by `value` meant that
+   * whenever two points transiently (mid-edit) or actually held the same value, `.map()`'s
+   * `p.value === action.value` matched BOTH of them and updated both at once — e.g. editing
+   * one point's value one keystroke at a time can pass through a value another point already
+   * has. Index is stable across a single edit (ScoringScaleEditor renders scoringScale in
+   * its stored order, never re-sorted — see that component's own header comment) and can
+   * never collide, so it's the correct identity here even though the data model itself has
+   * no `id` field to persist. */
+  | { type: "UPDATE_SCALE_POINT"; index: number; patch: Partial<ScoringScalePoint> }
+  | { type: "REMOVE_SCALE_POINT"; index: number }
   | { type: "SET_SCORING_SCALE_MODE"; mode: ScoringScaleMode }
   /** Upserts one or more scores, matched and overwritten by (reviewerId, firmId,
    * criterionId) — the single code path both workbook import and manual entry funnel
@@ -114,14 +124,14 @@ export function projectReducer(state: ProjectState, action: ProjectAction): Proj
     case "UPDATE_SCALE_POINT":
       return {
         ...state,
-        scoringScale: state.scoringScale.map((p) =>
-          p.value === action.value ? { ...p, ...action.patch } : p,
+        scoringScale: state.scoringScale.map((p, i) =>
+          i === action.index ? { ...p, ...action.patch } : p,
         ),
       };
     case "REMOVE_SCALE_POINT":
       return {
         ...state,
-        scoringScale: state.scoringScale.filter((p) => p.value !== action.value),
+        scoringScale: state.scoringScale.filter((_, i) => i !== action.index),
       };
     case "SET_SCORING_SCALE_MODE":
       // Switching modes never touches scoringScale or scores — a raw Score.value is just a

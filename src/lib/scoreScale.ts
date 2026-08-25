@@ -29,8 +29,11 @@ export function scaleRange(project: Project): { min: number; max: number } {
  * choice — reject there, round here — because a mistyped weight silently corrupts a sum a
  * handler configured, while a mistyped score decimal is the reviewer's own single data point
  * and forcing them to redo an entire returned workbook over a hundredth of a point is a much
- * worse failure mode than just rounding it). */
-function roundToOneDecimal(value: number): number {
+ * worse failure mode than just rounding it). Exported: ScoringScaleEditor reuses this exact
+ * same rounding for the scale's own POINT values (not just reviewers' scores) — one decimal
+ * place is the shared precision ceiling for every number this scale ever produces or
+ * accepts, whichever side of "configuring the scale" vs. "scoring against it" it's on. */
+export function roundToOneDecimal(value: number): number {
   return Math.round(value * 10) / 10;
 }
 

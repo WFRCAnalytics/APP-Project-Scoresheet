@@ -103,7 +103,8 @@ function DashboardSummary({ project }: { project: Project }) {
  * so ExportPdfButton (react-to-print) can target this exact DOM node. */
 export const PrintableDashboard = forwardRef<HTMLDivElement, { project: Project }>(
   function PrintableDashboard({ project }, ref) {
-    const { backgroundColor } = useChartColors();
+    const { backgroundColor, foregroundColor, overallColor, applicantColor, wfrcColor } =
+      useChartColors();
     const barChartContainerRef = useRef<HTMLDivElement>(null);
     const rows = buildRankedRows(project);
     const totals = rows.reduce(
@@ -162,6 +163,12 @@ export const PrintableDashboard = forwardRef<HTMLDivElement, { project: Project 
               projectName={project.project.projectName}
               chartLabel="Overall vs TLC Applicant vs WFRC Weighted Totals"
               backgroundColor={backgroundColor}
+              foregroundColor={foregroundColor}
+              legendItems={[
+                { label: "Overall", color: overallColor },
+                { label: "TLC Applicant", color: applicantColor },
+                { label: "WFRC", color: wfrcColor },
+              ]}
             />
           </div>
           <OverallApplicantBarChart project={project} containerRef={barChartContainerRef} />

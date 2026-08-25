@@ -147,6 +147,8 @@ export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project
           projectName={project.project.projectName}
           chartLabel={`Reviewer Score Spread - ${firm.name}`}
           backgroundColor={backgroundColor}
+          foregroundColor={foregroundColor}
+          legendItems={legendPayload.map(({ value, color }) => ({ label: value, color }))}
         />
       </div>
       {points.length === 0 ? (

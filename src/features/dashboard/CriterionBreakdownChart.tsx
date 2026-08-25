@@ -89,6 +89,12 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
           projectName={project.project.projectName}
           chartLabel={`Criterion Breakdown - ${firm.name}`}
           backgroundColor={backgroundColor}
+          foregroundColor={foregroundColor}
+          legendItems={[
+            { label: "Overall", color: overallColor },
+            { label: "TLC Applicant", color: applicantColor },
+            { label: "WFRC", color: wfrcColor },
+          ]}
         />
       </div>
       <div ref={containerRef} style={{ width: "100%", height: 280 }}>

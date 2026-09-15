@@ -12,7 +12,7 @@
 // third rename would've meant editing this file's own imports everywhere else for a name
 // that's already correctly not-wrong, just not maximally descriptive.
 
-import type { RefObject } from "react";
+import { useEffect, useState, type MutableRefObject, type RefObject } from "react";
 import { BarChart3 } from "lucide-react";
 import {
   Bar,
@@ -36,6 +36,17 @@ import {
   wfrcWeightedTotal,
 } from "../../lib/calculations";
 import { ChartTooltipContent } from "./ChartTooltip";
+import { wrapAxisLabel } from "./wrapAxisLabel";
+
+// Same x-axis label treatment as ReviewerScoreSpreadChart's scatter chart (wrapAxisLabel.ts)
+// — a submitted firm's name can be just as long as a criterion's, and Recharts' own default
+// (interval="preserveEnd") responds to that by silently HIDING labels it can't fit rather
+// than wrapping them, which is worse: a bar with no name under it at all.
+const CHART_MARGIN = { top: 8, right: 16, left: 8, bottom: 8 };
+const Y_AXIS_WIDTH = 44;
+const TICK_FONT_SIZE = 12;
+const TICK_LINE_HEIGHT = 14;
+const TICK_LABEL_WIDTH_SAFETY = 0.85;
 
 export interface OverallApplicantBarChartProps {
   project: Project;
@@ -50,6 +61,22 @@ export interface OverallApplicantBarChartProps {
 export function OverallApplicantBarChart({ project, containerRef }: OverallApplicantBarChartProps) {
   const { overallColor, applicantColor, wfrcColor, foregroundColor, borderColor, backgroundColor } =
     useChartColors();
+  // Separate from the caller-supplied containerRef (DashboardScreen reads that imperatively
+  // for its own PNG/SVG export buttons) — this one exists purely to re-run the
+  // ResizeObserver effect below once the chart's wrapper div actually mounts (it doesn't
+  // exist yet on either EmptyState render path).
+  const [measureEl, setMeasureEl] = useState<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    if (!measureEl) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (width) setContainerWidth(width);
+    });
+    observer.observe(measureEl);
+    return () => observer.disconnect();
+  }, [measureEl]);
 
   const data = project.firms
     .filter((f) => f.submitted)
@@ -82,14 +109,53 @@ export function OverallApplicantBarChart({ project, containerRef }: OverallAppli
   const scaleMax = scaleValues.length > 0 ? Math.max(...scaleValues) : 0;
   const totalWeight = project.criteria.reduce((sum, c) => sum + c.weight, 0);
 
+  const plotWidth = containerWidth > 0
+    ? Math.max(0, containerWidth - CHART_MARGIN.left - CHART_MARGIN.right - Y_AXIS_WIDTH)
+    : 0;
+  const bandWidth = plotWidth > 0 ? plotWidth / data.length : Infinity;
+  const tickMaxWidth = bandWidth * TICK_LABEL_WIDTH_SAFETY;
+
+  // Custom x-axis tick: wraps each firm name onto up to two lines (wrapAxisLabel, shared
+  // with ReviewerScoreSpreadChart's x-axis and CriterionBreakdownChart's radar labels),
+  // falling back to an ellipsis-truncated second line + a native SVG <title> hover tooltip
+  // only when two lines still isn't enough room.
+  const renderFirmTick = (props: { x: number; y: number; payload: { value: string } }) => {
+    const { x, y, payload } = props;
+    const name = payload.value ?? "";
+    const { lines, truncated, fullText } = wrapAxisLabel(name, tickMaxWidth, TICK_FONT_SIZE);
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text textAnchor="middle" fontSize={TICK_FONT_SIZE} fill={foregroundColor}>
+          {truncated ? <title>{fullText}</title> : null}
+          {lines.map((line, i) => (
+            <tspan key={i} x={0} dy={i === 0 ? 12 : TICK_LINE_HEIGHT}>
+              {line}
+            </tspan>
+          ))}
+        </text>
+      </g>
+    );
+  };
+
   return (
-    <div ref={containerRef} style={{ width: "100%", height: 320 }}>
+    <div
+      ref={(el) => {
+        // containerRef is declared RefObject<HTMLDivElement> (a caller-owned, read-only-per-
+        // its-type ref) rather than MutableRefObject — this assignment is the same thing
+        // React itself does under the hood when a plain `ref={someRef}` is passed directly;
+        // the cast only works around TS's stricter compile-time view of that same ref object.
+        if (containerRef) (containerRef as MutableRefObject<HTMLDivElement | null>).current = el;
+        setMeasureEl(el);
+      }}
+      style={{ width: "100%", height: 320 }}
+    >
       <ResponsiveContainer>
-        <BarChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+        <BarChart data={data} margin={CHART_MARGIN}>
           <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
-          <XAxis dataKey="name" tick={{ fill: foregroundColor, fontSize: 12 }} />
+          <XAxis dataKey="name" tick={renderFirmTick} interval={0} height={44} />
           <YAxis
             domain={[scaleMin * totalWeight, scaleMax * totalWeight]}
+            width={Y_AXIS_WIDTH}
             tick={{ fill: foregroundColor, fontSize: 12 }}
             label={{
               value: "Weighted Total",

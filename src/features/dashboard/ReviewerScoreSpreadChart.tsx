@@ -55,7 +55,7 @@
 //     renderer that reads payload[0] directly and renders exactly one line, bypassing
 //     Recharts' per-axis-dataKey item iteration entirely rather than trying to out-clever it.
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CartesianGrid,
   Cell,
@@ -76,11 +76,39 @@ import { ChartExportButtons } from "./ChartExportButtons";
 import { TooltipHeading, TooltipRow } from "./ChartTooltip";
 import { tooltipCardStyle } from "./chartTooltipStyle";
 import { buildSpreadPoints, type SpreadPoint } from "./reviewerScoreSpread";
+import { wrapAxisLabel } from "./wrapAxisLabel";
+
+// Layout constants the custom x-axis tick (below) needs to estimate, per criterion, how much
+// horizontal room it has to wrap into — these have to match the real ScatterChart/YAxis props
+// they describe, since there's no live measurement of a not-yet-rendered tick's band width.
+const CHART_MARGIN = { top: 8, right: 16, bottom: 8, left: 8 };
+const Y_AXIS_WIDTH = 44;
+const TICK_FONT_SIZE = 12;
+const TICK_LINE_HEIGHT = 14;
+// Leaves a gap on each side of a band so two adjacent labels' wrapped lines never touch,
+// even when both are wrapped to their band's full nominal width.
+const TICK_LABEL_WIDTH_SAFETY = 0.85;
 
 export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project; firmId: string }) {
   const { applicantColor, wfrcColor, foregroundColor, borderColor, backgroundColor } =
     useChartColors();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  // Separate from containerRef (which ChartExportButtons reads imperatively on click) — this
+  // one exists purely to re-run the ResizeObserver effect below once the chart's wrapper div
+  // actually mounts (it doesn't exist yet on the "no data" render path).
+  const [measureEl, setMeasureEl] = useState<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    if (!measureEl) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (width) setContainerWidth(width);
+    });
+    observer.observe(measureEl);
+    return () => observer.disconnect();
+  }, [measureEl]);
+
   const firm = project.firms.find((f) => f.id === firmId);
 
   if (!firm) return null; // orphaned reference — nothing sensible to render
@@ -101,6 +129,38 @@ export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project
 
   const points = buildSpreadPoints(project, firmId);
   const criterionNames = project.criteria.map((c) => c.name);
+
+  // 0 until the ResizeObserver above reports a real width (nothing measured yet, or the
+  // "no data" branch never mounted the div at all) — bandWidth then falls back to Infinity
+  // below, so a label just renders on one line unwrapped rather than wrapping against a
+  // bogus near-zero width for that one frame.
+  const plotWidth = containerWidth > 0
+    ? Math.max(0, containerWidth - CHART_MARGIN.left - CHART_MARGIN.right - Y_AXIS_WIDTH)
+    : 0;
+  const bandWidth = plotWidth > 0 ? plotWidth / criterionNames.length : Infinity;
+  const tickMaxWidth = bandWidth * TICK_LABEL_WIDTH_SAFETY;
+
+  // Custom x-axis tick: wraps each criterion name onto up to two lines (wrapAxisLabel),
+  // falling back to an ellipsis-truncated second line only when two lines still isn't
+  // enough room — and surfaces the untruncated name via a native SVG <title> (a real
+  // browser tooltip on hover) exactly when something was actually cut, not on every tick.
+  const renderCriterionTick = (props: { x: number; y: number; payload: { value: number } }) => {
+    const { x, y, payload } = props;
+    const name = criterionNames[payload.value] ?? "";
+    const { lines, truncated, fullText } = wrapAxisLabel(name, tickMaxWidth, TICK_FONT_SIZE);
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text textAnchor="middle" fontSize={TICK_FONT_SIZE} fill={foregroundColor}>
+          {truncated ? <title>{fullText}</title> : null}
+          {lines.map((line, i) => (
+            <tspan key={i} x={0} dy={i === 0 ? 12 : TICK_LINE_HEIGHT}>
+              {line}
+            </tspan>
+          ))}
+        </text>
+      </g>
+    );
+  };
 
   // Explicit legend content — with only one <Scatter> series now (see this file's header
   // comment for why), Recharts' auto-legend would show one generic entry instead of the two
@@ -154,9 +214,15 @@ export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project
       {points.length === 0 ? (
         <p className="field-hint">No reviewer scores recorded for this firm yet.</p>
       ) : (
-        <div ref={containerRef} style={{ width: "100%", height: 320 }}>
+        <div
+          ref={(el) => {
+            containerRef.current = el;
+            setMeasureEl(el);
+          }}
+          style={{ width: "100%", height: 320 }}
+        >
           <ResponsiveContainer>
-            <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
+            <ScatterChart margin={CHART_MARGIN}>
               {/* Alternating lane shading — the actual group-boundary fix. Every OTHER
                   criterion (odd index) gets a subtle tint spanning the full value range, so
                   the boundary between groups is a filled edge, not a line a viewer has to
@@ -190,14 +256,15 @@ export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project
                 dataKey="x"
                 domain={[-0.5, criterionNames.length - 0.5]}
                 ticks={criterionNames.map((_, i) => i)}
-                tickFormatter={(i: number) => criterionNames[i] ?? ""}
-                tick={{ fill: foregroundColor, fontSize: 12 }}
+                tick={renderCriterionTick}
                 interval={0}
+                height={44}
               />
               <YAxis
                 type="number"
                 dataKey="y"
                 domain={[scaleMin, scaleMax]}
+                width={Y_AXIS_WIDTH}
                 tick={{ fill: foregroundColor, fontSize: 12 }}
                 label={{
                   value: "Score",

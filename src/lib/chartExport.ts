@@ -35,6 +35,7 @@
 
 import { fetchEmbeddedFontFaceCss } from "./fontEmbed";
 import { downloadBlob } from "./downloadBlob";
+import { estimateTextWidth } from "./textMeasure";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
@@ -57,14 +58,6 @@ const LEGEND_SWATCH_SIZE = 10;
 const LEGEND_ITEM_GAP = 8; // between a swatch and its own label
 const LEGEND_GROUP_GAP = 20; // between one item and the next
 
-/** Rough width estimate for a legend label — good enough for horizontally centering a
- * short, known-in-advance label list (every legend on this Dashboard has 2-3 items), not
- * pixel-perfect text measurement (which would need a live DOM/canvas measurement pass this
- * already-cloned, about-to-be-detached SVG has no cheap way to perform). */
-function estimateTextWidth(text: string): number {
-  return text.length * (LEGEND_FONT_SIZE * 0.58);
-}
-
 /** Appends a legend row as real SVG shapes below the chart's existing content, and grows
  * the SVG's own height (and viewBox, if present) to make room for it — mutates `clone` in
  * place. No-ops if there's no legend to draw, leaving the export exactly as it was before
@@ -79,7 +72,7 @@ function appendLegend(
   if (items.length === 0) return chartHeight;
 
   const itemWidths = items.map(
-    (item) => LEGEND_SWATCH_SIZE + LEGEND_ITEM_GAP + estimateTextWidth(item.label),
+    (item) => LEGEND_SWATCH_SIZE + LEGEND_ITEM_GAP + estimateTextWidth(item.label, LEGEND_FONT_SIZE),
   );
   const totalWidth = itemWidths.reduce((sum, w) => sum + w, 0) + LEGEND_GROUP_GAP * (items.length - 1);
 

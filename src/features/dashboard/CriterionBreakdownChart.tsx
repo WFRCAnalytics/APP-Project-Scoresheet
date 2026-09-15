@@ -13,7 +13,7 @@
 // the firm is already determined by which row is open. There is no longer a standalone
 // "pick a firm from a dropdown" card on the Dashboard.
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   PolarAngleAxis,
   PolarGrid,
@@ -30,11 +30,59 @@ import { useChartColors } from "../../theme/chartColors";
 import type { Project } from "../../types/project";
 import { ChartExportButtons } from "./ChartExportButtons";
 import { ChartTooltipContent } from "./ChartTooltip";
+import { wrapAxisLabel } from "./wrapAxisLabel";
+
+// Layout constants the custom angle-axis tick (below) needs to reconstruct the label
+// circle's real pixel radius, since Recharts doesn't hand a custom tick its own cx/cy/radius
+// directly — these have to match the real <RadarChart>/<PolarAngleAxis> props they describe.
+const RADAR_HEIGHT = 280; // matches the container div's fixed height below
+const RADAR_MARGIN = 5; // RadarChart's own default margin on every side
+const RADAR_OUTER_RADIUS_FRACTION = 0.7; // matches outerRadius="70%" on <RadarChart> below
+const POLAR_TICK_SIZE = 8; // PolarAngleAxis's default tickSize — label distance past the polygon
+const TICK_FONT_SIZE = 12;
+const TICK_LINE_HEIGHT = 14;
+// Same "leave a gap so wrapped lines never quite touch" margin the scatter chart's x-axis
+// tick uses (wrapAxisLabel.ts's caller in ReviewerScoreSpreadChart.tsx).
+const TICK_LABEL_WIDTH_SAFETY = 0.85;
+// A label whose |cos(angle)| is above this sits close enough to due-left/due-right that
+// nothing else on the circle competes with it for horizontal room — its budget should come
+// from the distance to the chart's edge, not from its angular neighbors.
+const HORIZONTAL_COS_THRESHOLD = 0.85;
+// Classifies a label as sitting clearly above center, clearly below, or near the equator
+// (left/right) — determines which way a wrapped 2-line label should stack around its anchor
+// point so it never grows back into the polygon it's labeling.
+const VERTICAL_SIN_THRESHOLD = 0.3;
+
+/** Relative <tspan> dy offsets (first is relative to the tick's own anchor point, the rest
+ * relative to the previous line) that stack a 1- or 2-line label around its anchor without
+ * growing back toward the chart: upward for a label above center, downward for one below,
+ * and centered on the anchor for one near the equator (left/right). */
+function verticalDyOffsets(lineCount: number, position: "above" | "below" | "equator"): number[] {
+  if (position === "above") return lineCount === 1 ? [0] : [-TICK_LINE_HEIGHT, TICK_LINE_HEIGHT];
+  if (position === "below") return lineCount === 1 ? [12] : [12, TICK_LINE_HEIGHT];
+  return lineCount === 1 ? [4] : [-3, TICK_LINE_HEIGHT];
+}
 
 export function CriterionBreakdownChart({ project, firmId }: { project: Project; firmId: string }) {
   const { overallColor, applicantColor, wfrcColor, foregroundColor, borderColor, backgroundColor } =
     useChartColors();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  // Separate from containerRef (which ChartExportButtons reads imperatively on click) — this
+  // one exists purely to re-run the ResizeObserver effect below once the chart's wrapper div
+  // actually mounts (it doesn't exist yet on the "no data" render path).
+  const [measureEl, setMeasureEl] = useState<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    if (!measureEl) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (width) setContainerWidth(width);
+    });
+    observer.observe(measureEl);
+    return () => observer.disconnect();
+  }, [measureEl]);
+
   const firm = project.firms.find((f) => f.id === firmId);
 
   if (!firm) return null; // orphaned reference — nothing sensible to render
@@ -80,6 +128,66 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
     };
   });
 
+  // labelRadius mirrors what Recharts computes internally for outerRadius="70%" + the
+  // default tickSize=8 — there's no live measurement of a not-yet-rendered tick's position,
+  // so this has to be reconstructed from the same inputs Recharts itself uses.
+  const labelRadius = containerWidth > 0
+    ? (Math.max(0, Math.min(containerWidth, RADAR_HEIGHT) / 2 - RADAR_MARGIN) * RADAR_OUTER_RADIUS_FRACTION) +
+      POLAR_TICK_SIZE
+    : 0;
+  const angleStepRad = project.criteria.length > 0 ? (2 * Math.PI) / project.criteria.length : 0;
+  // The straight-line distance between two adjacent labels' anchor points — a label that
+  // ISN'T near due-left/due-right (see isNearHorizontal below) has its closest competitor
+  // for space at roughly this distance, regardless of where on the circle it sits.
+  const neighborChordWidth = labelRadius * 2 * Math.sin(angleStepRad / 2) * TICK_LABEL_WIDTH_SAFETY;
+
+  // Custom angle-axis tick: wraps each criterion name onto up to two lines (wrapAxisLabel,
+  // shared with ReviewerScoreSpreadChart's x-axis), truncating with an ellipsis + a native
+  // SVG <title> hover tooltip only when two lines still isn't enough room. Unlike a
+  // Cartesian axis, how much room a label HAS depends on where it sits on the circle: a
+  // label near due-left/due-right runs into the chart's edge, not its neighbors, so it gets
+  // a much more generous budget than one stacked near the top or bottom.
+  const renderCriterionTick = (props: {
+    x: number;
+    y: number;
+    textAnchor: "start" | "end" | "middle";
+    payload: { value: string; coordinate: number };
+  }) => {
+    const { x, y, textAnchor, payload } = props;
+    const name = payload.value ?? "";
+    if (containerWidth <= 0) {
+      // Not measured yet — render unwrapped for this one frame rather than wrapping against
+      // a bogus zero-width budget.
+      return (
+        <text x={x} y={y} textAnchor={textAnchor} fontSize={TICK_FONT_SIZE} fill={foregroundColor}>
+          {name}
+        </text>
+      );
+    }
+    const angleRad = (payload.coordinate * Math.PI) / 180;
+    const cosA = Math.cos(angleRad);
+    const sinA = Math.sin(angleRad);
+    const isNearHorizontal = Math.abs(cosA) > HORIZONTAL_COS_THRESHOLD && textAnchor !== "middle";
+    const maxWidth = isNearHorizontal
+      ? Math.max(20, (textAnchor === "start" ? containerWidth - x : x) - 8)
+      : neighborChordWidth;
+    const { lines, truncated, fullText } = wrapAxisLabel(name, maxWidth, TICK_FONT_SIZE);
+    const position = sinA > VERTICAL_SIN_THRESHOLD ? "above" : sinA < -VERTICAL_SIN_THRESHOLD ? "below" : "equator";
+    const dys = verticalDyOffsets(lines.length, position);
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text textAnchor={textAnchor} fontSize={TICK_FONT_SIZE} fill={foregroundColor}>
+          {truncated ? <title>{fullText}</title> : null}
+          {lines.map((line, i) => (
+            <tspan key={i} x={0} dy={dys[i]}>
+              {line}
+            </tspan>
+          ))}
+        </text>
+      </g>
+    );
+  };
+
   return (
     <div>
       <div className="chart-controls-row">
@@ -97,11 +205,17 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
           ]}
         />
       </div>
-      <div ref={containerRef} style={{ width: "100%", height: 280 }}>
+      <div
+        ref={(el) => {
+          containerRef.current = el;
+          setMeasureEl(el);
+        }}
+        style={{ width: "100%", height: RADAR_HEIGHT }}
+      >
         <ResponsiveContainer>
           <RadarChart data={data} outerRadius="70%">
             <PolarGrid stroke={borderColor} />
-            <PolarAngleAxis dataKey="criterion" tick={{ fill: foregroundColor, fontSize: 12 }} />
+            <PolarAngleAxis dataKey="criterion" tick={renderCriterionTick} />
             <PolarRadiusAxis
               domain={[scaleMin, scaleMax]}
               tickCount={sortedScaleValues.length}

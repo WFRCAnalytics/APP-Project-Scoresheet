@@ -44,10 +44,6 @@ const TICK_LINE_HEIGHT = 14;
 // Same "leave a gap so wrapped lines never quite touch" margin the scatter chart's x-axis
 // tick uses (wrapAxisLabel.ts's caller in ReviewerScoreSpreadChart.tsx).
 const TICK_LABEL_WIDTH_SAFETY = 0.85;
-// A label whose |cos(angle)| is above this sits close enough to due-left/due-right that
-// nothing else on the circle competes with it for horizontal room — its budget should come
-// from the distance to the chart's edge, not from its angular neighbors.
-const HORIZONTAL_COS_THRESHOLD = 0.85;
 // Classifies a label as sitting clearly above center, clearly below, or near the equator
 // (left/right) — determines which way a wrapped 2-line label should stack around its anchor
 // point so it never grows back into the polygon it's labeling.
@@ -136,17 +132,16 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
       POLAR_TICK_SIZE
     : 0;
   const angleStepRad = project.criteria.length > 0 ? (2 * Math.PI) / project.criteria.length : 0;
-  // The straight-line distance between two adjacent labels' anchor points — a label that
-  // ISN'T near due-left/due-right (see isNearHorizontal below) has its closest competitor
-  // for space at roughly this distance, regardless of where on the circle it sits.
-  const neighborChordWidth = labelRadius * 2 * Math.sin(angleStepRad / 2) * TICK_LABEL_WIDTH_SAFETY;
+  // The straight-line distance between two adjacent labels' anchor points — used as EVERY
+  // label's width budget, regardless of where it sits on the circle. Left/right labels sit
+  // right next to a lot of unused space out to the chart's edge, but capping them to the same
+  // budget top/bottom labels get keeps the whole ring reading as one consistent, evenly
+  // wrapped set instead of a few disproportionately long lines next to a bunch of short ones.
+  const neighborMaxWidth = labelRadius * 2 * Math.sin(angleStepRad / 2) * TICK_LABEL_WIDTH_SAFETY;
 
   // Custom angle-axis tick: wraps each criterion name onto up to two lines (wrapAxisLabel,
   // shared with ReviewerScoreSpreadChart's x-axis), truncating with an ellipsis + a native
-  // SVG <title> hover tooltip only when two lines still isn't enough room. Unlike a
-  // Cartesian axis, how much room a label HAS depends on where it sits on the circle: a
-  // label near due-left/due-right runs into the chart's edge, not its neighbors, so it gets
-  // a much more generous budget than one stacked near the top or bottom.
+  // SVG <title> hover tooltip only when two lines still isn't enough room.
   const renderCriterionTick = (props: {
     x: number;
     y: number;
@@ -165,13 +160,8 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
       );
     }
     const angleRad = (payload.coordinate * Math.PI) / 180;
-    const cosA = Math.cos(angleRad);
     const sinA = Math.sin(angleRad);
-    const isNearHorizontal = Math.abs(cosA) > HORIZONTAL_COS_THRESHOLD && textAnchor !== "middle";
-    const maxWidth = isNearHorizontal
-      ? Math.max(20, (textAnchor === "start" ? containerWidth - x : x) - 8)
-      : neighborChordWidth;
-    const { lines, truncated, fullText } = wrapAxisLabel(name, maxWidth, TICK_FONT_SIZE);
+    const { lines, truncated, fullText } = wrapAxisLabel(name, neighborMaxWidth, TICK_FONT_SIZE);
     const position = sinA > VERTICAL_SIN_THRESHOLD ? "above" : sinA < -VERTICAL_SIN_THRESHOLD ? "below" : "equator";
     const dys = verticalDyOffsets(lines.length, position);
     return (

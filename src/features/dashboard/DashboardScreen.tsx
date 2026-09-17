@@ -34,7 +34,7 @@ import { ChartExportButtons } from "./ChartExportButtons";
 import { EditProjectButton } from "./EditProjectButton";
 import { ExportPdfButton } from "./ExportPdfButton";
 import { ExportProjectButton } from "./ExportProjectButton";
-import { OverallApplicantBarChart } from "./OverallApplicantBarChart";
+import { OverallApplicantBarChart, OverallApplicantBarChartPrintCopy } from "./OverallApplicantBarChart";
 import { RankedFirmsTable } from "./RankedFirmsTable";
 import { buildRankedRows } from "./rankedRows";
 import type { Project } from "../../types/project";
@@ -171,7 +171,14 @@ export const PrintableDashboard = forwardRef<HTMLDivElement, { project: Project 
               ]}
             />
           </div>
-          <OverallApplicantBarChart project={project} containerRef={barChartContainerRef} />
+          {/* .no-print: the printed/exported chart comes from the always-off-screen,
+              always-light OverallApplicantBarChartPrintCopy below instead — see
+              OverallApplicantBarChart.tsx's header comment for why a second instance exists
+              at all (avoiding a whole-dashboard light-mode flash on export). */}
+          <div className="no-print">
+            <OverallApplicantBarChart project={project} containerRef={barChartContainerRef} />
+          </div>
+          <OverallApplicantBarChartPrintCopy project={project} />
         </div>
       </div>
     );

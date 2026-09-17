@@ -10,6 +10,11 @@
 // rationale). Visible label shortened to "PDF Report" now that it sits inside a
 // clearly-exported "export" toolbar group with an icon of its own — aria-label keeps the
 // fuller original phrasing for screen-reader clarity.
+//
+// No theme handling needed here: the printed charts come from a dedicated, always-light,
+// always-off-screen chart instance (OverallApplicantBarChart.tsx's PrintCopy export) that
+// tokens.css's `@media print` swaps into view in place of the visible one — see that file's
+// header comment. This button doesn't need to know that happens; it's pure CSS.
 
 import { FileText } from "lucide-react";
 import { useReactToPrint } from "react-to-print";

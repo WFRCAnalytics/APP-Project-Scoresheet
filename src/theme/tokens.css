@@ -410,3 +410,70 @@
     border-color: var(--color-border);
   }
 }
+
+/*
+ * Always-light scope for the PDF export's dedicated print-only chart copy (see
+ * usePrintSafeChartColors.ts and OverallApplicantBarChartPrintCopy in
+ * OverallApplicantBarChart.tsx) — deliberately NOT gated by `@media print` or `data-theme`,
+ * unlike every other block on this page. Recharts bakes these custom properties into
+ * literal SVG `fill`/`stroke` attributes at React-render time, so a single chart instance
+ * can't show dark-mode colors on screen while ALSO being captured in light-mode colors for
+ * print — there's no CSS override that reaches back and rewrites an attribute React already
+ * wrote. The earlier approach (briefly forcing the whole app's `data-theme` to "light"
+ * right before react-to-print grabs the DOM) worked but visibly flashed the entire visible
+ * dashboard to light mode for an instant, which is a real photosensitivity concern, not
+ * just a cosmetic one. This scope lets a SEPARATE chart instance stay permanently in light
+ * colors, permanently off-screen (.print-chart-copy below) — nothing ever toggles, so
+ * nothing ever flashes.
+ *
+ * Values are identical to the base `:root` (light mode) declarations at the top of this
+ * file and to the `@media print` block just above — all three MUST be kept in sync (same
+ * requirement this file's dark-mode blocks already document for themselves).
+ */
+.chart-print-safe-scope {
+  --color-foreground: #151515;
+  --color-background: #ffffff;
+  --color-border: #d8d5d2;
+
+  --chart-1: #3f748e;
+  --chart-2: #789d4b;
+  --chart-3: #c48839;
+  --chart-4: #9d4879;
+  --chart-5: #608a8f;
+  --chart-6: #c23c33;
+  --chart-7: #585377;
+  --chart-8: #597f72;
+  --chart-9: #6f2d3d;
+  --chart-10: #cb7e72;
+  --chart-11: #a62966;
+  --chart-12: #e65937;
+  --chart-13: #c88433;
+  --chart-14: #a7951a;
+  --chart-15: #989479;
+  --chart-16: #869a79;
+  --chart-17: #ab8d90;
+  --chart-18: #968e9d;
+}
+
+/* Off-screen at all times on a live screen — real, nonzero layout dimensions (NOT
+ * display:none, which would zero its box and leave Recharts nothing to measure/render
+ * into) positioned out of the viewport instead. Swaps into normal, visible, in-flow layout
+ * only inside the print rendering context — at that point its sibling .no-print chart
+ * (the theme-following, on-screen one) is hidden instead, so exactly one of the two ever
+ * appears in a given context. Width matches PRINT_PAGE_STYLE's usable content area
+ * (lib/pdf/printLayout.ts: 8.5in letter - 2 * 0.75in margin = 7in ≈ 672px at 96dpi). */
+.print-chart-copy {
+  position: absolute;
+  left: -99999px;
+  top: 0;
+  width: 672px;
+  height: 320px;
+  overflow: hidden;
+}
+@media print {
+  .print-chart-copy {
+    position: static;
+    width: 100%;
+    overflow: visible;
+  }
+}

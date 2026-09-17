@@ -11,8 +11,24 @@
 // added — still accurate (it does show Overall and TLC Applicant, among others), and a
 // third rename would've meant editing this file's own imports everywhere else for a name
 // that's already correctly not-wrong, just not maximally descriptive.
+//
+// Two exports render the same chart from two different color sources:
+//  - OverallApplicantBarChart: the visible, on-screen, theme-following one (useChartColors)
+//    — what the user actually looks at, dark or light per their preference.
+//  - OverallApplicantBarChartPrintCopy: a second instance, permanently off-screen
+//    (tokens.css's .print-chart-copy) and permanently light-colored
+//    (usePrintSafeChartColors / .chart-print-safe-scope). DashboardScreen.tsx marks the
+//    on-screen one `.no-print` and mounts this one alongside it specifically so the PDF
+//    export (ExportPdfButton.tsx) never has to touch the visible chart's colors at all —
+//    Recharts bakes colors into literal SVG attributes, so getting light colors into print
+//    any other way means either mutating the live, visible chart right before capture
+//    (which flashes the whole dashboard to light mode on screen, a real photosensitivity
+//    concern) or racing a DOM clone against an async color update. Keeping a second,
+//    never-changing instance sidesteps both.
+// Both share the actual chart markup/logic (OverallApplicantBarChartView) and differ only
+// in where their colors and outer wrapper come from.
 
-import { useEffect, useState, type MutableRefObject, type RefObject } from "react";
+import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from "react";
 import { BarChart3 } from "lucide-react";
 import {
   Bar,
@@ -28,6 +44,7 @@ import type { TooltipProps } from "recharts";
 import { EmptyState } from "../../components/EmptyState";
 import { round2 } from "../../lib/calculations";
 import { useChartColors } from "../../theme/chartColors";
+import { usePrintSafeChartColors } from "../../theme/usePrintSafeChartColors";
 import type { Project } from "../../types/project";
 import {
   getRank,
@@ -48,19 +65,36 @@ const TICK_FONT_SIZE = 12;
 const TICK_LINE_HEIGHT = 14;
 const TICK_LABEL_WIDTH_SAFETY = 0.85;
 
-export interface OverallApplicantBarChartProps {
+interface ChartColorProps {
+  overallColor: string;
+  applicantColor: string;
+  wfrcColor: string;
+  foregroundColor: string;
+  borderColor: string;
+  backgroundColor: string;
+}
+
+interface OverallApplicantBarChartViewProps extends ChartColorProps {
   project: Project;
-  /** Exposes the chart's wrapping <div> to the caller (DashboardScreen), which locates the
-   * actual rendered <svg> inside it for the "Download PNG/SVG" buttons living in this
-   * chart's card header — this component has no per-selection state of its own (unlike
-   * CriterionBreakdownChart's firm picker), so there's no reason for it to own its export
-   * buttons directly. */
+  /** Exposes the chart's wrapping <div> to the caller, which locates the actual rendered
+   * <svg> inside it for the "Download PNG/SVG" buttons living in this chart's card header
+   * — this component has no per-selection state of its own (unlike CriterionBreakdownChart's
+   * firm picker), so there's no reason for it to own its export buttons directly. Only the
+   * on-screen instance's caller needs this; the print-only copy has no export buttons of
+   * its own. */
   containerRef?: RefObject<HTMLDivElement>;
 }
 
-export function OverallApplicantBarChart({ project, containerRef }: OverallApplicantBarChartProps) {
-  const { overallColor, applicantColor, wfrcColor, foregroundColor, borderColor, backgroundColor } =
-    useChartColors();
+function OverallApplicantBarChartView({
+  project,
+  containerRef,
+  overallColor,
+  applicantColor,
+  wfrcColor,
+  foregroundColor,
+  borderColor,
+  backgroundColor,
+}: OverallApplicantBarChartViewProps) {
   // Separate from the caller-supplied containerRef (DashboardScreen reads that imperatively
   // for its own PNG/SVG export buttons) — this one exists purely to re-run the
   // ResizeObserver effect below once the chart's wrapper div actually mounts (it doesn't
@@ -188,6 +222,33 @@ export function OverallApplicantBarChart({ project, containerRef }: OverallAppli
           <Bar dataKey="WFRC" fill={wfrcColor} />
         </BarChart>
       </ResponsiveContainer>
+    </div>
+  );
+}
+
+export interface OverallApplicantBarChartProps {
+  project: Project;
+  containerRef?: RefObject<HTMLDivElement>;
+}
+
+export function OverallApplicantBarChart({ project, containerRef }: OverallApplicantBarChartProps) {
+  const colors = useChartColors();
+  return <OverallApplicantBarChartView project={project} containerRef={containerRef} {...colors} />;
+}
+
+/** The permanently off-screen, permanently light-colored copy the PDF export actually
+ * captures — see this file's header comment. `.chart-print-safe-scope` (tokens.css) is what
+ * makes usePrintSafeChartColors resolve to light values regardless of the on-screen theme;
+ * `.print-chart-copy` (tokens.css) is what keeps it off-screen normally and swaps it into
+ * normal, visible flow only inside an actual print render. `aria-hidden` because it's a
+ * pure duplicate of content already reachable on screen — screen readers should never land
+ * on it. */
+export function OverallApplicantBarChartPrintCopy({ project }: { project: Project }) {
+  const scopeRef = useRef<HTMLDivElement>(null);
+  const colors = usePrintSafeChartColors(scopeRef);
+  return (
+    <div ref={scopeRef} className="chart-print-safe-scope print-chart-copy" aria-hidden="true">
+      <OverallApplicantBarChartView project={project} {...colors} />
     </div>
   );
 }

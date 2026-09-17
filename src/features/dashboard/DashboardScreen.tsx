@@ -35,7 +35,7 @@ import { EditProjectButton } from "./EditProjectButton";
 import { ExportPdfButton } from "./ExportPdfButton";
 import { ExportProjectButton } from "./ExportProjectButton";
 import { OverallApplicantBarChart, OverallApplicantBarChartPrintCopy } from "./OverallApplicantBarChart";
-import { RankedFirmsTable } from "./RankedFirmsTable";
+import { RankedFirmsTable, RankedFirmsTablePrintCopy } from "./RankedFirmsTable";
 import { buildRankedRows } from "./rankedRows";
 import type { Project } from "../../types/project";
 
@@ -148,11 +148,17 @@ export const PrintableDashboard = forwardRef<HTMLDivElement, { project: Project 
 
         <div className="card">
           <h2>Ranked Firms</h2>
-          <p className="field-hint ranked-firms-hint">
-            Sort any column to compare firms; expand a row to see its per-criterion breakdown
-            and reviewer comments.
-          </p>
-          <RankedFirmsTable project={project} />
+          {/* .no-print: the printed/exported table comes from the always-off-screen,
+              always-canonical-order, always-fully-expanded RankedFirmsTablePrintCopy below
+              instead — see RankedFirmsTable.tsx's header comment for why. */}
+          <div className="no-print">
+            <p className="field-hint ranked-firms-hint">
+              Sort any column to compare firms; expand a row to see its per-criterion
+              breakdown and reviewer comments.
+            </p>
+            <RankedFirmsTable project={project} />
+          </div>
+          <RankedFirmsTablePrintCopy project={project} />
         </div>
 
         <div className="card">

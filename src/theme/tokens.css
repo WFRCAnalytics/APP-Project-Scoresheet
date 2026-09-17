@@ -409,6 +409,35 @@
     break-inside: avoid;
     border-color: var(--color-border);
   }
+
+  /* PRINT_PAGE_STYLE's usable content width (lib/pdf/printLayout.ts: 8.5in letter - 2 *
+   * 0.75in margin = 7in ≈ 672px at 96dpi) is much narrower than this table's on-screen
+   * container. table-layout:auto (app.css's default for every .data-table, including this
+   * one) lets a table grow WIDER than its declared 100% width whenever its columns' content
+   * can't otherwise fit on one line — with 6 columns including headers like "TLC Applicant
+   * Weighted Total", it reliably did, pushing the rightmost (Completion) column past the
+   * page's right edge, where the print engine simply clips it (no horizontal scroll exists
+   * on paper, unlike on screen). table-layout:fixed makes the table honor its declared width
+   * unconditionally instead, wrapping cell content within its column rather than growing the
+   * table. Paired with tighter cell padding and a relaxed .completion-bar min-width (each
+   * normally sized for a roomy on-screen card) so neither forces its own cell to overflow
+   * its now much narrower fixed-layout column. All three loaded from tokens.css BEFORE
+   * app.css (main.tsx's own import order) — `!important` here isn't optional specificity
+   * paranoia, it's the only way a rule from the earlier stylesheet can still beat app.css's
+   * base .data-table/.completion-bar rules, the same reason .no-print above already needs
+   * it. */
+  .ranked-firms-table {
+    table-layout: fixed !important;
+  }
+
+  .ranked-firms-table th,
+  .ranked-firms-table td {
+    padding: 4px 6px !important;
+  }
+
+  .ranked-firms-table .completion-bar {
+    min-width: 0 !important;
+  }
 }
 
 /*
@@ -455,25 +484,51 @@
   --chart-18: #968e9d;
 }
 
-/* Off-screen at all times on a live screen — real, nonzero layout dimensions (NOT
- * display:none, which would zero its box and leave Recharts nothing to measure/render
- * into) positioned out of the viewport instead. Swaps into normal, visible, in-flow layout
- * only inside the print rendering context — at that point its sibling .no-print chart
- * (the theme-following, on-screen one) is hidden instead, so exactly one of the two ever
- * appears in a given context. Width matches PRINT_PAGE_STYLE's usable content area
- * (lib/pdf/printLayout.ts: 8.5in letter - 2 * 0.75in margin = 7in ≈ 672px at 96dpi). */
+/* Off-screen at all times on a live screen — real, nonzero layout WIDTH (NOT display:none,
+ * which would zero its box and leave Recharts nothing to measure/render into) positioned
+ * out of the viewport instead. Swaps into normal, visible, in-flow layout only inside the
+ * print rendering context — at that point its sibling .no-print chart (the theme-following,
+ * on-screen one) is hidden instead, so exactly one of the two ever appears in a given
+ * context. Width matches PRINT_PAGE_STYLE's usable content area (lib/pdf/printLayout.ts:
+ * 8.5in letter - 2 * 0.75in margin = 7in ≈ 672px at 96dpi).
+ *
+ * Deliberately no fixed height (content sizes it instead): the ONE-time version of this rule
+ * hardcoded height:320px to match OverallApplicantBarChart's own chart height, which happened
+ * to fit — but CriterionBreakdownChart/ReviewerScoreSpreadChart's print copies each also
+ * render their own title row ABOVE their chart (280px/320px), so their real content is taller
+ * than 320px. A fixed height clipped that off-screen (invisible, harmless) but, once printed
+ * (`overflow: visible` below), left the box's own layout height still locked at 320px while
+ * its content visually spilled out past it — overlapping whatever printed content came next.
+ * Letting height stay auto (both off-screen and in print) means the box's layout height
+ * always matches what's actually inside it, in both places. */
 .print-chart-copy {
   position: absolute;
   left: -99999px;
   top: 0;
   width: 672px;
-  height: 320px;
-  overflow: hidden;
 }
 @media print {
   .print-chart-copy {
     position: static;
     width: 100%;
-    overflow: visible;
+  }
+}
+
+/* Generic version of the same off-screen/print-swap mechanic above, for arbitrary block
+ * content instead of one fixed-size chart — currently RankedFirmsTable.tsx's
+ * RankedFirmsTablePrintCopy (the always-every-firm, always-canonical-order, always-
+ * "expanded" twin of the interactive ranked-firms table; see that file's header comment).
+ * No fixed width/height: unlike a lone chart, this wraps plain HTML plus nested
+ * .print-chart-copy elements that already size themselves explicitly regardless of this
+ * wrapper's own dimensions, so there's nothing here that needs a specific width to render
+ * correctly while off-screen. */
+.print-only-block {
+  position: absolute;
+  left: -99999px;
+  top: 0;
+}
+@media print {
+  .print-only-block {
+    position: static;
   }
 }

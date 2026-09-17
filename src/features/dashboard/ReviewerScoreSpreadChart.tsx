@@ -54,6 +54,12 @@
 //     Fixed by replacing formatter/labelFormatter/itemSorter with a fully custom `content`
 //     renderer that reads payload[0] directly and renders exactly one line, bypassing
 //     Recharts' per-axis-dataKey item iteration entirely rather than trying to out-clever it.
+//
+// Two exports, same split OverallApplicantBarChart.tsx uses (see that file's header comment
+// for the full rationale): ReviewerScoreSpreadChart is the visible, theme-following instance;
+// ReviewerScoreSpreadChartPrintCopy is a permanently off-screen, permanently light-colored
+// twin RankedFirmsTable mounts alongside it so the PDF export never has to touch the live,
+// visible chart's colors.
 
 import { useEffect, useRef, useState } from "react";
 import {
@@ -71,6 +77,7 @@ import {
 } from "recharts";
 import type { TooltipProps } from "recharts";
 import { useChartColors } from "../../theme/chartColors";
+import { usePrintSafeChartColors } from "../../theme/usePrintSafeChartColors";
 import type { Project } from "../../types/project";
 import { ChartExportButtons } from "./ChartExportButtons";
 import { TooltipHeading, TooltipRow } from "./ChartTooltip";
@@ -89,9 +96,32 @@ const TICK_LINE_HEIGHT = 14;
 // even when both are wrapped to their band's full nominal width.
 const TICK_LABEL_WIDTH_SAFETY = 0.85;
 
-export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project; firmId: string }) {
-  const { applicantColor, wfrcColor, foregroundColor, borderColor, backgroundColor } =
-    useChartColors();
+interface ChartColorProps {
+  applicantColor: string;
+  wfrcColor: string;
+  foregroundColor: string;
+  borderColor: string;
+  backgroundColor: string;
+}
+
+interface ReviewerScoreSpreadChartViewProps extends ChartColorProps {
+  project: Project;
+  firmId: string;
+  /** Off for the print-only copy — its export buttons would be unreachable (permanently
+   * off-screen) and are meaningless anyway: they're already `.no-print` themselves. */
+  showExportButtons?: boolean;
+}
+
+function ReviewerScoreSpreadChartView({
+  project,
+  firmId,
+  applicantColor,
+  wfrcColor,
+  foregroundColor,
+  borderColor,
+  backgroundColor,
+  showExportButtons = true,
+}: ReviewerScoreSpreadChartViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Separate from containerRef (which ChartExportButtons reads imperatively on click) — this
   // one exists purely to re-run the ResizeObserver effect below once the chart's wrapper div
@@ -202,14 +232,16 @@ export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project
     <div>
       <div className="chart-controls-row">
         <h3 className="breakdown-chart-title">How {firm.name}&rsquo;s reviewers scored, by criterion</h3>
-        <ChartExportButtons
-          getSvg={() => containerRef.current?.querySelector("svg") ?? null}
-          projectName={project.project.projectName}
-          chartLabel={`Reviewer Score Spread - ${firm.name}`}
-          backgroundColor={backgroundColor}
-          foregroundColor={foregroundColor}
-          legendItems={legendPayload.map(({ value, color }) => ({ label: value, color }))}
-        />
+        {showExportButtons && (
+          <ChartExportButtons
+            getSvg={() => containerRef.current?.querySelector("svg") ?? null}
+            projectName={project.project.projectName}
+            chartLabel={`Reviewer Score Spread - ${firm.name}`}
+            backgroundColor={backgroundColor}
+            foregroundColor={foregroundColor}
+            legendItems={legendPayload.map(({ value, color }) => ({ label: value, color }))}
+          />
+        )}
       </div>
       {points.length === 0 ? (
         <p className="field-hint">No reviewer scores recorded for this firm yet.</p>
@@ -301,6 +333,30 @@ export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project
           </ResponsiveContainer>
         </div>
       )}
+    </div>
+  );
+}
+
+export function ReviewerScoreSpreadChart({ project, firmId }: { project: Project; firmId: string }) {
+  const colors = useChartColors();
+  return <ReviewerScoreSpreadChartView project={project} firmId={firmId} {...colors} />;
+}
+
+/** The permanently off-screen, permanently light-colored copy the PDF export actually
+ * captures — see this file's header comment and OverallApplicantBarChart.tsx's for the
+ * full rationale. `aria-hidden` because it's a pure duplicate of content already reachable
+ * on screen — screen readers should never land on it. */
+export function ReviewerScoreSpreadChartPrintCopy({ project, firmId }: { project: Project; firmId: string }) {
+  const scopeRef = useRef<HTMLDivElement>(null);
+  const colors = usePrintSafeChartColors(scopeRef);
+  return (
+    <div ref={scopeRef} className="chart-print-safe-scope print-chart-copy" aria-hidden="true">
+      <ReviewerScoreSpreadChartView
+        project={project}
+        firmId={firmId}
+        showExportButtons={false}
+        {...colors}
+      />
     </div>
   );
 }

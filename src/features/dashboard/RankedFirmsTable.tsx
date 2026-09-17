@@ -5,9 +5,26 @@
 // comments accordion, all three of which required re-finding the same firm three times.
 //
 // Sorting and row-expansion are pure on-screen viewing conveniences (FR-035's PDF export is
-// the actual procurement record). usePrintMode() forces both back to their canonical form
-// during print — row order to ascending overall rank, every row fully expanded — regardless
-// of whatever a viewer happened to leave active on screen; see that hook's own comment.
+// the actual procurement record). This file exports two components for that reason:
+// RankedFirmsTable (below) is the interactive, on-screen-only one — DashboardScreen.tsx
+// wraps it in `.no-print` and mounts RankedFirmsTablePrintCopy (bottom of this file)
+// alongside it, which always renders every firm, always in canonical overall-rank order,
+// always fully "expanded," regardless of whatever a viewer left active on screen.
+//
+// That split replaced an earlier version that tried to force this SAME interactive table
+// into its canonical form during print via a `usePrintMode()` hook driven by the browser's
+// native `beforeprint`/`afterprint` events. Those events never fire for the "Export PDF
+// report" button — react-to-print prints through a hidden iframe's own window, not this
+// document's (the exact bug theme/chartColors.ts's print handling ran into, and the reason
+// OverallApplicantBarChart.tsx now has its own *PrintCopy* twin — see that file's header
+// comment for the full story). Concretely, that meant a firm collapsed on screen when
+// "Export PDF report" was clicked was silently missing its entire per-criterion breakdown
+// and reviewer comments from the exported PDF, and the PDF's row order silently followed
+// whatever on-screen sort was active instead of the canonical rank order a procurement
+// record needs. A second, always-correct, always-off-screen table sidesteps print-event
+// detection entirely, the same way the chart color fix did — nothing here depends on JS
+// noticing when printing happens; it's all `@media print` CSS (tokens.css's
+// `.print-only-block`).
 
 import { Fragment, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ChevronsUpDown, Users } from "lucide-react";
@@ -16,10 +33,9 @@ import { EmptyState } from "../../components/EmptyState";
 import { round2 } from "../../lib/calculations";
 import type { Project } from "../../types/project";
 import { buildRankedRows, type RankedRow } from "./rankedRows";
-import { usePrintMode } from "./usePrintMode";
-import { CriterionBreakdownChart } from "./CriterionBreakdownChart";
+import { CriterionBreakdownChart, CriterionBreakdownChartPrintCopy } from "./CriterionBreakdownChart";
 import { FirmCommentsTable } from "./FirmCommentsTable";
-import { ReviewerScoreSpreadChart } from "./ReviewerScoreSpreadChart";
+import { ReviewerScoreSpreadChart, ReviewerScoreSpreadChartPrintCopy } from "./ReviewerScoreSpreadChart";
 
 type SortKey = "rank" | "firm" | "overall" | "applicant" | "wfrc" | "completion";
 type SortDirection = "asc" | "desc";
@@ -105,7 +121,6 @@ export function RankedFirmsTable({ project }: { project: Project }) {
   const [sortKey, setSortKey] = useState<SortKey>("rank");
   const [direction, setDirection] = useState<SortDirection>("asc");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
-  const isPrinting = usePrintMode();
 
   const rows = buildRankedRows(project); // already canonical (ascending overall rank) order
 
@@ -120,14 +135,9 @@ export function RankedFirmsTable({ project }: { project: Project }) {
   }
 
   const topOverallRank = Math.min(...rows.map((r) => r.overallRank));
-
-  // The PDF export is a fixed procurement record: its row order must always be the
-  // canonical overall rank, never whatever sort a viewer left active on screen. `rows` is
-  // already in that order — on-screen sorting only ever reorders a COPY of it, so printing
-  // simply skips applying that copy.
-  const displayRows = isPrinting
-    ? rows
-    : [...rows].sort((a, b) => (direction === "asc" ? 1 : -1) * compareRows(a, b, sortKey));
+  const displayRows = [...rows].sort(
+    (a, b) => (direction === "asc" ? 1 : -1) * compareRows(a, b, sortKey),
+  );
 
   function toggleSort(key: SortKey) {
     if (key === sortKey) {
@@ -199,7 +209,7 @@ export function RankedFirmsTable({ project }: { project: Project }) {
         </thead>
         <tbody>
           {displayRows.map((row) => {
-            const isExpanded = isPrinting || expandedIds.has(row.firm.id);
+            const isExpanded = expandedIds.has(row.firm.id);
             const detailId = `firm-detail-${row.firm.id}`;
             return (
               <Fragment key={row.firm.id}>
@@ -251,6 +261,74 @@ export function RankedFirmsTable({ project }: { project: Project }) {
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/** Print-only twin of the table above — see this file's header comment for the full
+ * rationale. Always every firm, always canonical overall-rank order, always fully
+ * "expanded" (per-criterion breakdown + reviewer comments), always off-screen and
+ * light-colored via the same `*PrintCopy` chart components OverallApplicantBarChart.tsx
+ * uses, swapped into normal, visible, in-flow layout only inside an actual print render
+ * (tokens.css's `.print-only-block`). No sort controls, no expand/collapse toggles — there's
+ * nothing interactive here for a person to operate, only a fixed record. `aria-hidden`
+ * because every value here duplicates something already reachable in the interactive table
+ * above; screen readers should never land on this copy. */
+export function RankedFirmsTablePrintCopy({ project }: { project: Project }) {
+  const rows = buildRankedRows(project); // canonical ascending-overall-rank order
+
+  if (rows.length === 0) return null;
+
+  const topOverallRank = Math.min(...rows.map((r) => r.overallRank));
+
+  return (
+    <div className="print-only-block" aria-hidden="true">
+      <div className="table-wrap">
+        <table className="data-table ranked-firms-table" aria-label="Ranked firms">
+          <thead>
+            <tr>
+              {/* No row-expand-header column here — unlike the interactive table, there's
+                  no toggle button for it to align with, so keeping it would just waste a
+                  column's worth of this table's already tight print width for nothing. */}
+              <th scope="col">Rank</th>
+              <th scope="col">Firm</th>
+              <th scope="col">Overall Weighted Total</th>
+              <th scope="col">TLC Applicant Weighted Total</th>
+              <th scope="col">WFRC Weighted Total</th>
+              <th scope="col">Completion</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <Fragment key={row.firm.id}>
+                <tr>
+                  <td>
+                    <Badge variant={row.overallRank === topOverallRank ? "info" : "neutral"}>
+                      {row.overallRank}
+                    </Badge>
+                  </td>
+                  <td>{row.firm.name}</td>
+                  <td>{round2(row.overallTotal)}</td>
+                  <td>{round2(row.applicantTotal)}</td>
+                  <td>{round2(row.wfrcTotal)}</td>
+                  <td>
+                    <CompletionBar {...row.comp} />
+                  </td>
+                </tr>
+                <tr className="firm-detail-row">
+                  <td colSpan={6}>
+                    <div className="firm-detail">
+                      <CriterionBreakdownChartPrintCopy project={project} firmId={row.firm.id} />
+                      <ReviewerScoreSpreadChartPrintCopy project={project} firmId={row.firm.id} />
+                      <FirmCommentsTable project={project} firmId={row.firm.id} />
+                    </div>
+                  </td>
+                </tr>
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

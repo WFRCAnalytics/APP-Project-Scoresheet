@@ -12,6 +12,13 @@
 // redesign, this only ever renders inside a RankedFirmsTable row's expanded detail, where
 // the firm is already determined by which row is open. There is no longer a standalone
 // "pick a firm from a dropdown" card on the Dashboard.
+//
+// Two exports, same split OverallApplicantBarChart.tsx uses (see that file's header comment
+// for the full rationale): CriterionBreakdownChart is the visible, theme-following instance;
+// CriterionBreakdownChartPrintCopy is a permanently off-screen, permanently light-colored
+// twin RankedFirmsTable mounts alongside it so the PDF export never has to touch the live,
+// visible chart's colors (which would mean either flashing the whole dashboard to light mode
+// on screen, or racing a DOM clone against an async color update).
 
 import { useEffect, useRef, useState } from "react";
 import {
@@ -27,6 +34,7 @@ import {
 import type { TooltipProps } from "recharts";
 import { applicantAvg, overallAvg, wfrcAvg, round2 } from "../../lib/calculations";
 import { useChartColors } from "../../theme/chartColors";
+import { usePrintSafeChartColors } from "../../theme/usePrintSafeChartColors";
 import type { Project } from "../../types/project";
 import { ChartExportButtons } from "./ChartExportButtons";
 import { ChartTooltipContent } from "./ChartTooltip";
@@ -59,9 +67,34 @@ function verticalDyOffsets(lineCount: number, position: "above" | "below" | "equ
   return lineCount === 1 ? [4] : [-3, TICK_LINE_HEIGHT];
 }
 
-export function CriterionBreakdownChart({ project, firmId }: { project: Project; firmId: string }) {
-  const { overallColor, applicantColor, wfrcColor, foregroundColor, borderColor, backgroundColor } =
-    useChartColors();
+interface ChartColorProps {
+  overallColor: string;
+  applicantColor: string;
+  wfrcColor: string;
+  foregroundColor: string;
+  borderColor: string;
+  backgroundColor: string;
+}
+
+interface CriterionBreakdownChartViewProps extends ChartColorProps {
+  project: Project;
+  firmId: string;
+  /** Off for the print-only copy — its export buttons would be unreachable (permanently
+   * off-screen) and are meaningless anyway: they're already `.no-print` themselves. */
+  showExportButtons?: boolean;
+}
+
+function CriterionBreakdownChartView({
+  project,
+  firmId,
+  overallColor,
+  applicantColor,
+  wfrcColor,
+  foregroundColor,
+  borderColor,
+  backgroundColor,
+  showExportButtons = true,
+}: CriterionBreakdownChartViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Separate from containerRef (which ChartExportButtons reads imperatively on click) — this
   // one exists purely to re-run the ResizeObserver effect below once the chart's wrapper div
@@ -182,18 +215,20 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
     <div>
       <div className="chart-controls-row">
         <h3 className="breakdown-chart-title">Why {firm.name} scored where it did</h3>
-        <ChartExportButtons
-          getSvg={() => containerRef.current?.querySelector("svg") ?? null}
-          projectName={project.project.projectName}
-          chartLabel={`Criterion Breakdown - ${firm.name}`}
-          backgroundColor={backgroundColor}
-          foregroundColor={foregroundColor}
-          legendItems={[
-            { label: "Overall", color: overallColor },
-            { label: "TLC Applicant", color: applicantColor },
-            { label: "WFRC", color: wfrcColor },
-          ]}
-        />
+        {showExportButtons && (
+          <ChartExportButtons
+            getSvg={() => containerRef.current?.querySelector("svg") ?? null}
+            projectName={project.project.projectName}
+            chartLabel={`Criterion Breakdown - ${firm.name}`}
+            backgroundColor={backgroundColor}
+            foregroundColor={foregroundColor}
+            legendItems={[
+              { label: "Overall", color: overallColor },
+              { label: "TLC Applicant", color: applicantColor },
+              { label: "WFRC", color: wfrcColor },
+            ]}
+          />
+        )}
       </div>
       <div
         ref={(el) => {
@@ -263,6 +298,30 @@ export function CriterionBreakdownChart({ project, firmId }: { project: Project;
           </RadarChart>
         </ResponsiveContainer>
       </div>
+    </div>
+  );
+}
+
+export function CriterionBreakdownChart({ project, firmId }: { project: Project; firmId: string }) {
+  const colors = useChartColors();
+  return <CriterionBreakdownChartView project={project} firmId={firmId} {...colors} />;
+}
+
+/** The permanently off-screen, permanently light-colored copy the PDF export actually
+ * captures — see this file's header comment and OverallApplicantBarChart.tsx's for the
+ * full rationale. `aria-hidden` because it's a pure duplicate of content already reachable
+ * on screen — screen readers should never land on it. */
+export function CriterionBreakdownChartPrintCopy({ project, firmId }: { project: Project; firmId: string }) {
+  const scopeRef = useRef<HTMLDivElement>(null);
+  const colors = usePrintSafeChartColors(scopeRef);
+  return (
+    <div ref={scopeRef} className="chart-print-safe-scope print-chart-copy" aria-hidden="true">
+      <CriterionBreakdownChartView
+        project={project}
+        firmId={firmId}
+        showExportButtons={false}
+        {...colors}
+      />
     </div>
   );
 }

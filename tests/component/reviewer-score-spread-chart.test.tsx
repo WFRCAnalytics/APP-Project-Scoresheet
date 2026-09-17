@@ -11,6 +11,13 @@
 // this component introduces), so the same guard state legitimately renders that text more
 // than once on screen at once. Queried with getAllByText + a length check rather than the
 // usual getByText/findByText (which require exactly one match) for that reason.
+//
+// Every assertion in this file uses the ...AllByText form for the same underlying reason,
+// even where the app-wide convention above doesn't independently apply: RankedFirmsTable
+// mounts both the visible ReviewerScoreSpreadChart and its off-screen, always-light
+// ReviewerScoreSpreadChartPrintCopy side by side for every expanded row (the PDF export's
+// light-mode fix — see OverallApplicantBarChart.tsx's header comment), so any text this
+// chart renders legitimately appears twice in the DOM at once, not just its guard clauses.
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
@@ -49,8 +56,8 @@ describe("ReviewerScoreSpreadChart", () => {
     await loadAndExpand(project);
 
     expect(
-      await screen.findByText("How Alpha Co’s reviewers scored, by criterion"),
-    ).toBeInTheDocument();
+      (await screen.findAllByText("How Alpha Co’s reviewers scored, by criterion")).length,
+    ).toBeGreaterThan(0);
   });
 
   it("shows a hint when no criteria are configured", async () => {
@@ -102,7 +109,7 @@ describe("ReviewerScoreSpreadChart", () => {
     await loadAndExpand(project);
 
     expect(
-      await screen.findByText("No reviewer scores recorded for this firm yet."),
-    ).toBeInTheDocument();
+      (await screen.findAllByText("No reviewer scores recorded for this firm yet.")).length,
+    ).toBeGreaterThan(0);
   });
 });

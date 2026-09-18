@@ -169,6 +169,20 @@ export function parseScoringWorkbook(
     const firmId = sheet.getCell(`G${r}`).value;
     const criterionId = sheet.getCell(`H${r}`).value;
 
+    // A fully blank row isn't corrupted data — it's trailing grid padding. Spreadsheet
+    // tools (e.g. Google Sheets on xlsx export) pad the sheet's used range out to a fixed
+    // grid size well past the last real row, so sheet.rowCount can't be trusted as "number
+    // of data rows" for a round-tripped file. Skip silently rather than flagging thousands
+    // of phantom rows as corrupted.
+    const rowIsBlank =
+      reviewerId == null &&
+      firmId == null &&
+      criterionId == null &&
+      sheet.getCell(`A${r}`).value == null &&
+      sheet.getCell(`D${r}`).value == null &&
+      sheet.getCell(`E${r}`).value == null;
+    if (rowIsBlank) continue;
+
     if (
       typeof reviewerId !== "string" ||
       typeof firmId !== "string" ||

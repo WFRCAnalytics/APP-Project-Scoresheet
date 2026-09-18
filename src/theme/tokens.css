@@ -21,6 +21,18 @@
  */
 
 :root {
+  /* Tells the browser which palette this page actually uses, so it renders NATIVE form
+   * chrome (the <input type="date"> calendar-picker icon, scrollbars in supporting
+   * browsers, etc.) to match instead of always assuming light — those aren't drawn from
+   * any token above, the browser paints them itself, and without this it keeps drawing
+   * them in light-mode style even against this app's dark background (found: the
+   * Selection Committee Meeting Date field's calendar icon stayed black in dark mode).
+   * A real CSS property, not a custom property, so unlike every value below it takes
+   * effect directly here rather than being consumed via var(). Same duplication pattern as
+   * every other theme-dependent value in this file: light here, dark override in both the
+   * @media block and the explicit data-theme="dark" block further down. */
+  color-scheme: light;
+
   /* ---- Primary WFRC brand tokens (raw, unmodified) ---- */
   --color-wfrc-blue: #023c5b;
   --color-wfrc-secondary-blue: #52b6d5;
@@ -213,6 +225,8 @@
  */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
     /* ---- Semantic tokens: dark mode ---- */
     --color-foreground: #ffffff; /* brand.yml "white" */
     --color-background: #081b26; /* brand.yml's dedicated dark bg — deliberately richer
@@ -296,6 +310,8 @@
  * has manually toggled to dark, regardless of OS preference) — same values as the
  * @media (prefers-color-scheme: dark) block above, duplicated per the comment there. */
 :root[data-theme="dark"] {
+  color-scheme: dark;
+
   --color-foreground: #ffffff;
   --color-background: #081b26;
   --color-heading: #8fcfe3;
@@ -366,6 +382,8 @@
   :root,
   :root[data-theme="light"],
   :root[data-theme="dark"] {
+    color-scheme: light;
+
     --color-foreground: #151515;
     --color-background: #ffffff;
     --color-heading: #023c5b;

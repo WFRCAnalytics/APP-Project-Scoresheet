@@ -95,6 +95,81 @@ describe("Import overwrite confirmation", () => {
     await screen.findByText(/Import complete/);
   });
 
+  it("re-submitting a cell with the exact same value and comment shows 0/1 changed and does NOT open the overwrite confirmation", async () => {
+    const project = buildProject();
+    project.scores = [
+      {
+        reviewerId: "rev-1",
+        firmId: "firm-1",
+        criterionId: "crit-1",
+        value: 5,
+        comment: "",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+    render(<App />);
+    await navigateToReviewerForms(project);
+
+    const file = await buildCompletedWorkbookFile(project, "rev-1", 5); // identical value
+    fireEvent.change(screen.getByLabelText("Select one or more completed .xlsx files"), {
+      target: { files: [file] },
+    });
+    await screen.findByText(/Review before importing/);
+
+    // Already-recorded, but nothing actually changed — reads as "nothing to overwrite".
+    expect(screen.getByText("0/1 changed")).toBeInTheDocument();
+    expect(screen.queryByText(/Alpha Co \/ Approach/)).not.toBeInTheDocument();
+
+    // One click still commits — no confirmation gate for a no-op resubmission.
+    fireEvent.click(screen.getByRole("button", { name: /Confirm import \(1 score\)/ }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    await screen.findByText(/Import complete/);
+  });
+
+  it("re-submitting a cell with the same value but a different comment is flagged as changed, showing 'comment changed' instead of a misleading value arrow", async () => {
+    const project = buildProject();
+    project.scores = [
+      {
+        reviewerId: "rev-1",
+        firmId: "firm-1",
+        criterionId: "crit-1",
+        value: 5,
+        comment: "Old comment",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+    render(<App />);
+    await navigateToReviewerForms(project);
+
+    const reviewer = project.reviewers[0];
+    const generated = await generateWorkbookForReviewer(project, reviewer);
+    if (!generated.ok) throw new Error(generated.error);
+    const generatedFile = new File([generated.blob], generated.filename);
+    const arrayBuffer = await readFileArrayBuffer(generatedFile);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(arrayBuffer);
+    const sheet = workbook.getWorksheet("Scoring")!;
+    sheet.getCell("D6").value = 5; // same value
+    sheet.getCell("E6").value = "New comment"; // different comment
+    const buffer = await workbook.xlsx.writeBuffer();
+    const file = new File([buffer as unknown as BlobPart], generated.filename, {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    fireEvent.change(screen.getByLabelText("Select one or more completed .xlsx files"), {
+      target: { files: [file] },
+    });
+    await screen.findByText(/Review before importing/);
+
+    expect(screen.getByText("1/1 changed")).toBeInTheDocument();
+    expect(screen.getByText(/Alpha Co \/ Approach: comment changed/)).toBeInTheDocument();
+    // No stale "5 -> 5" arrow, since the value itself didn't change.
+    expect(screen.queryByText(/5 → 5/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Confirm import \(1 score\)/ }));
+    await screen.findByRole("alertdialog", { name: "Overwrite existing scores?" });
+  });
+
   it("an import that WOULD overwrite an existing score opens a distinct confirmation, and commits nothing until it's confirmed", async () => {
     const project = buildProject();
     project.scores = [

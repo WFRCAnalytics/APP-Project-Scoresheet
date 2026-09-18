@@ -21,9 +21,25 @@ import { FilePickerField, type FilePickerFieldHandle } from "../../components/Fi
 import {
   collectScoresToCommit,
   parseWorkbookFiles,
+  type OverwriteDetail,
   type ParsedFileResult,
 } from "../../lib/excel/parseWorkbook";
+import type { Score } from "../../types/project";
 import { useLoadedProject } from "../../state/ProjectContext";
+
+/** Renders only the part(s) of a row that actually changed — an overwrite is only ever
+ * shown when the value and/or comment genuinely differs (parseWorkbook.ts), so this always
+ * has at least one part. Avoids a misleading "4 → 4" line when only the comment changed. */
+function describeOverwriteChange(overwrites: OverwriteDetail, newScore: Score): string {
+  const parts: string[] = [];
+  if (overwrites.previousValue !== newScore.value) {
+    parts.push(`${overwrites.previousValue} → ${newScore.value}`);
+  }
+  if (overwrites.previousComment !== newScore.comment) {
+    parts.push("comment changed");
+  }
+  return parts.join(", ");
+}
 
 export function ImportScoresPanel() {
   const { project, dispatch } = useLoadedProject();
@@ -139,19 +155,23 @@ export function ImportScoresPanel() {
                       )}
                     </td>
                     <td>
-                      {result.overwriteCount > 0 ? (
+                      {result.alreadyRecordedCount > 0 ? (
                         <>
-                          <Badge variant="warning">{result.overwriteCount}</Badge>
-                          <ul className="import-overwrite-rows">
-                            {result.rows
-                              .filter((r) => r.status === "added" && r.overwrites)
-                              .map((r, i) => (
-                                <li key={i}>
-                                  Row {r.row}: {r.overwrites!.firmName} / {r.overwrites!.criterionName}:{" "}
-                                  {r.overwrites!.previousValue} → {r.score!.value}
-                                </li>
-                              ))}
-                          </ul>
+                          <Badge variant={result.overwriteCount > 0 ? "warning" : "neutral"}>
+                            {result.overwriteCount}/{result.alreadyRecordedCount} changed
+                          </Badge>
+                          {result.overwriteCount > 0 && (
+                            <ul className="import-overwrite-rows">
+                              {result.rows
+                                .filter((r) => r.status === "added" && r.overwrites)
+                                .map((r, i) => (
+                                  <li key={i}>
+                                    Row {r.row}: {r.overwrites!.firmName} / {r.overwrites!.criterionName}:{" "}
+                                    {describeOverwriteChange(r.overwrites!, r.score!)}
+                                  </li>
+                                ))}
+                            </ul>
+                          )}
                         </>
                       ) : (
                         "—"

@@ -33,9 +33,12 @@ import type { Project, Score } from "../../types/project";
 export type RowStatus = "added" | "skipped" | "failed";
 
 /** Detail attached to an "added" row when a live score already exists for the same
- * reviewer/firm/criterion cell — the exact value/comment that would be silently replaced,
- * per the three-key match FR-023's "last input wins" already uses. Never present on
- * "skipped"/"failed" rows (nothing is committed for those either way). */
+ * reviewer/firm/criterion cell AND the incoming value or comment actually differs from it
+ * — the exact value/comment that would be replaced, per the three-key match FR-023's "last
+ * input wins" already uses. A resubmission that matches the existing value/comment exactly
+ * (e.g. re-uploading the same completed workbook) is NOT an overwrite — see
+ * ParsedRow.matchedExisting for that case. Never present on "skipped"/"failed" rows
+ * (nothing is committed for those either way). */
 export interface OverwriteDetail {
   previousValue: number;
   previousComment: string;
@@ -51,7 +54,14 @@ export interface ParsedRow {
   reason?: string;
   /** Present only for "added". */
   score?: Score;
-  /** Present only for "added" rows that would overwrite an existing score. */
+  /** True on any "added" row whose cell already had a live score before this import,
+   * whether or not the incoming value/comment differs from it — the denominator for "how
+   * many of this file's rows are a resubmission of something we've seen before" (as
+   * opposed to a brand-new score). Set alongside `overwrites`, but broader: `overwrites`
+   * requires an actual difference, this doesn't. */
+  matchedExisting?: boolean;
+  /** Present only for "added" rows that would overwrite an existing score with a
+   * genuinely different value and/or comment. */
   overwrites?: OverwriteDetail;
 }
 
@@ -64,11 +74,17 @@ export interface ParsedFileResult {
   addedCount: number;
   skippedCount: number;
   failedCount: number;
-  /** Count of "added" rows that also carry `overwrites` — a subset of addedCount, not a
-   * fourth mutually-exclusive bucket: an overwriting row is still genuinely "added" (it
-   * does get committed, replacing the prior value), just also flagged as replacing
-   * something. Surfaced separately so the handler sees it before confirming, not folded
-   * silently into "added" the way it was before this was added. */
+  /** Count of "added" rows with `matchedExisting` — i.e. rows resubmitting a cell that
+   * already had a live score, whether or not the value/comment actually changed. The
+   * denominator for overwriteCount: "2 of 24 already-recorded rows changed" reads as
+   * overwriteCount / alreadyRecordedCount. */
+  alreadyRecordedCount: number;
+  /** Count of "added" rows that also carry `overwrites` — a subset of both addedCount and
+   * alreadyRecordedCount, not a fourth mutually-exclusive bucket: an overwriting row is
+   * still genuinely "added" (it does get committed, replacing the prior value), just also
+   * flagged as replacing something that was genuinely different. A row resubmitting an
+   * identical value/comment counts toward alreadyRecordedCount but NOT here — re-uploading
+   * an unchanged workbook now yields overwriteCount 0, not one per row. */
   overwriteCount: number;
 }
 
@@ -137,6 +153,7 @@ export function parseScoringWorkbook(
       addedCount: 0,
       skippedCount: 0,
       failedCount: 1,
+      alreadyRecordedCount: 0,
       overwriteCount: 0,
     };
   }
@@ -156,6 +173,7 @@ export function parseScoringWorkbook(
       addedCount: 0,
       skippedCount: 0,
       failedCount: 1,
+      alreadyRecordedCount: 0,
       overwriteCount: 0,
     };
   }
@@ -255,18 +273,29 @@ export function parseScoringWorkbook(
         s.reviewerId === reviewerId && s.firmId === firmId && s.criterionId === criterionId,
     );
 
+    // A resubmission that matches the existing value/comment exactly (e.g. re-uploading a
+    // workbook already imported once) isn't an overwrite — nothing would actually change —
+    // so `overwrites` only attaches when something genuinely differs. `matchedExisting`
+    // still records that this cell had a prior score, for the "X of Y already-recorded rows
+    // changed" denominator.
+    const changed = existing
+      ? existing.value !== normalized || existing.comment !== comment
+      : false;
+
     rows.push({
       row: r,
       status: "added",
       score: { reviewerId, firmId, criterionId, value: normalized, comment, updatedAt: now },
-      overwrites: existing
-        ? {
-            previousValue: existing.value,
-            previousComment: existing.comment,
-            firmName: firm.name,
-            criterionName: criterion.name,
-          }
-        : undefined,
+      matchedExisting: existing ? true : undefined,
+      overwrites:
+        existing && changed
+          ? {
+              previousValue: existing.value,
+              previousComment: existing.comment,
+              firmName: firm.name,
+              criterionName: criterion.name,
+            }
+          : undefined,
     });
   }
 
@@ -277,6 +306,7 @@ export function parseScoringWorkbook(
     addedCount: rows.filter((r) => r.status === "added").length,
     skippedCount: rows.filter((r) => r.status === "skipped").length,
     failedCount: rows.filter((r) => r.status === "failed").length,
+    alreadyRecordedCount: rows.filter((r) => r.status === "added" && r.matchedExisting).length,
     overwriteCount: rows.filter((r) => r.status === "added" && r.overwrites).length,
   };
 }
@@ -296,6 +326,7 @@ export async function parseWorkbookFile(project: Project, file: File): Promise<P
       addedCount: 0,
       skippedCount: 0,
       failedCount: 1,
+      alreadyRecordedCount: 0,
       overwriteCount: 0,
     };
   }

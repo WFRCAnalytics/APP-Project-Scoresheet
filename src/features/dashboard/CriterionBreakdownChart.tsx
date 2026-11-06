@@ -43,7 +43,7 @@ import { wrapAxisLabel } from "./wrapAxisLabel";
 // Layout constants the custom angle-axis tick (below) needs to reconstruct the label
 // circle's real pixel radius, since Recharts doesn't hand a custom tick its own cx/cy/radius
 // directly — these have to match the real <RadarChart>/<PolarAngleAxis> props they describe.
-const RADAR_HEIGHT = 280; // matches the container div's fixed height below
+const RADAR_HEIGHT = 380; // matches the container div's fixed height below
 const RADAR_MARGIN = 5; // RadarChart's own default margin on every side
 const RADAR_OUTER_RADIUS_FRACTION = 0.7; // matches outerRadius="70%" on <RadarChart> below
 const POLAR_TICK_SIZE = 8; // PolarAngleAxis's default tickSize — label distance past the polygon

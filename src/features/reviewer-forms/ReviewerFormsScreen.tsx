@@ -18,6 +18,7 @@ export function ReviewerFormsScreen({
   onGoToDashboard,
 }: ReviewerFormsScreenProps) {
   const { project } = useLoadedProject();
+  const unsigned = project.reviewers.filter((r) => !r.confidentialitySigned);
 
   return (
     <section aria-label="Reviewer Forms">
@@ -26,6 +27,14 @@ export function ReviewerFormsScreen({
         Generate an Excel scoring workbook for each reviewer. Reviewers open, fill, and return these
         files using spreadsheet software they already have — no knowledge of this app required.
       </p>
+
+      {unsigned.length > 0 && (
+        <div className="banner banner-warning" role="status">
+          Confidentiality form not signed:{" "}
+          {unsigned.map((r) => r.name || "Unnamed reviewer").join(", ")}. You can still generate
+          their workbooks — this is a reminder only.
+        </div>
+      )}
 
       <div className="card card--elevated">
         <h2>Download all at once</h2>
@@ -55,6 +64,12 @@ export function ReviewerFormsScreen({
                       <Badge variant={reviewer.type === "wfrc" ? "info" : "neutral"}>
                         {reviewer.type === "wfrc" ? "WFRC" : "TLC Applicant"}
                       </Badge>
+                      {!reviewer.confidentialitySigned && (
+                        <>
+                          {" "}
+                          <Badge variant="warning">Confidentiality form not signed</Badge>
+                        </>
+                      )}
                     </td>
                     <td>
                       <GenerateFormButton reviewer={reviewer} />

@@ -41,7 +41,7 @@ function buildFixture(): Project {
     { id: "firm-1", name: "Alpha Co", invited: true, submitted: true, notes: "" },
     { id: "firm-2", name: "Beta Co", invited: true, submitted: true, notes: "" },
   ];
-  project.reviewers = [{ id: "rev-1", name: "Alice", type: "applicant", email: "" }];
+  project.reviewers = [{ id: "rev-1", name: "Alice", type: "applicant", email: "", confidentialitySigned: true }];
   return project;
 }
 

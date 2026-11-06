@@ -63,6 +63,23 @@ function CompletionStatusBanner({ scored, expected }: { scored: number; expected
   );
 }
 
+/** Reminder of any reviewers whose confidentiality form isn't marked signed — the Dashboard
+ * is what gets printed/exported for the procurement record, so it shouldn't read as clean
+ * while a reviewer's scores are in it without one. Warning only; nothing is blocked. */
+function UnsignedReviewersBanner({ project }: { project: Project }) {
+  const unsigned = project.reviewers.filter((r) => !r.confidentialitySigned);
+  if (unsigned.length === 0) return null;
+  return (
+    <div className="banner banner-warning completion-status-banner" role="status">
+      <TriangleAlert size={18} aria-hidden="true" />
+      <span>
+        Confidentiality form not signed:{" "}
+        {unsigned.map((r) => r.name || "Unnamed reviewer").join(", ")}.
+      </span>
+    </div>
+  );
+}
+
 /** Top-of-page orientation strip: how many firms are in the running, who's leading, and
  * whether either of the other two rank lenses (TLC Applicant, WFRC) ever disagrees with
  * Overall — before the full ranked table. Included in the printable region too, since it's a
@@ -144,6 +161,7 @@ export const PrintableDashboard = forwardRef<HTMLDivElement, { project: Project 
         </div>
 
         {rows.length > 0 && <CompletionStatusBanner {...totals} />}
+        <UnsignedReviewersBanner project={project} />
         {rows.length > 0 && <DashboardSummary project={project} />}
 
         <div className="card">

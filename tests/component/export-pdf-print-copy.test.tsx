@@ -49,7 +49,7 @@ async function goToDashboard() {
     scoringScaleMode: "discrete",
     criteria: [{ id: "crit-1", name: "Approach", weight: 1, description: "" }],
     firms: [{ id: "firm-1", name: "Alpha Co", invited: true, submitted: true, notes: "" }],
-    reviewers: [{ id: "rev-1", name: "Alice", type: "applicant", email: "" }],
+    reviewers: [{ id: "rev-1", name: "Alice", type: "applicant", email: "", confidentialitySigned: true }],
     scores: [
       { reviewerId: "rev-1", firmId: "firm-1", criterionId: "crit-1", value: 5, comment: "", updatedAt: "" },
     ],
@@ -86,7 +86,7 @@ async function goToDashboardWithTwoFirms() {
       { id: "firm-1", name: "Zeta Co", invited: true, submitted: true, notes: "" },
       { id: "firm-2", name: "Alpha Co", invited: true, submitted: true, notes: "" },
     ],
-    reviewers: [{ id: "rev-1", name: "Alice", type: "applicant", email: "" }],
+    reviewers: [{ id: "rev-1", name: "Alice", type: "applicant", email: "", confidentialitySigned: true }],
     scores: [
       { reviewerId: "rev-1", firmId: "firm-1", criterionId: "crit-1", value: 5, comment: "", updatedAt: "" },
       { reviewerId: "rev-1", firmId: "firm-2", criterionId: "crit-1", value: 1, comment: "", updatedAt: "" },

@@ -29,7 +29,7 @@ function baseProject(): Project {
   const project = createEmptyProject();
   project.project.projectName = "Spread Chart Test";
   project.firms = [{ id: "f1", name: "Alpha Co", invited: true, submitted: true, notes: "" }];
-  project.reviewers = [{ id: "r1", name: "Alice", type: "applicant", email: "" }];
+  project.reviewers = [{ id: "r1", name: "Alice", type: "applicant", email: "", confidentialitySigned: true }];
   return project;
 }
 

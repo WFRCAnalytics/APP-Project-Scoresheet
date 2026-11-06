@@ -48,9 +48,9 @@ function buildFixture(): Project {
     { id: "firm-3", name: "Gamma Co", invited: true, submitted: false, notes: "" },
   ];
   project.reviewers = [
-    { id: "rev-1", name: "Alice", type: "applicant", email: "" },
-    { id: "rev-2", name: "Bob", type: "applicant", email: "" },
-    { id: "rev-3", name: "Cory", type: "wfrc", email: "" },
+    { id: "rev-1", name: "Alice", type: "applicant", email: "", confidentialitySigned: true },
+    { id: "rev-2", name: "Bob", type: "applicant", email: "", confidentialitySigned: true },
+    { id: "rev-3", name: "Cory", type: "wfrc", email: "", confidentialitySigned: true },
   ];
   project.scores = [
     { reviewerId: "rev-1", firmId: "firm-1", criterionId: "crit-1", value: 5, comment: "", updatedAt: "" },
@@ -262,7 +262,7 @@ describe("flexibility: a materially different-shaped project (T054, FR-012/SC-00
       submitted: i < 13, // firm-13 and firm-14 deliberately NOT submitted
       notes: "",
     }));
-    project.reviewers = [{ id: "rev-1", name: "Sole Reviewer", type: "applicant", email: "" }];
+    project.reviewers = [{ id: "rev-1", name: "Sole Reviewer", type: "applicant", email: "", confidentialitySigned: true }];
     // Score cycles through all 7 scale values across the 13 submitted firms:
     // firm-0..firm-12 -> 1,2,3,4,5,6,7,1,2,3,4,5,6
     project.scores = project.firms

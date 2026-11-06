@@ -61,6 +61,11 @@ export interface Reviewer {
   type: ReviewerType;
   /** Optional; "" if unset. Handler's own reference only — the app never sends email. */
   email: string;
+  /** Whether this reviewer has signed the confidentiality form. Tracked and surfaced as a
+   * warning (Reviewer Forms, Dashboard) but never blocks anything. New reviewers start
+   * false; a saved file with no value for it is migrated to true (project-schema.ts) —
+   * every reviewer in an old file was already working before this was tracked. */
+  confidentialitySigned: boolean;
 }
 
 export interface Score {

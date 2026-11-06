@@ -26,6 +26,7 @@ function buildProject(reviewerNames: string[]): Project {
     name,
     type: "applicant",
     email: "",
+    confidentialitySigned: true,
   }));
   return project;
 }

@@ -52,6 +52,7 @@ export function ReviewersEditor() {
               <th>Name</th>
               <th>Type</th>
               <th>Email</th>
+              <th>Confidentiality form signed</th>
               <th aria-label="Actions" />
             </tr>
           </thead>
@@ -103,6 +104,20 @@ export function ReviewersEditor() {
                   />
                 </td>
                 <td>
+                  <input
+                    type="checkbox"
+                    aria-label={`Confidentiality form signed: ${reviewer.name || "unnamed reviewer"}`}
+                    checked={reviewer.confidentialitySigned}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "UPDATE_REVIEWER",
+                        reviewerId: reviewer.id,
+                        patch: { confidentialitySigned: e.target.checked },
+                      })
+                    }
+                  />
+                </td>
+                <td>
                   <button
                     type="button"
                     className="button button-danger"
@@ -115,7 +130,7 @@ export function ReviewersEditor() {
             ))}
             {project.reviewers.length === 0 && (
               <tr>
-                <td colSpan={4} className="field-hint">
+                <td colSpan={5} className="field-hint">
                   No reviewers yet — add one below.
                 </td>
               </tr>
@@ -131,7 +146,13 @@ export function ReviewersEditor() {
           onClick={() =>
             dispatch({
               type: "ADD_REVIEWER",
-              reviewer: { id: generateId("rev"), name: "", type: "applicant", email: "" },
+              reviewer: {
+                id: generateId("rev"),
+                name: "",
+                type: "applicant",
+                email: "",
+                confidentialitySigned: false,
+              },
             })
           }
         >

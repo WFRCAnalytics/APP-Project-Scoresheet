@@ -27,9 +27,9 @@ function buildProject(): Project {
     { id: "f2", name: "Beta Co", invited: true, submitted: true, notes: "" },
   ];
   project.reviewers = [
-    { id: "r1", name: "Alice", type: "applicant", email: "" },
-    { id: "r2", name: "Bob", type: "wfrc", email: "" },
-    { id: "r3", name: "Carol", type: "applicant", email: "" },
+    { id: "r1", name: "Alice", type: "applicant", email: "", confidentialitySigned: true },
+    { id: "r2", name: "Bob", type: "wfrc", email: "", confidentialitySigned: true },
+    { id: "r3", name: "Carol", type: "applicant", email: "", confidentialitySigned: true },
   ];
   return project;
 }

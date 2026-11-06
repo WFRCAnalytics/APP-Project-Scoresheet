@@ -15,7 +15,7 @@ function validMinimalProjectJson() {
   ];
   project.criteria = [{ id: "crit-1", name: "Approach", weight: 1, description: "" }];
   project.firms = [{ id: "firm-1", name: "Alpha Co", invited: true, submitted: true, notes: "" }];
-  project.reviewers = [{ id: "rev-1", name: "Alice", type: "applicant", email: "" }];
+  project.reviewers = [{ id: "rev-1", name: "Alice", type: "applicant", email: "", confidentialitySigned: true }];
   return JSON.parse(JSON.stringify(project));
 }
 

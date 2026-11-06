@@ -40,8 +40,8 @@ function buildFixture(): Project {
     { id: "firm-2", name: "Beta Co", invited: true, submitted: true, notes: "" },
   ];
   project.reviewers = [
-    { id: "rev-1", name: "Alice", type: "applicant", email: "" },
-    { id: "rev-2", name: "Bob", type: "wfrc", email: "" },
+    { id: "rev-1", name: "Alice", type: "applicant", email: "", confidentialitySigned: true },
+    { id: "rev-2", name: "Bob", type: "wfrc", email: "", confidentialitySigned: true },
   ];
   project.scores = [
     {
@@ -437,6 +437,18 @@ describe("generateCalculationsWorkbook — config/reference tabs", () => {
     expect(sheet.getRow(5).getCell(2).value).toBe("TLC Applicant");
     expect(sheet.getRow(6).getCell(1).value).toBe("Bob");
     expect(sheet.getRow(6).getCell(2).value).toBe("WFRC");
+  });
+
+  it("Reviewers lists whether each reviewer has signed the confidentiality form", async () => {
+    const project = buildFixture();
+    project.reviewers[1].confidentialitySigned = false;
+    const { blob } = await generateCalculationsWorkbook(project);
+    const workbook = await reloadWorkbook(blob);
+    const sheet = workbook.getWorksheet("Reviewers")!;
+
+    expect(sheet.getRow(4).getCell(4).value).toBe("Confidentiality Form Signed");
+    expect(sheet.getRow(5).getCell(4).value).toBe("Yes");
+    expect(sheet.getRow(6).getCell(4).value).toBe("No");
   });
 
   it("Criteria shows each weight as both a decimal and a live percent formula, plus a summed total row", async () => {

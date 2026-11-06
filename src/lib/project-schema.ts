@@ -56,6 +56,16 @@ export function validateAndMigrateProject(raw: unknown): ValidationResult {
     migrated.reviewers = migrated.reviewers.map((r) =>
       isPlainObject(r) && r.type === "city" ? { ...r, type: "applicant" } : r,
     );
+
+    // confidentialitySigned addition (Reviewer, types/project.ts). Also not a schemaVersion
+    // bump. Every reviewer in a file saved before this was tracked was already taking part,
+    // so a missing value is migrated to true (signed) rather than flagging all of an old
+    // project's reviewers as unsigned on load.
+    migrated.reviewers = (migrated.reviewers as unknown[]).map((r) =>
+      isPlainObject(r) && r.confidentialitySigned === undefined
+        ? { ...r, confidentialitySigned: true }
+        : r,
+    );
   }
 
   // scoringScaleMode addition (discrete vs. continuous scales — types/project.ts). Not a
@@ -163,9 +173,10 @@ function describeStructuralError(obj: Record<string, unknown>): string | null {
       !isStringField(r, "id") ||
       !isStringField(r, "name") ||
       (r.type !== "applicant" && r.type !== "wfrc") ||
-      !isStringField(r, "email")
+      !isStringField(r, "email") ||
+      typeof r.confidentialitySigned !== "boolean"
     ) {
-      return 'Every reviewer needs an id, name, type ("applicant" or "wfrc"), and email field.';
+      return 'Every reviewer needs an id, name, type ("applicant" or "wfrc"), email, and confidentialitySigned field.';
     }
   }
 

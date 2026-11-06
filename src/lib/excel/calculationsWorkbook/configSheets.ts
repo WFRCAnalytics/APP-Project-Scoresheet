@@ -94,8 +94,9 @@ function buildReviewersSheet(workbook: ExcelJS.Workbook, project: Project): void
     { key: "name", width: 30 },
     { key: "type", width: 18 },
     { key: "email", width: 35 },
+    { key: "signed", width: 28 },
   ];
-  const headerLabels = ["Reviewer Name", "Type", "Email"];
+  const headerLabels = ["Reviewer Name", "Type", "Email", "Confidentiality Form Signed"];
   styleHeaderRow(sheet, headerRowNum, headerLabels);
   sheet.views = [{ state: "frozen", ySplit: headerRowNum }];
 
@@ -106,6 +107,7 @@ function buildReviewersSheet(workbook: ExcelJS.Workbook, project: Project): void
     row.getCell(1).font = { bold: true };
     row.getCell(2).value = reviewer.type === "wfrc" ? "WFRC" : "TLC Applicant";
     row.getCell(3).value = reviewer.email || "";
+    row.getCell(4).value = reviewer.confidentialitySigned ? "Yes" : "No";
     zebraRow(sheet, r, headerLabels.length, i);
   });
 }

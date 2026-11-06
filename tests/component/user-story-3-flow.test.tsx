@@ -27,8 +27,8 @@ function buildUnscoredProject(): Project {
     { id: "firm-2", name: "Beta Co", invited: true, submitted: true, notes: "" },
   ];
   project.reviewers = [
-    { id: "rev-1", name: "Alice", type: "applicant", email: "" },
-    { id: "rev-2", name: "Bob", type: "wfrc", email: "" },
+    { id: "rev-1", name: "Alice", type: "applicant", email: "", confidentialitySigned: true },
+    { id: "rev-2", name: "Bob", type: "wfrc", email: "", confidentialitySigned: true },
   ];
   return project;
 }

@@ -46,14 +46,18 @@ export function ReviewersEditor() {
       )}
 
       <div className="table-wrap">
-        <table className="data-table">
+        <table className="data-table reviewers-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Type</th>
+              <th className="col-name">Name</th>
+              <th className="col-type">Type</th>
               <th>Email</th>
-              <th>Signed Confidentiality</th>
-              <th aria-label="Actions" />
+              {/* Spans the checkbox column AND the (header-less) Remove column, so the long
+                  header text can run over the buttons instead of forcing the checkbox column
+                  wide — which is what leaves Email room to be the wide column. */}
+              <th colSpan={2} className="col-signed">
+                Signed Confidentiality
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -103,7 +107,7 @@ export function ReviewersEditor() {
                     }
                   />
                 </td>
-                <td>
+                <td className="col-signed">
                   <input
                     type="checkbox"
                     aria-label={`Signed Confidentiality: ${reviewer.name || "unnamed reviewer"}`}

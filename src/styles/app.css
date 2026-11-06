@@ -495,6 +495,38 @@ table.data-table tbody tr:last-child td {
   border-bottom: none;
 }
 
+/* Reviewers table: proportions chosen per column instead of the auto layout's even split.
+   Name and Type get a set share, the checkbox and Remove columns shrink to their content
+   (width: 1%), and Email, the column that actually holds long text, takes everything left
+   over. The "Signed Confidentiality" header spans the checkbox AND Remove columns (see
+   ReviewersEditor), so the checkbox column only has to be as wide as a checkbox. Cell
+   padding is trimmed (the inputs inside have their own) because the card is only 56rem wide. */
+table.reviewers-table th,
+table.reviewers-table td {
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+}
+
+table.reviewers-table .col-name {
+  width: 21%;
+}
+
+table.reviewers-table .col-type {
+  width: 11rem;
+}
+
+table.reviewers-table td:nth-last-child(2),
+table.reviewers-table td:last-child {
+  width: 1%;
+}
+
+/* Checkbox sits under the start of the (wider, spanning) header text, not centered in its own
+   narrow cell. */
+table.reviewers-table td.col-signed {
+  text-align: left;
+  padding-right: var(--space-4); /* small buffer before the Remove button */
+}
+
 .banner {
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);

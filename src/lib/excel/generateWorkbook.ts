@@ -35,6 +35,36 @@ export type GenerateWorkbookResult =
  * block generation (FR-010) — the workbook never displays weights at all, so it has no
  * effect on what the reviewer sees.
  */
+
+// Rough characters-per-line of each merged banner region at its font size — used to size
+// the banner rows, since Excel won't auto-fit a merged cell's row height.
+const TITLE_CHARS_PER_LINE = 72; // A:C at 14pt bold
+const REVIEWER_CHARS_PER_LINE = 30; // D:E, name at 18pt bold
+const LEGEND_CHARS_PER_LINE = 88; // A:C at 11pt bold
+const RANGE_CHARS_PER_LINE = 38; // D:E at 13pt bold
+/** Excel's hard limit on a data validation's input-message body. */
+const EXCEL_PROMPT_MAX = 255;
+
+/** The Score cell's input message: what's allowed (`head`) plus each scale point's meaning. Excel
+ * truncates anything past 255 characters, so long labels are shortened (evenly) until it fits
+ * rather than silently losing the last anchor — usually the "5". */
+function buildScorePrompt(sortedScale: { value: number; label: string }[], head: string): string {
+  const render = (maxLabel: number) =>
+    [
+      head,
+      ...sortedScale.map((p) => {
+        const label =
+          p.label.length > maxLabel ? `${p.label.slice(0, Math.max(0, maxLabel - 1))}…` : p.label;
+        return `${p.value} = ${label}`;
+      }),
+    ].join("\n");
+  for (let maxLabel = 120; maxLabel >= 8; maxLabel -= 2) {
+    const text = render(maxLabel);
+    if (text.length <= EXCEL_PROMPT_MAX) return text;
+  }
+  return render(8).slice(0, EXCEL_PROMPT_MAX);
+}
+
 export function checkCanGenerateWorkbooks(project: Project): string | null {
   if (project.criteria.length === 0) {
     return "Add at least one criterion before generating reviewer forms — an empty Scoring sheet would have nothing to score.";
@@ -106,35 +136,65 @@ function buildScoringSheet(
   const projectName = project.project.projectName || "Untitled Project";
   const sortedScale = [...project.scoringScale].sort((a, b) => a.value - b.value);
   const { min: scaleMin, max: scaleMax } = scaleRange(project);
+  const isContinuous = project.scoringScaleMode === "continuous";
   // Continuous mode: the configured points are labeled reference anchors, not the only
-  // choices (lib/scoreScale.ts) — the legend says so explicitly, since a reviewer seeing
-  // "1 = Poor   ·   5 = Excellent" with no other cue would reasonably assume those are the
-  // only two entries the dropdown-less Score cell will accept.
-  const scaleLegend =
-    sortedScale.map((p) => `${p.value} = ${p.label}`).join("   ·   ") +
-    (project.scoringScaleMode === "continuous"
-      ? ` (enter any value from ${scaleMin} to ${scaleMax}, one decimal place)`
-      : "");
+  // choices (lib/scoreScale.ts), so the banner states the allowed range separately and
+  // prominently — a reviewer seeing "1 = Poor   ·   5 = Excellent" with no other cue would
+  // reasonably assume those are the only two entries the Score cell will accept.
+  const scaleLegend = `Scale:   ${sortedScale.map((p) => `${p.value} = ${p.label}`).join("   ·   ")}`;
+  // Same slot, same styling, either mode — what the Score cell will accept.
+  const allowedRange = isContinuous
+    ? `Any value between ${scaleMin} and ${scaleMax} is allowed`
+    : `Only these values are allowed: ${sortedScale.map((p) => p.value).join(", ")}`;
+  const bannerFill = { type: "pattern", pattern: "solid", fgColor: { argb: BRAND_BLUE } } as const;
 
-  // Row 1: title banner.
-  sheet.mergeCells(`A${SCORING_TITLE_ROW}:E${SCORING_TITLE_ROW}`);
+  // Row 1: title on the left, reviewer name on the right (larger, so it's the first thing a
+  // reviewer sees confirming this is their sheet). A:C / D:E split — the importer never reads
+  // the banner rows, so this is presentation only.
+  sheet.mergeCells(`A${SCORING_TITLE_ROW}:C${SCORING_TITLE_ROW}`);
+  sheet.mergeCells(`D${SCORING_TITLE_ROW}:E${SCORING_TITLE_ROW}`);
   const titleCell = sheet.getCell(`A${SCORING_TITLE_ROW}`);
   titleCell.value = `Proposal Evaluation Scoresheet — ${projectName}`;
   titleCell.font = { bold: true, size: 14, color: { argb: WHITE_TEXT } };
-  titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BRAND_BLUE } };
-  titleCell.alignment = { vertical: "middle" };
+  titleCell.fill = bannerFill;
+  titleCell.alignment = { vertical: "middle", wrapText: true };
   titleCell.protection = { locked: true };
-  sheet.getRow(SCORING_TITLE_ROW).height = 24;
+  const reviewerCell = sheet.getCell(`D${SCORING_TITLE_ROW}`);
+  reviewerCell.value = {
+    richText: [
+      { text: "Reviewer:  ", font: { size: 11, color: { argb: WHITE_TEXT } } },
+      { text: reviewer.name, font: { bold: true, size: 18, color: { argb: WHITE_TEXT } } },
+    ],
+  };
+  reviewerCell.fill = bannerFill;
+  reviewerCell.alignment = { vertical: "middle", horizontal: "right", wrapText: true };
+  reviewerCell.protection = { locked: true };
+  // Merged cells don't auto-fit their row height, so size it from the text instead.
+  const titleLines = Math.ceil(titleCell.value.toString().length / TITLE_CHARS_PER_LINE);
+  const reviewerLines = Math.ceil((reviewer.name.length + 11) / REVIEWER_CHARS_PER_LINE);
+  sheet.getRow(SCORING_TITLE_ROW).height = Math.max(34, 22 * titleLines, 26 * reviewerLines);
 
-  // Row 2: reviewer name + inline scale legend.
-  sheet.mergeCells(`A${SCORING_SUBTITLE_ROW}:E${SCORING_SUBTITLE_ROW}`);
+  // Row 2: scale legend on the left, what's allowed on the right (bold, larger) — the same
+  // layout for continuous and discrete scales.
+  sheet.mergeCells(`A${SCORING_SUBTITLE_ROW}:C${SCORING_SUBTITLE_ROW}`);
   const subtitleCell = sheet.getCell(`A${SCORING_SUBTITLE_ROW}`);
-  subtitleCell.value = `Reviewer: ${reviewer.name}      Scale: ${scaleLegend}`;
+  subtitleCell.value = scaleLegend;
   subtitleCell.font = { bold: true, size: 11, color: { argb: WHITE_TEXT } };
-  subtitleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BRAND_BLUE } };
-  subtitleCell.alignment = { vertical: "middle" };
+  subtitleCell.fill = bannerFill;
+  subtitleCell.alignment = { vertical: "middle", wrapText: true };
   subtitleCell.protection = { locked: true };
-  sheet.getRow(SCORING_SUBTITLE_ROW).height = 18;
+  sheet.mergeCells(`D${SCORING_SUBTITLE_ROW}:E${SCORING_SUBTITLE_ROW}`);
+  const rangeCell = sheet.getCell(`D${SCORING_SUBTITLE_ROW}`);
+  rangeCell.value = allowedRange;
+  rangeCell.font = { bold: true, size: 13, color: { argb: WHITE_TEXT } };
+  rangeCell.fill = bannerFill;
+  rangeCell.alignment = { vertical: "middle", horizontal: "right", wrapText: true };
+  rangeCell.protection = { locked: true };
+  const subtitleLines = Math.max(
+    Math.ceil(scaleLegend.length / LEGEND_CHARS_PER_LINE),
+    Math.ceil(allowedRange.length / RANGE_CHARS_PER_LINE),
+  );
+  sheet.getRow(SCORING_SUBTITLE_ROW).height = Math.max(24, 6 + 16 * subtitleLines);
 
   // Row 3: instruction line, styled in the same tint as the editable columns below it —
   // the color itself explains what "editable" looks like before you even reach the table.
@@ -193,6 +253,9 @@ function buildScoringSheet(
           errorStyle: "error",
           errorTitle: "Invalid score",
           error: "Please choose one of the listed scale values.",
+          showInputMessage: true,
+          promptTitle: "Score: choose a listed value",
+          prompt: buildScorePrompt(sortedScale, `Choose one of: ${scaleValues.join(", ")}.`),
         }
       : {
           type: "decimal",
@@ -203,6 +266,15 @@ function buildScoringSheet(
           errorStyle: "error",
           errorTitle: "Invalid score",
           error: `Please enter a number between ${scaleMin} and ${scaleMax}.`,
+          // The hint Excel shows when a Score cell is selected: any in-range value is fine,
+          // and what the anchor values mean (a bare "1 to 5" range wouldn't say what a 1 or
+          // a 5 is).
+          showInputMessage: true,
+          promptTitle: `Score: ${scaleMin} to ${scaleMax}`,
+          prompt: buildScorePrompt(
+            sortedScale,
+            `Any value between ${scaleMin} and ${scaleMax} is allowed.`,
+          ),
         };
 
   // Tracks the previous row's firm so a thick top border can mark the FIRST row of every

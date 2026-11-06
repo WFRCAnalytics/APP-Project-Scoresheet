@@ -26,6 +26,7 @@ import {
   generateWorkbookForReviewer,
   SCORING_FIRST_DATA_ROW,
   SCORING_HEADER_ROW,
+  SCORING_INSTRUCTION_ROW,
   SCORING_SUBTITLE_ROW,
   SCORING_TITLE_ROW,
 } from "../../src/lib/excel/generateWorkbook";
@@ -81,10 +82,12 @@ describe("generateWorkbookForReviewer", () => {
     const workbook = await reloadWorkbook(result.blob);
     const scoring = workbook.getWorksheet("Scoring")!;
     const titleText = String(scoring.getCell(`A${SCORING_TITLE_ROW}`).value);
+    const reviewerText = scoring.getCell(`D${SCORING_TITLE_ROW}`).text;
     const subtitleText = String(scoring.getCell(`A${SCORING_SUBTITLE_ROW}`).value);
 
     expect(titleText).toContain("Quickstart Test");
-    expect(subtitleText).toContain("Alice");
+    expect(reviewerText).toContain("Alice");
+    expect(subtitleText).not.toContain("Alice");
     expect(subtitleText).toContain("1 = No");
     expect(subtitleText).toContain("3 = Maybe");
     expect(subtitleText).toContain("5 = Yes");
@@ -288,12 +291,84 @@ describe("generateWorkbookForReviewer", () => {
       const workbook = await reloadWorkbook(result.blob);
       const scoring = workbook.getWorksheet("Scoring")!;
       const subtitleText = String(scoring.getCell(`A${SCORING_SUBTITLE_ROW}`).value);
+      const rangeText = scoring.getCell(`D${SCORING_SUBTITLE_ROW}`).text;
 
       // Still lists the configured points as reference anchors...
       expect(subtitleText).toContain("1 = No");
       expect(subtitleText).toContain("5 = Yes");
-      // ...but also says the range itself is what's actually accepted.
-      expect(subtitleText).toContain("1 to 5");
+      // ...but also says, prominently, that the range itself is what's actually accepted.
+      expect(rangeText).toBe("Any value between 1 and 5 is allowed");
+    });
+
+    it("shows a Score-cell hint with the allowed range and says what each anchor means", async () => {
+      const project = buildFixture();
+      project.scoringScaleMode = "continuous";
+      const result = await generateWorkbookForReviewer(project, project.reviewers[0]);
+      if (!result.ok) throw new Error("expected ok");
+
+      const workbook = await reloadWorkbook(result.blob);
+      const scoring = workbook.getWorksheet("Scoring")!;
+      const validation = scoring.getCell(`D${SCORING_FIRST_DATA_ROW}`).dataValidation;
+
+      expect(validation?.showInputMessage).toBe(true);
+      expect(validation?.prompt).toContain("Any value between 1 and 5 is allowed");
+      expect(validation?.prompt).toContain("1 = No");
+      expect(validation?.prompt).toContain("5 = Yes");
+    });
+
+    it("keeps the hint within Excel's 255-character limit by shortening long labels, never dropping an anchor", async () => {
+      const project = buildFixture();
+      project.scoringScaleMode = "continuous";
+      project.scoringScale = [
+        { value: 1, label: "A".repeat(150) },
+        { value: 3, label: "B".repeat(150) },
+        { value: 5, label: "C".repeat(150) },
+      ];
+      const result = await generateWorkbookForReviewer(project, project.reviewers[0]);
+      if (!result.ok) throw new Error("expected ok");
+
+      const workbook = await reloadWorkbook(result.blob);
+      const scoring = workbook.getWorksheet("Scoring")!;
+      const prompt = scoring.getCell(`D${SCORING_FIRST_DATA_ROW}`).dataValidation?.prompt ?? "";
+
+      expect(prompt.length).toBeLessThanOrEqual(255);
+      expect(prompt).toContain("1 = A");
+      expect(prompt).toContain("3 = B");
+      expect(prompt).toContain("5 = C");
+    });
+
+    it("leaves the instruction line exactly as it was", async () => {
+      const project = buildFixture();
+      project.scoringScaleMode = "continuous";
+      const result = await generateWorkbookForReviewer(project, project.reviewers[0]);
+      if (!result.ok) throw new Error("expected ok");
+
+      const workbook = await reloadWorkbook(result.blob);
+      const scoring = workbook.getWorksheet("Scoring")!;
+      const text = String(scoring.getCell(`A${SCORING_INSTRUCTION_ROW}`).value);
+
+      expect(text).toBe(
+        "Only the highlighted Score and Comments cells are editable — everything else is locked.",
+      );
+    });
+
+    it("gives a discrete scale the same hint and right-hand statement, worded for listed values", async () => {
+      const project = buildFixture();
+      project.scoringScaleMode = "discrete";
+      const result = await generateWorkbookForReviewer(project, project.reviewers[0]);
+      if (!result.ok) throw new Error("expected ok");
+
+      const workbook = await reloadWorkbook(result.blob);
+      const scoring = workbook.getWorksheet("Scoring")!;
+      const validation = scoring.getCell(`D${SCORING_FIRST_DATA_ROW}`).dataValidation;
+
+      expect(scoring.getCell(`D${SCORING_SUBTITLE_ROW}`).text).toBe(
+        "Only these values are allowed: 1, 3, 5",
+      );
+      expect(validation?.showInputMessage).toBe(true);
+      expect(validation?.prompt).toContain("Choose one of: 1, 3, 5.");
+      expect(validation?.prompt).toContain("1 = No");
+      expect(validation?.prompt).toContain("5 = Yes");
     });
   });
 });

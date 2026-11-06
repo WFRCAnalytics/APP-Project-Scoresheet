@@ -52,7 +52,7 @@ export function ReviewersEditor() {
               <th>Name</th>
               <th>Type</th>
               <th>Email</th>
-              <th>Confidentiality form signed</th>
+              <th>Signed Confidentiality</th>
               <th aria-label="Actions" />
             </tr>
           </thead>
@@ -106,7 +106,7 @@ export function ReviewersEditor() {
                 <td>
                   <input
                     type="checkbox"
-                    aria-label={`Confidentiality form signed: ${reviewer.name || "unnamed reviewer"}`}
+                    aria-label={`Signed Confidentiality: ${reviewer.name || "unnamed reviewer"}`}
                     checked={reviewer.confidentialitySigned}
                     onChange={(e) =>
                       dispatch({

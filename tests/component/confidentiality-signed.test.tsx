@@ -54,10 +54,10 @@ describe("Reviewers editor — confidentiality checkbox", () => {
     goToConfigStep("Reviewers");
     fireEvent.click(screen.getByRole("button", { name: "Add reviewer" }));
 
-    const checkbox = screen.getByRole("checkbox", { name: /Confidentiality form signed/ });
+    const checkbox = screen.getByRole("checkbox", { name: /Signed Confidentiality/ });
     expect(checkbox).not.toBeChecked();
     fireEvent.click(checkbox);
-    expect(screen.getByRole("checkbox", { name: /Confidentiality form signed/ })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Signed Confidentiality/ })).toBeChecked();
   });
 });
 
@@ -68,7 +68,7 @@ describe("old project files without the field", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Edit project" }));
     goToConfigStep("Reviewers");
-    for (const box of screen.getAllByRole("checkbox", { name: /Confidentiality form signed/ })) {
+    for (const box of screen.getAllByRole("checkbox", { name: /Signed Confidentiality/ })) {
       expect(box).toBeChecked();
     }
   });

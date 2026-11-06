@@ -952,6 +952,27 @@ table.reviewers-table td.col-signed {
   margin-bottom: 0;
 }
 
+/* Buttons grouped at the right of a page header. */
+.page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* A card's title on the left with its primary action on the right (Reviewer Forms:
+   "Download individually" + "Download all forms"). */
+.card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.card-header-row h2 {
+  margin: 0;
+}
+
 /* Dashboard toolbar (post-launch hierarchy pass) — a single bordered/tinted container, same
    "toolbar chrome" language .config-toolbar already established, so the action cluster
    reads as one deliberate group sitting near the title instead of a handful of bare buttons

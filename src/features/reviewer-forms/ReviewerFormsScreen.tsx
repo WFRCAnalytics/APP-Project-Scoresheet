@@ -2,6 +2,7 @@
 // the User Story 2 + User Story 3 intake screen, per plan.md's structure note (generation
 // and import UI live together under features/reviewer-forms/).
 
+import { LayoutDashboard, Settings } from "lucide-react";
 import { Badge } from "../../components/Badge";
 import { useLoadedProject } from "../../state/ProjectContext";
 import { GenerateAllFormsButton } from "./GenerateAllFormsButton";
@@ -22,7 +23,19 @@ export function ReviewerFormsScreen({
 
   return (
     <section aria-label="Reviewer Forms">
-      <h1>Reviewer Forms</h1>
+      <div className="dashboard-page-header config-page-header">
+        <h1>Reviewer Forms</h1>
+        <div className="page-header-actions">
+          <button type="button" className="button button-secondary" onClick={onBackToConfiguration}>
+            <Settings size={16} strokeWidth={1.75} aria-hidden="true" />
+            Back to Configuration
+          </button>
+          <button type="button" className="button button-primary" onClick={onGoToDashboard}>
+            <LayoutDashboard size={16} strokeWidth={1.75} aria-hidden="true" />
+            View Dashboard
+          </button>
+        </div>
+      </div>
       <p>
         Generate an Excel scoring workbook for each reviewer. Reviewers open, fill, and return these
         files using spreadsheet software they already have — no knowledge of this app required.
@@ -36,13 +49,11 @@ export function ReviewerFormsScreen({
         </div>
       )}
 
-      <div className="card card--elevated">
-        <h2>Download all at once</h2>
-        <GenerateAllFormsButton />
-      </div>
-
       <div className="card">
-        <h2>Download individually</h2>
+        <div className="card-header-row">
+          <h2>Download individually</h2>
+          <GenerateAllFormsButton />
+        </div>
         {project.reviewers.length === 0 && (
           <p className="field-hint">No reviewers configured yet.</p>
         )}
@@ -83,15 +94,6 @@ export function ReviewerFormsScreen({
       </div>
 
       <ImportScoresPanel />
-
-      <div className="actions-row">
-        <button type="button" className="button button-secondary" onClick={onBackToConfiguration}>
-          Back to Configuration
-        </button>
-        <button type="button" className="button button-primary" onClick={onGoToDashboard}>
-          View Dashboard
-        </button>
-      </div>
     </section>
   );
 }

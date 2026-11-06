@@ -580,16 +580,43 @@ table.reviewers-table .col-type {
   width: 11rem;
 }
 
-table.reviewers-table td:nth-last-child(2),
 table.reviewers-table td:last-child {
   width: 1%;
 }
 
-/* Checkbox sits under the start of the (wider, spanning) header text, not centered in its own
-   narrow cell. */
-table.reviewers-table td.col-signed {
-  text-align: left;
-  padding-right: var(--space-4); /* small buffer before the Remove button */
+/* Signed Confidentiality has its own column, roomy enough for the header and for the checkbox
+   with its "Signed" / "Not signed" state beside it; Remove is a separate column after it. */
+table.reviewers-table .col-signed {
+  width: 12.5rem;
+}
+
+/* Firms: Invited and Submitted each get a roomy column of their own (header, checkbox and its
+   state), Notes takes the slack, Remove is its own last column. */
+table.firms-table .col-check {
+  width: 10.5rem;
+}
+
+table.firms-table td:last-child {
+  width: 1%;
+}
+
+.check-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.check-cell input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+}
+
+.check-cell-state {
+  font-size: var(--text-sm);
+  line-height: 1;
+  padding-top: 2px; /* Poppins sits a touch high next to the checkbox otherwise */
+  color: var(--color-wfrc-gray);
 }
 
 .banner {
@@ -1955,7 +1982,7 @@ table.reviewers-table td.col-signed {
 .dash-breakdown-top {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(16rem, 23rem) minmax(24rem, 1fr);
+  grid-template-columns: minmax(18rem, 1fr) minmax(24rem, 1fr);
   gap: var(--space-4);
   align-items: stretch;
   min-height: 16rem;
@@ -1978,18 +2005,28 @@ table.reviewers-table td.col-signed {
   margin: 0;
 }
 
+table.dash-breakdown-table {
+  font-size: var(--text-sm);
+}
+
 table.dash-breakdown-table td {
-  padding: var(--space-3) var(--space-2);
+  padding: var(--space-2);
 }
 
 table.dash-breakdown-table td:first-child {
-  min-width: 9rem;
+  min-width: 8rem;
 }
 
 table.dash-breakdown-table th,
 table.dash-breakdown-table td {
   padding-left: var(--space-2);
   padding-right: var(--space-2);
+}
+
+/* Breathing room after the last (WFRC) column so its numbers don't hug the card edge. */
+table.dash-breakdown-table th:last-child,
+table.dash-breakdown-table td:last-child {
+  padding-right: var(--space-5);
 }
 
 .dash-num {
@@ -2181,7 +2218,7 @@ table.reviewer-heatmap-table tr.reviewer-heatmap-range td {
 /* Narrower windows: the radar gives up width and the criterion table drops its bars. */
 @media (max-width: 1400px) and (min-width: 1101px) {
   .dash-breakdown-top {
-    grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr);
+    grid-template-columns: minmax(15rem, 1.1fr) minmax(0, 1fr);
     gap: var(--space-3);
   }
 

@@ -105,12 +105,12 @@ describe("Dashboard — ranked firms list", () => {
 });
 
 describe("Dashboard — firm detail tabs", () => {
-  it("has Criterion breakdown, Comments (with a count) and Reviewer scores, opening on the breakdown", async () => {
+  it("has Criterion breakdown, Reviewer scores and Comments (with a count), opening on the breakdown", async () => {
     await load(project(2));
     expect(panelTabs().map((t) => t.textContent?.replace(/\s+/g, " ").trim())).toEqual([
       "Criterion breakdown",
-      "Comments 2",
       "Reviewer scores",
+      "Comments 2",
     ]);
     expect(panelTab(/^Criterion breakdown/)).toHaveAttribute("aria-selected", "true");
   });

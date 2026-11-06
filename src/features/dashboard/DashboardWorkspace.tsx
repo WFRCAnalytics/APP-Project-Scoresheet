@@ -2,8 +2,8 @@
 // page. Left column: two summary tiles, the leading firm, the ranked firms (a list you pick
 // from — it scrolls inside its own card when there are many) and the Overall / TLC Applicant /
 // WFRC comparison chart. Right: the selected firm — its totals, then three tabs: Criterion
-// breakdown (radar + how each criterion scored), Comments (editable, per criterion) and
-// Reviewer scores (a heatmap of every reviewer against every criterion).
+// breakdown (radar + how each criterion scored), Reviewer scores (a heatmap of every reviewer
+// against every criterion) and Comments (editable, per criterion).
 //
 // This replaces the old sortable table whose rows expanded in place; picking a firm in the list
 // shows exactly one firm's detail at a time, so nothing has to be scrolled past. The printed/
@@ -313,8 +313,8 @@ function FirmDetailPanel({
       <ScrollableTabs
         tabs={[
           { id: "breakdown", label: "Criterion breakdown" },
-          { id: "comments", label: "Comments", badge: commentCount },
           { id: "reviewers", label: "Reviewer scores" },
+          { id: "comments", label: "Comments", badge: commentCount },
         ]}
         activeId={tab}
         onSelect={(id) => setTab(id as PanelTab)}

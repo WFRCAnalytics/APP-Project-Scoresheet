@@ -48,7 +48,7 @@ const RADAR_MARGIN = 5; // RadarChart's own default margin on every side
 const RADAR_OUTER_RADIUS_FRACTION = 0.7; // matches outerRadius="70%" on <RadarChart> below
 // A chart that fills a box (the Dashboard's detail panel) is wider than tall, so the side labels
 // need more room than the 70% ring leaves them.
-const RADAR_FILL_OUTER_RADIUS_FRACTION = 0.5;
+const RADAR_FILL_OUTER_RADIUS_FRACTION = 0.6;
 const POLAR_TICK_SIZE = 8; // PolarAngleAxis's default tickSize — label distance past the polygon
 const TICK_FONT_SIZE = 12;
 const TICK_LINE_HEIGHT = 14;
@@ -252,7 +252,7 @@ function CriterionBreakdownChartView({
         style={fill ? { width: "100%", flex: "1 1 0", minHeight: 0 } : { width: "100%", height: RADAR_HEIGHT }}
       >
         <ResponsiveContainer>
-          <RadarChart data={data} outerRadius={fill ? "50%" : "70%"}>
+          <RadarChart data={data} outerRadius={fill ? "60%" : "70%"}>
             <PolarGrid stroke={borderColor} />
             <PolarAngleAxis dataKey="criterion" tick={renderCriterionTick} />
             <PolarRadiusAxis

@@ -69,12 +69,8 @@ export function ReviewersEditor() {
               <th className="col-name">Name</th>
               <th className="col-type">Type</th>
               <th>Email</th>
-              {/* Spans the checkbox column AND the (header-less) Remove column, so the long
-                  header text can run over the buttons instead of forcing the checkbox column
-                  wide — which is what leaves Email room to be the wide column. */}
-              <th colSpan={2} className="col-signed">
-                Signed Confidentiality
-              </th>
+              <th className="col-signed">Signed Confidentiality</th>
+              <th aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -125,18 +121,23 @@ export function ReviewersEditor() {
                   />
                 </td>
                 <td className="col-signed">
-                  <input
-                    type="checkbox"
-                    aria-label={`Signed Confidentiality: ${reviewer.name || "unnamed reviewer"}`}
-                    checked={reviewer.confidentialitySigned === true}
-                    onChange={(e) =>
-                      dispatch({
-                        type: "UPDATE_REVIEWER",
-                        reviewerId: reviewer.id,
-                        patch: { confidentialitySigned: e.target.checked },
-                      })
-                    }
-                  />
+                  <span className="check-cell">
+                    <input
+                      type="checkbox"
+                      aria-label={`Signed Confidentiality: ${reviewer.name || "unnamed reviewer"}`}
+                      checked={reviewer.confidentialitySigned === true}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "UPDATE_REVIEWER",
+                          reviewerId: reviewer.id,
+                          patch: { confidentialitySigned: e.target.checked },
+                        })
+                      }
+                    />
+                    <span className="check-cell-state" aria-hidden="true">
+                      {reviewer.confidentialitySigned === true ? "Signed" : "Not signed"}
+                    </span>
+                  </span>
                 </td>
                 <td>
                   <button

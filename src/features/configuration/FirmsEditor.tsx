@@ -67,12 +67,12 @@ export function FirmsEditor() {
       )}
 
       <div className="table-wrap">
-        <table className="data-table">
+        <table className="data-table firms-table">
           <thead>
             <tr>
               <th>Name</th>
-              <th>Invited</th>
-              <th>Submitted</th>
+              <th className="col-check">Invited</th>
+              <th className="col-check">Submitted</th>
               <th>Notes</th>
               <th aria-label="Actions" />
             </tr>
@@ -94,33 +94,43 @@ export function FirmsEditor() {
                     }
                   />
                 </td>
-                <td>
-                  <input
-                    type="checkbox"
-                    aria-label="Invited"
-                    checked={firm.invited}
-                    onChange={(e) =>
-                      dispatch({
-                        type: "UPDATE_FIRM",
-                        firmId: firm.id,
-                        patch: { invited: e.target.checked },
-                      })
-                    }
-                  />
+                <td className="col-check">
+                  <span className="check-cell">
+                    <input
+                      type="checkbox"
+                      aria-label="Invited"
+                      checked={firm.invited}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "UPDATE_FIRM",
+                          firmId: firm.id,
+                          patch: { invited: e.target.checked },
+                        })
+                      }
+                    />
+                    <span className="check-cell-state" aria-hidden="true">
+                      {firm.invited ? "Invited" : "Not invited"}
+                    </span>
+                  </span>
                 </td>
-                <td>
-                  <input
-                    type="checkbox"
-                    aria-label="Submitted"
-                    checked={firm.submitted}
-                    onChange={(e) =>
-                      dispatch({
-                        type: "UPDATE_FIRM",
-                        firmId: firm.id,
-                        patch: { submitted: e.target.checked },
-                      })
-                    }
-                  />
+                <td className="col-check">
+                  <span className="check-cell">
+                    <input
+                      type="checkbox"
+                      aria-label="Submitted"
+                      checked={firm.submitted}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "UPDATE_FIRM",
+                          firmId: firm.id,
+                          patch: { submitted: e.target.checked },
+                        })
+                      }
+                    />
+                    <span className="check-cell-state" aria-hidden="true">
+                      {firm.submitted ? "Submitted" : "Not submitted"}
+                    </span>
+                  </span>
                 </td>
                 <td>
                   <input

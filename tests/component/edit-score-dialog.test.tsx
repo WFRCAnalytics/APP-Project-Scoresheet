@@ -55,30 +55,35 @@ async function openFirmComments(mode: "discrete" | "continuous" = "discrete") {
 const pencil = (reviewer: string, criterion: string) =>
   screen.getByRole("button", { name: `Edit score and comment: ${reviewer}, ${criterion}` });
 
-// Comments as shown in the on-screen table only. The same comments also sit in the off-screen
-// print copy (and inside the dialog's own textarea), so a bare getByText would match several.
+// Comment text in the on-screen tab's table (the active criterion's rows only). The same
+// comments also sit in the off-screen print copy and the dialog's own textarea, so a bare
+// getByText would match several. Rows with no comment show "No comment" and are skipped.
 const shownComments = () =>
   Array.from(document.querySelectorAll(".comments-comment-cell"))
-    .filter((cell) => !cell.closest(".print-only-block"))
+    .filter((cell) => !cell.closest(".print-only-block") && !cell.querySelector(".comments-empty"))
     .map((cell) => cell.textContent?.trim());
 
 const dialog = () => screen.getByRole("dialog", { name: "Edit score and comment" });
 
 describe("Edit score dialog — opening", () => {
-  it("offers a pencil only on rows that have a comment", async () => {
+  it("offers a pencil on rows that have a comment, and Add comment on rows that don't", async () => {
     await openFirmComments();
     expect(pencil("Alice", "Approach")).toBeInTheDocument();
     expect(pencil("Bob", "Approach")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: /^Cost/ }));
     expect(pencil("Alice", "Cost")).toBeInTheDocument();
-    // Bob's Cost score has no comment, so it is not listed (or editable) here.
+    // Bob's Cost score has no comment: no pencil, but a visible way to add one.
     expect(
       screen.queryByRole("button", { name: "Edit score and comment: Bob, Cost" }),
     ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add comment: Bob, Cost" })).toBeInTheDocument();
   });
 
   it("lists the on-screen comments (guards the shownComments helper used below)", async () => {
     await openFirmComments();
-    expect(shownComments()).toEqual(["Solid plan", "Excellent", "Pricey"]);
+    // The first criterion's tab is showing; the other criterion's comments are on its own tab.
+    expect(shownComments()).toEqual(["Solid plan", "Excellent"]);
   });
 
   it("shows which score it is and its current score and comment", async () => {

@@ -36,6 +36,7 @@ import { buildRankedRows, type RankedRow } from "./rankedRows";
 import { CriterionBreakdownChart, CriterionBreakdownChartPrintCopy } from "./CriterionBreakdownChart";
 import { EditScoreDialog, type ScoreTarget } from "./EditScoreDialog";
 import { FirmCommentsTable } from "./FirmCommentsTable";
+import { FirmCommentsTabs } from "./FirmCommentsTabs";
 import { ReviewerScoreSpreadChart, ReviewerScoreSpreadChartPrintCopy } from "./ReviewerScoreSpreadChart";
 
 type SortKey = "rank" | "firm" | "overall" | "applicant" | "wfrc" | "completion";
@@ -253,7 +254,7 @@ export function RankedFirmsTable({ project }: { project: Project }) {
                       <div className="firm-detail">
                         <CriterionBreakdownChart project={project} firmId={row.firm.id} />
                         <ReviewerScoreSpreadChart project={project} firmId={row.firm.id} />
-                        <FirmCommentsTable
+                        <FirmCommentsTabs
                           project={project}
                           firmId={row.firm.id}
                           onEdit={setEditTarget}

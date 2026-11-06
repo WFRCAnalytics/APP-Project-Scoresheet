@@ -1135,7 +1135,7 @@ table.reviewers-table td.col-signed {
   border-top: 3px solid var(--color-border);
 }
 
-/* Edit pencil on the on-screen comments table (see FirmCommentsTable's onEdit). Floated into
+/* Edit pencil on the on-screen comments table (FirmCommentsTabs). Floated into
    the top-right corner of the comment cell instead of getting a column of its own, so the
    comment text wraps around it and keeps the full width. Hidden until the row is hovered or
    something in it has keyboard focus (opacity, not display, so it stays focusable); touch
@@ -1149,8 +1149,8 @@ table.reviewers-table td.col-signed {
   transition: opacity var(--transition-fast);
 }
 
-.comments-table tbody tr:hover .comments-edit-button,
-.comments-table tbody tr:focus-within .comments-edit-button,
+.firm-comments tbody tr:hover .comments-edit-button,
+.firm-comments tbody tr:focus-within .comments-edit-button,
 .comments-edit-button:focus-visible {
   opacity: 1;
 }
@@ -1198,6 +1198,52 @@ table.reviewers-table td.col-signed {
 
 .comments-table th:nth-child(3) {
   width: 100%;
+}
+
+/* On-screen tabbed table (FirmCommentsTabs): Reviewer | Score | Comment, one criterion at a
+   time. Same approach as the print table above — Comment takes the leftover width. */
+.comments-tab-table th:nth-child(1) {
+  width: 10rem;
+}
+
+.comments-tab-table th:nth-child(2) {
+  width: 5rem;
+}
+
+.comments-tab-table th:nth-child(3) {
+  width: 100%;
+}
+
+/* Many criteria: the tab row wraps onto a second line rather than overflowing the card. */
+.comments-tabs {
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+/* Keep a reviewer's name on one line — with Comment taking all the spare width, the narrow
+   Reviewer column would otherwise wrap "Brian Johnson" onto two lines. */
+.comments-tab-table td:nth-child(1) {
+  white-space: nowrap;
+}
+
+.comments-tabs .calc-tab {
+  white-space: nowrap;
+}
+
+/* A reviewer who scored but wrote nothing: muted placeholder plus a visible way to add one
+   (the hover pencil is for rows that already have a comment). */
+.comments-empty {
+  color: var(--color-wfrc-gray);
+  font-style: italic;
+}
+
+.comments-add-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: var(--space-3);
+  font-style: normal;
+  font-size: var(--text-sm);
 }
 
 /* ---- Dashboard: completion status banner (003 redesign) ---- */

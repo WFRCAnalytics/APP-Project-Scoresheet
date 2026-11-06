@@ -77,9 +77,8 @@ describe("User Story 1 — Configure a New Scoring Project (Load -> Configuratio
     fireEvent.click(screen.getByRole("button", { name: "Start a new project" }));
     goToConfigStep("Scale");
 
-    // The default empty project starts with zero scale points; add exactly 2.
-    fireEvent.click(screen.getByRole("button", { name: "Add scale point" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add scale point" }));
+    // A new project starts with the 3 default points; remove one to land exactly on the floor.
+    fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[2]);
 
     const removeButtons = screen.getAllByRole("button", { name: "Remove" });
     // All visible "Remove" buttons at this point belong to the 2 scale point rows — the

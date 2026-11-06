@@ -24,7 +24,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import App from "../../src/App";
-import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
+import { goToConfigStep, openGetStartedModal, setScaleValues } from "../helpers/appNav";
 
 function switchToDiscrete() {
   fireEvent.click(screen.getByRole("radio", { name: /Discrete/ }));
@@ -38,12 +38,8 @@ describe("ScoringScaleEditor — edit and remove existing points", () => {
     goToConfigStep("Scale");
     switchToDiscrete();
 
-    // Add 3 scale points. nextDefaultValue() starts at 1 and increments the running max,
-    // so this produces values 1, 2, 3 in that insertion order.
-    const addButton = screen.getByRole("button", { name: "Add scale point" });
-    fireEvent.click(addButton);
-    fireEvent.click(addButton);
-    fireEvent.click(addButton);
+    // A new project starts with the 1/3/5 defaults; reshape them to 1, 2, 3.
+    setScaleValues([1, 2, 3]);
 
     let valueInputs = screen.getAllByLabelText("Scale point value") as HTMLInputElement[];
     expect(valueInputs).toHaveLength(3);
@@ -78,11 +74,7 @@ describe("ScoringScaleEditor — edit and remove existing points", () => {
     goToConfigStep("Scale");
     switchToDiscrete();
 
-    const addButton = screen.getByRole("button", { name: "Add scale point" });
-    fireEvent.click(addButton);
-    fireEvent.click(addButton);
-    fireEvent.click(addButton);
-    fireEvent.click(addButton);
+    setScaleValues([1, 2, 3, 4]);
 
     let valueInputs = screen.getAllByLabelText("Scale point value") as HTMLInputElement[];
     expect(valueInputs.map((i) => i.value)).toEqual(["1", "2", "3", "4"]);
@@ -111,10 +103,7 @@ describe("ScoringScaleEditor — edit and remove existing points", () => {
     goToConfigStep("Scale");
     switchToDiscrete();
 
-    const addButton = screen.getByRole("button", { name: "Add scale point" });
-    fireEvent.click(addButton);
-    fireEvent.click(addButton);
-    fireEvent.click(addButton);
+    setScaleValues([1, 2, 3]);
 
     let removeButtons = screen.getAllByRole("button", { name: "Remove" });
     expect(removeButtons).toHaveLength(3);

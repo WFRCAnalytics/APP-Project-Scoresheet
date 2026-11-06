@@ -9,7 +9,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import App from "../../src/App";
-import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
+import { goToConfigStep, openGetStartedModal, setScaleValues } from "../helpers/appNav";
 
 function startNewProject() {
   render(<App />);
@@ -107,12 +107,8 @@ describe("Duplicate-name warning — Reviewers", () => {
 });
 
 function addThreeScalePoints() {
-  // A fresh project starts with an EMPTY scoringScale (createEmptyProject) — each click
-  // appends nextDefaultValue() (running max + 1), producing 1, 2, 3 in that order.
-  const addButton = screen.getByRole("button", { name: "Add scale point" });
-  fireEvent.click(addButton);
-  fireEvent.click(addButton);
-  fireEvent.click(addButton);
+  // A fresh project starts with the 1/3/5 defaults; reshape them to 1, 2, 3.
+  setScaleValues([1, 2, 3]);
 }
 
 describe("Duplicate-value warning — Scoring Scale", () => {

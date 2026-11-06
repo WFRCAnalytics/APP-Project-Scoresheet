@@ -127,6 +127,23 @@ export function createEmptyProject(): Project {
   };
 }
 
+/** The 1/3/5 scale a brand-new project starts with, so a handler doesn't retype the same
+ * anchors every time. Applied only by createNewProject — never when loading a saved file,
+ * so an old project.json (even one with an empty scale) opens exactly as it was saved. */
+export const DEFAULT_SCORING_SCALE: readonly ScoringScalePoint[] = [
+  { value: 1, label: "Completely unqualified" },
+  { value: 3, label: "Adequate, acceptable experience" },
+  { value: 5, label: "More than qualified; will produce an excellent product" },
+];
+
+/** What "Start a new project" creates: createEmptyProject plus the default scale. */
+export function createNewProject(): Project {
+  return {
+    ...createEmptyProject(),
+    scoringScale: DEFAULT_SCORING_SCALE.map((point) => ({ ...point })),
+  };
+}
+
 /** Lifecycle check driving Load-screen routing (FR-002/FR-003). */
 export function hasResults(project: Project): boolean {
   return project.scores.length > 0;

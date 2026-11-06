@@ -12,7 +12,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import App from "../../src/App";
-import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
+import { goToConfigStep, openGetStartedModal, setScaleValues } from "../helpers/appNav";
 
 function startNewProject() {
   render(<App />);
@@ -20,9 +20,9 @@ function startNewProject() {
   fireEvent.click(screen.getByRole("button", { name: "Start a new project" }));
 }
 
+// Reshapes the new project's 1/3/5 defaults into 1..count.
 function addScalePoints(count: number) {
-  const addButton = screen.getByRole("button", { name: "Add scale point" });
-  for (let i = 0; i < count; i++) fireEvent.click(addButton);
+  setScaleValues(Array.from({ length: count }, (_, i) => i + 1));
 }
 
 function editValue(index: number, text: string) {

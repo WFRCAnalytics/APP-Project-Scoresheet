@@ -7,7 +7,7 @@ import { FilePlus2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { FilePickerField, type FilePickerFieldHandle } from "../../components/FilePickerField";
 import { Modal } from "../../components/Modal";
-import { createEmptyProject, type Project } from "../../types/project";
+import { createNewProject, type Project } from "../../types/project";
 import { routeUploadedFile, type UploadArea } from "./uploadProject";
 
 export interface GetStartedModalProps {
@@ -57,7 +57,7 @@ export function GetStartedModal({ open, onClose, onStartNew, onProjectLoaded }: 
           <button
             type="button"
             className="button button-primary"
-            onClick={() => onStartNew(createEmptyProject())}
+            onClick={() => onStartNew(createNewProject())}
           >
             Start a new project
           </button>

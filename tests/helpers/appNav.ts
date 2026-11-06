@@ -17,3 +17,23 @@ export function openGetStartedModal(): void {
 export function goToConfigStep(label: string): void {
   fireEvent.click(screen.getByRole("button", { name: label }));
 }
+
+/** Reshapes the Scale step's rows to exactly `values`, via the real UI. A new project starts
+ * with the 1/3/5 defaults (DEFAULT_SCORING_SCALE), so tests about the editor's own mechanics
+ * (identity, precision, floor) call this to start from a known layout instead of assuming an
+ * empty scale. Requires at least 2 values (the editor's floor). */
+export function setScaleValues(values: number[]): void {
+  const click = (name: string, index = -1) => {
+    const buttons = screen.getAllByRole("button", { name });
+    fireEvent.click(buttons.at(index) as HTMLElement);
+  };
+  while (screen.getAllByLabelText("Scale point value").length > values.length) click("Remove");
+  while (screen.getAllByLabelText("Scale point value").length < values.length) {
+    click("Add scale point");
+  }
+  values.forEach((value, i) => {
+    const input = screen.getAllByLabelText("Scale point value")[i] as HTMLInputElement;
+    fireEvent.change(input, { target: { value: String(value) } });
+    fireEvent.blur(input);
+  });
+}

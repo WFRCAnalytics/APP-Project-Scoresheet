@@ -6,7 +6,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import App from "../../src/App";
-import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
+import { goToConfigStep, openGetStartedModal, setScaleValues } from "../helpers/appNav";
 
 function goToScaleStep() {
   render(<App />);
@@ -33,24 +33,15 @@ describe("ScoringScaleEditor — discrete/continuous mode toggle", () => {
     expect(screen.getByLabelText(/^Discrete/)).not.toBeChecked();
   });
 
-  it("shows the continuous-range hint only once at least 2 points exist, using their min/max", () => {
+  it("shows the continuous-range hint using the default scale's min/max", () => {
     goToScaleStep();
-    // A fresh project starts with zero scale points — no range to describe yet.
-    expect(screen.queryByText(/labeled reference points/)).not.toBeInTheDocument();
-
-    const addButton = screen.getByRole("button", { name: "Add scale point" });
-    fireEvent.click(addButton);
-    expect(screen.queryByText(/labeled reference points/)).not.toBeInTheDocument(); // still just 1
-
-    fireEvent.click(addButton);
-    expect(screen.getByText(/labeled reference points/)).toBeInTheDocument();
+    // A fresh project starts with the 1/3/5 defaults, so the range is already described.
+    expect(screen.getByText(/labeled reference points/)).toHaveTextContent(/from 1 to 5/);
   });
 
   it("switching modes never changes the points themselves — same add/remove/edit table either way", () => {
     goToScaleStep();
-    const addButton = screen.getByRole("button", { name: "Add scale point" });
-    fireEvent.click(addButton);
-    fireEvent.click(addButton);
+    setScaleValues([1, 2]);
     let valueInputs = screen.getAllByLabelText("Scale point value") as HTMLInputElement[];
     expect(valueInputs).toHaveLength(2);
 

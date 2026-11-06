@@ -16,6 +16,8 @@ import { MessageSquare, MessageSquarePlus, Pencil } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "../../components/Badge";
 import { EmptyState } from "../../components/EmptyState";
+import { ScrollableTabs } from "../../components/ScrollableTabs";
+import { scrollableTabId } from "../../components/scrollableTabId";
 import type { Project } from "../../types/project";
 import type { ScoreTarget } from "./EditScoreDialog";
 
@@ -49,8 +51,8 @@ export function FirmCommentsTabs({
   // Falls back to the first tab if the selected criterion was since removed.
   const active = tabs.find((t) => t.criterion.id === selectedId) ?? tabs[0];
   const totalComments = tabs.reduce((sum, t) => sum + t.commentCount, 0);
-  const tabId = (criterionId: string) => `firm-${firmId}-comments-tab-${criterionId}`;
-  const panelId = `firm-${firmId}-comments-panel`;
+  const idPrefix = `firm-${firmId}-comments`;
+  const panelId = `${idPrefix}-panel`;
 
   return (
     <div className="firm-comments">
@@ -58,30 +60,25 @@ export function FirmCommentsTabs({
         Comments <Badge variant="neutral">{totalComments}</Badge>
       </h4>
 
-      <div role="tablist" aria-label="Comments by criterion" className="calc-tabs comments-tabs">
-        {tabs.map(({ criterion, commentCount }) => (
-          <button
-            key={criterion.id}
-            id={tabId(criterion.id)}
-            type="button"
-            role="tab"
-            aria-selected={active.criterion.id === criterion.id}
-            aria-controls={panelId}
-            className={`calc-tab${active.criterion.id === criterion.id ? " is-active" : ""}`}
-            onClick={() => setSelectedId(criterion.id)}
-          >
-            {criterion.name}
-            {commentCount > 0 && (
-              <>
-                {" "}
-                <Badge variant="neutral">{commentCount}</Badge>
-              </>
-            )}
-          </button>
-        ))}
-      </div>
+      {/* One row however many criteria there are: it scrolls (‹ ›) rather than wrapping. */}
+      <ScrollableTabs
+        tabs={tabs.map(({ criterion, commentCount }) => ({
+          id: criterion.id,
+          label: criterion.name,
+          badge: commentCount,
+        }))}
+        activeId={active.criterion.id}
+        onSelect={setSelectedId}
+        ariaLabel="Comments by criterion"
+        idPrefix={idPrefix}
+        panelId={panelId}
+      />
 
-      <div role="tabpanel" id={panelId} aria-labelledby={tabId(active.criterion.id)}>
+      <div
+        role="tabpanel"
+        id={panelId}
+        aria-labelledby={scrollableTabId(idPrefix, active.criterion.id)}
+      >
         {active.rows.length === 0 ? (
           <EmptyState icon={MessageSquare} message="No scores recorded for this criterion yet." />
         ) : (

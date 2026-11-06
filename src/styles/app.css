@@ -1214,19 +1214,9 @@ table.reviewers-table td.col-signed {
   width: 100%;
 }
 
-/* Many criteria: the tab row wraps onto a second line rather than overflowing the card. */
-.comments-tabs {
-  flex-wrap: wrap;
-  margin-top: var(--space-2);
-}
-
 /* Keep a reviewer's name on one line — with Comment taking all the spare width, the narrow
    Reviewer column would otherwise wrap "Brian Johnson" onto two lines. */
 .comments-tab-table td:nth-child(1) {
-  white-space: nowrap;
-}
-
-.comments-tabs .calc-tab {
   white-space: nowrap;
 }
 

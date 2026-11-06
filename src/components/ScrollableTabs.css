@@ -1,0 +1,110 @@
+/* ScrollableTabs: one row of tabs that scrolls sideways (with ‹ › buttons) instead of wrapping.
+   The tab look (weight, size, colors, active underline) deliberately matches .calc-tab, the
+   Calculations modal's tabs, so every tab bar in the app reads the same. */
+
+/* A grid, not a flex row, on purpose: the middle track is minmax(0, 1fr), so the strip's
+   minimum width is ~0 however many tabs it holds. Inside a table cell (the Dashboard's
+   expanded firm row) a flex row's intrinsic width is the sum of its tabs, which stretched the
+   whole table past the page; this one just takes the width it is given and scrolls. The ends
+   are placed explicitly so the list stays in the middle track when a ‹ › button is absent. */
+.scrollable-tabs {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: stretch;
+  column-gap: var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+  margin: var(--space-2) 0 var(--space-4);
+}
+
+.scrollable-tabs-list {
+  grid-column: 2;
+  display: flex;
+  min-width: 0;
+  gap: var(--space-1);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none; /* the ‹ › buttons (and trackpad / shift+wheel) are the scroll controls */
+}
+
+.scrollable-tabs-list::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollable-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+  max-width: 16rem;
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-sm);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-wfrc-gray);
+  cursor: pointer;
+}
+
+.scrollable-tab:hover {
+  color: var(--color-foreground);
+}
+
+.scrollable-tab:focus-visible {
+  outline: none;
+  box-shadow: inset var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.scrollable-tab.is-active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* A long criterion name is cut with an ellipsis (full text is the tab's title tooltip); the
+   count pill after it never shrinks away. */
+.scrollable-tab-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scrollable-tab .badge {
+  flex: 0 0 auto;
+}
+
+.scrollable-tabs-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-foreground);
+  cursor: pointer;
+}
+
+.scrollable-tabs-nav:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-foreground) 6%, transparent);
+}
+
+.scrollable-tabs-nav:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.scrollable-tabs-nav:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.scrollable-tabs-nav:first-child {
+  grid-column: 1;
+}
+
+.scrollable-tabs-nav:last-child {
+  grid-column: 3;
+}

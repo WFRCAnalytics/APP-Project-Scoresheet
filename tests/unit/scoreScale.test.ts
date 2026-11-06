@@ -3,7 +3,7 @@
 // two entry paths can't drift on what counts as a valid score.
 
 import { describe, expect, it } from "vitest";
-import { normalizeScoreValue, scaleRange } from "../../src/lib/scoreScale";
+import { normalizeScoreValue, scaleRange, weightedTotalRange } from "../../src/lib/scoreScale";
 import { createEmptyProject, type Project } from "../../src/types/project";
 
 function buildProject(mode: "discrete" | "continuous"): Project {
@@ -16,6 +16,42 @@ function buildProject(mode: "discrete" | "continuous"): Project {
   ];
   return project;
 }
+
+function withWeights(project: Project, weights: number[]): Project {
+  project.criteria = weights.map((weight, i) => ({
+    id: `crit-${i}`,
+    name: `Criterion ${i}`,
+    weight,
+    description: "",
+  }));
+  return project;
+}
+
+describe("weightedTotalRange", () => {
+  it("is the scale min/max times the weight sum", () => {
+    const project = withWeights(buildProject("continuous"), [0.5, 0.5]);
+    expect(weightedTotalRange(project)).toEqual({ min: 1, max: 5 });
+  });
+
+  it("drops floating-point noise from the weight sum (a real project: 0.3 + 0.4 + 0.2 + 0.1)", () => {
+    // These weights sum to 0.9999999999999999 in floating point, which used to put
+    // "0.9999999999999999" and "4.999999999999999" on the bar chart's Y-axis.
+    expect(0.3 + 0.4 + 0.2 + 0.1).not.toBe(1);
+    const project = withWeights(buildProject("continuous"), [0.3, 0.4, 0.2, 0.1]);
+    expect(weightedTotalRange(project)).toEqual({ min: 1, max: 5 });
+  });
+
+  it("keeps a genuinely different weight sum (weights not yet summing to 1)", () => {
+    const project = withWeights(buildProject("continuous"), [0.45, 0.45]);
+    expect(weightedTotalRange(project)).toEqual({ min: 0.9, max: 4.5 });
+  });
+
+  it("is 0 to 0 with no criteria or no scale, rather than NaN", () => {
+    expect(weightedTotalRange(buildProject("continuous"))).toEqual({ min: 0, max: 0 });
+    const noScale = withWeights(createEmptyProject(), [1]);
+    expect(weightedTotalRange(noScale)).toEqual({ min: 0, max: 0 });
+  });
+});
 
 describe("scaleRange", () => {
   it("returns the min/max of the configured points, regardless of insertion order", () => {

@@ -43,6 +43,7 @@ import {
 import type { TooltipProps } from "recharts";
 import { EmptyState } from "../../components/EmptyState";
 import { round2 } from "../../lib/calculations";
+import { weightedTotalRange } from "../../lib/scoreScale";
 import { useChartColors } from "../../theme/chartColors";
 import { usePrintSafeChartColors } from "../../theme/usePrintSafeChartColors";
 import type { Project } from "../../types/project";
@@ -138,10 +139,8 @@ function OverallApplicantBarChartView({
   // weighted total's real ceiling/floor isn't the scale's raw min/max — it's the scale's
   // min/max multiplied by the sum of criteria weights (the total each criterion could
   // contribute if every reviewer gave the best/worst possible score on it).
-  const scaleValues = project.scoringScale.map((p) => p.value);
-  const scaleMin = scaleValues.length > 0 ? Math.min(...scaleValues) : 0;
-  const scaleMax = scaleValues.length > 0 ? Math.max(...scaleValues) : 0;
-  const totalWeight = project.criteria.reduce((sum, c) => sum + c.weight, 0);
+  // (weightedTotalRange also rounds off floating-point noise in that weight sum — see there.)
+  const { min: axisMin, max: axisMax } = weightedTotalRange(project);
 
   const plotWidth = containerWidth > 0
     ? Math.max(0, containerWidth - CHART_MARGIN.left - CHART_MARGIN.right - Y_AXIS_WIDTH)
@@ -188,7 +187,7 @@ function OverallApplicantBarChartView({
           <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
           <XAxis dataKey="name" tick={renderFirmTick} interval={0} height={44} />
           <YAxis
-            domain={[scaleMin * totalWeight, scaleMax * totalWeight]}
+            domain={[axisMin, axisMax]}
             width={Y_AXIS_WIDTH}
             tick={{ fill: foregroundColor, fontSize: 12 }}
             label={{

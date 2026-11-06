@@ -23,6 +23,21 @@ export function scaleRange(project: Project): { min: number; max: number } {
   return { min: Math.min(...values), max: Math.max(...values) };
 }
 
+/** The lowest and highest weighted total a firm could possibly reach: the scale's min/max
+ * times the sum of the criteria weights (what each criterion contributes at the worst/best
+ * possible score) — the Dashboard bar chart's Y-axis range.
+ *
+ * Rounded to 6 decimal places because the weight sum is floating-point arithmetic: weights
+ * of 0.3 + 0.4 + 0.2 + 0.1 add up to 0.9999999999999999, not 1, which made the axis read
+ * "0.9999999999999999" and "4.999999999999999" instead of 1 and 5. Six places is far finer
+ * than any real weight (the Criteria editor works to 0.1%), so only the noise is removed. */
+export function weightedTotalRange(project: Project): { min: number; max: number } {
+  const { min, max } = scaleRange(project);
+  const totalWeight = project.criteria.reduce((sum, c) => sum + c.weight, 0);
+  const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
+  return { min: round6(min * totalWeight), max: round6(max * totalWeight) };
+}
+
 /** Rounds to one decimal place — the continuous mode's fixed step, enforced by rounding
  * rather than rejecting (a reviewer typing 3.14 becomes 3.1, not a validation failure), per
  * the same "round it off" call made for weight input (lib/weightInput.ts uses the opposite

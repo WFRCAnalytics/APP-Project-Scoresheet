@@ -94,11 +94,11 @@ describe("old project files without the field", () => {
 });
 
 describe("unsigned reviewers", () => {
-  it("are named in a warning banner on the Dashboard", async () => {
+  it("are named in a warning pill on the Dashboard", async () => {
     await loadToDashboard([true, false]);
-    const banner = screen.getByText(/Confidentiality form not signed:/);
-    expect(banner).toHaveTextContent("Bob");
-    expect(banner).not.toHaveTextContent("Alice");
+    const pill = screen.getByText(/Not signed: /);
+    expect(pill).toHaveTextContent("Bob");
+    expect(pill).not.toHaveTextContent("Alice");
   });
 
   it("get a warning and a badge on Reviewer Forms, but can still download their workbook", async () => {

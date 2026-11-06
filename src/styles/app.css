@@ -1082,7 +1082,7 @@ table.firms-table td:last-child {
    per group, not repeated on every reviewer's row), replacing a flat "Criterion (Reviewer):
    Comment" bullet list that read as a wall of repetitive prose once a project had more
    than a couple of reviewers. Lives inside a RankedFirmsTable row's expanded detail
-   (FirmCommentsTable) since the 003 redesign — no longer its own bottom-of-page accordion. */
+   since the 003 redesign — no longer its own bottom-of-page accordion. */
 .firm-comments-heading {
   display: flex;
   align-items: center;

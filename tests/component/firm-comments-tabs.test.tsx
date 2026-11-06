@@ -130,15 +130,3 @@ describe("Firm comments — adding a comment where there was none", () => {
     expect(tab(/^Cost/)).toHaveTextContent("Cost 2");
   });
 });
-
-describe("Firm comments — printed report", () => {
-  it("still lists every criterion's comments in one table (tabs can't print)", async () => {
-    await openFirm();
-    const printed = document.querySelector(".print-only-block .comments-table");
-    expect(printed).not.toBeNull();
-    const text = printed!.textContent ?? "";
-    expect(text).toContain("Solid plan"); // Approach
-    expect(text).toContain("Pricey"); // Cost
-    expect(document.querySelector(".print-only-block [role='tablist']")).toBeNull();
-  });
-});

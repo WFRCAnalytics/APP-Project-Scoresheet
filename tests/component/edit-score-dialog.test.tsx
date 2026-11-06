@@ -56,11 +56,11 @@ const pencil = (reviewer: string, criterion: string) =>
   screen.getByRole("button", { name: `Edit score and comment: ${reviewer}, ${criterion}` });
 
 // Comment text in the on-screen tab's table (the active criterion's rows only). The same
-// comments also sit in the off-screen print copy and the dialog's own textarea, so a bare
-// getByText would match several. Rows with no comment show "No comment" and are skipped.
+// comments also sit in the dialog's own textarea, so a bare getByText would match several.
+// Rows with no comment show "No comment" and are skipped.
 const shownComments = () =>
   Array.from(document.querySelectorAll(".comments-comment-cell"))
-    .filter((cell) => !cell.closest(".print-only-block") && !cell.querySelector(".comments-empty"))
+    .filter((cell) => !cell.querySelector(".comments-empty"))
     .map((cell) => cell.textContent?.trim());
 
 const dialog = () => screen.getByRole("dialog", { name: "Edit score and comment" });
@@ -96,16 +96,6 @@ describe("Edit score dialog — opening", () => {
     expect(d.getByText("Alice")).toBeInTheDocument();
     expect(d.getByLabelText("Score for Alpha Co / Approach")).toHaveValue("3");
     expect(d.getByLabelText("Comment for Alpha Co / Approach")).toHaveValue("Solid plan");
-  });
-
-  it("never puts the pencils in the print copy", async () => {
-    await openFirmComments();
-    // Positive control: the print copy does render the comments table...
-    expect(document.querySelectorAll(".print-only-block .comments-table").length).toBeGreaterThan(0);
-    // ...but without any edit controls.
-    expect(
-      document.querySelectorAll(".print-only-block [aria-label^='Edit score and comment']"),
-    ).toHaveLength(0);
   });
 });
 

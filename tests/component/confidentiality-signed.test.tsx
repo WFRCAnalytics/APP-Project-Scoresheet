@@ -1,6 +1,7 @@
 // The per-reviewer "Confidentiality form signed" toggle: a checkbox in the Reviewers editor
 // (new reviewers start unchecked), a non-blocking warning on Reviewer Forms and the
-// Dashboard, and a missing value in an old project.json loading as signed.
+// Dashboard, and a missing value in an old project.json loading as "not recorded" — quiet
+// while the project is only being viewed, unsigned once Configuration is opened.
 
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
@@ -62,15 +63,33 @@ describe("Reviewers editor — confidentiality checkbox", () => {
 });
 
 describe("old project files without the field", () => {
-  it("load as signed — no warning on the Dashboard, boxes checked in the editor", async () => {
+  it("show no warning while the project is only being viewed on the Dashboard", async () => {
     await loadToDashboard([undefined, undefined]);
     expect(screen.queryByText(/Confidentiality form not signed/)).not.toBeInTheDocument();
+  });
 
+  it("become unsigned once Configuration is opened, and the warnings start", async () => {
+    await loadToDashboard([undefined, undefined]);
     fireEvent.click(screen.getByRole("button", { name: "Edit project" }));
     goToConfigStep("Reviewers");
     for (const box of screen.getAllByRole("checkbox", { name: /Signed Confidentiality/ })) {
-      expect(box).toBeChecked();
+      expect(box).not.toBeChecked();
     }
+
+    goToConfigStep("Export / Review");
+    fireEvent.click(screen.getByRole("button", { name: "Generate reviewer forms" }));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Confidentiality form not signed: Alice, Bob",
+    );
+  });
+
+  it("only flip reviewers with no recorded answer — an explicit signed stays signed", async () => {
+    await loadToDashboard([true, undefined]);
+    fireEvent.click(screen.getByRole("button", { name: "Edit project" }));
+    goToConfigStep("Reviewers");
+    const [alice, bob] = screen.getAllByRole("checkbox", { name: /Signed Confidentiality/ });
+    expect(alice).toBeChecked();
+    expect(bob).not.toBeChecked();
   });
 });
 

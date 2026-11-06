@@ -111,7 +111,7 @@ export function ReviewersEditor() {
                   <input
                     type="checkbox"
                     aria-label={`Signed Confidentiality: ${reviewer.name || "unnamed reviewer"}`}
-                    checked={reviewer.confidentialitySigned}
+                    checked={reviewer.confidentialitySigned === true}
                     onChange={(e) =>
                       dispatch({
                         type: "UPDATE_REVIEWER",

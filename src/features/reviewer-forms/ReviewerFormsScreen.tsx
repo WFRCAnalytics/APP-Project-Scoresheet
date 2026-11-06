@@ -18,7 +18,7 @@ export function ReviewerFormsScreen({
   onGoToDashboard,
 }: ReviewerFormsScreenProps) {
   const { project } = useLoadedProject();
-  const unsigned = project.reviewers.filter((r) => !r.confidentialitySigned);
+  const unsigned = project.reviewers.filter((r) => r.confidentialitySigned === false);
 
   return (
     <section aria-label="Reviewer Forms">
@@ -64,7 +64,7 @@ export function ReviewerFormsScreen({
                       <Badge variant={reviewer.type === "wfrc" ? "info" : "neutral"}>
                         {reviewer.type === "wfrc" ? "WFRC" : "TLC Applicant"}
                       </Badge>
-                      {!reviewer.confidentialitySigned && (
+                      {reviewer.confidentialitySigned === false && (
                         <>
                           {" "}
                           <Badge variant="warning">Confidentiality form not signed</Badge>

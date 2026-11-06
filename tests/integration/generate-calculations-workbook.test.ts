@@ -442,6 +442,13 @@ describe("generateCalculationsWorkbook — config/reference tabs", () => {
   it("Reviewers lists whether each reviewer has signed the confidentiality form", async () => {
     const project = buildFixture();
     project.reviewers[1].confidentialitySigned = false;
+    project.reviewers.push({
+      id: "rev-3",
+      name: "Carol",
+      type: "applicant",
+      email: "",
+      confidentialitySigned: null,
+    });
     const { blob } = await generateCalculationsWorkbook(project);
     const workbook = await reloadWorkbook(blob);
     const sheet = workbook.getWorksheet("Reviewers")!;
@@ -449,6 +456,7 @@ describe("generateCalculationsWorkbook — config/reference tabs", () => {
     expect(sheet.getRow(4).getCell(4).value).toBe("Confidentiality Form Signed");
     expect(sheet.getRow(5).getCell(4).value).toBe("Yes");
     expect(sheet.getRow(6).getCell(4).value).toBe("No");
+    expect(sheet.getRow(7).getCell(4).value).toBe("Not recorded");
   });
 
   it("Criteria shows each weight as both a decimal and a live percent formula, plus a summed total row", async () => {

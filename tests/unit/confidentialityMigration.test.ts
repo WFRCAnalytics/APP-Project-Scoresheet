@@ -1,6 +1,6 @@
 // Reviewer.confidentialitySigned was added after projects were already being saved, so an old
-// project.json has no value for it. A missing value loads as signed (every reviewer in such a
-// file was already taking part); an explicit value — either way — is kept as-is.
+// project.json has no value for it. A missing value loads as null ("not recorded" — neither
+// signed nor unsigned); an explicit value — either way — is kept as-is.
 
 import { describe, expect, it } from "vitest";
 import { validateAndMigrateProject } from "../../src/lib/project-schema";
@@ -18,12 +18,22 @@ function rawProject(reviewers: Record<string, unknown>[]) {
 }
 
 describe("confidentialitySigned migration", () => {
-  it("loads a reviewer with no value as signed", () => {
+  it("loads a reviewer with no value as not recorded (null)", () => {
     const result = validateAndMigrateProject(
       rawProject([{ id: "rev-1", name: "Alice", type: "applicant", email: "" }]),
     );
     expect(result.valid).toBe(true);
-    if (result.valid) expect(result.project.reviewers[0].confidentialitySigned).toBe(true);
+    if (result.valid) expect(result.project.reviewers[0].confidentialitySigned).toBeNull();
+  });
+
+  it("accepts a saved null (a project exported before Configuration was ever opened)", () => {
+    const result = validateAndMigrateProject(
+      rawProject([
+        { id: "rev-1", name: "Alice", type: "applicant", email: "", confidentialitySigned: null },
+      ]),
+    );
+    expect(result.valid).toBe(true);
+    if (result.valid) expect(result.project.reviewers[0].confidentialitySigned).toBeNull();
   });
 
   it("keeps an explicit false (and true) untouched", () => {
@@ -46,7 +56,7 @@ describe("confidentialitySigned migration", () => {
     expect(result.valid).toBe(true);
     if (result.valid) {
       expect(result.project.reviewers[0].type).toBe("applicant");
-      expect(result.project.reviewers[0].confidentialitySigned).toBe(true);
+      expect(result.project.reviewers[0].confidentialitySigned).toBeNull();
     }
   });
 

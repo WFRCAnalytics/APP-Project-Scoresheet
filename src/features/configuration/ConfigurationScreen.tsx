@@ -23,7 +23,7 @@
 // behind the same ConfirmDialog every destructive action in this app already uses, rather
 // than routing immediately on a successful parse the way this used to work.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { FilePickerField, type FilePickerFieldHandle } from "../../components/FilePickerField";
 import { useProjectContext } from "../../state/ProjectContext";
@@ -58,7 +58,7 @@ export function ConfigurationScreen({
   onProjectReplaced,
   onGenerateForms,
 }: ConfigurationScreenProps) {
-  const { project } = useProjectContext();
+  const { project, dispatch } = useProjectContext();
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [pendingReplacement, setPendingReplacement] = useState<{
     project: Project;
@@ -67,6 +67,14 @@ export function ConfigurationScreen({
   const filePickerRef = useRef<FilePickerFieldHandle>(null);
   const [currentStep, setCurrentStep] = useState<string>(STEPS[0].id);
   const [visitedSteps, setVisitedSteps] = useState<Set<string>>(new Set([STEPS[0].id]));
+
+  // Opening Configuration starts a new round of setup: reviewers an old file never recorded
+  // a confidentiality answer for become unsigned, so the warnings start and the handler ticks
+  // who has signed. A no-op (same state back, no re-render) when there is nothing unrecorded;
+  // depends on `project` so a replacement JSON loaded from inside this screen is covered too.
+  useEffect(() => {
+    dispatch({ type: "MARK_UNRECORDED_CONFIDENTIALITY_UNSIGNED" });
+  }, [dispatch, project]);
 
   if (!project) {
     // Guarded by the caller in practice (App.tsx only renders this area with a project

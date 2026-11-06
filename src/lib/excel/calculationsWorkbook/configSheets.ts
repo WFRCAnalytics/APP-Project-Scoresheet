@@ -107,7 +107,12 @@ function buildReviewersSheet(workbook: ExcelJS.Workbook, project: Project): void
     row.getCell(1).font = { bold: true };
     row.getCell(2).value = reviewer.type === "wfrc" ? "WFRC" : "TLC Applicant";
     row.getCell(3).value = reviewer.email || "";
-    row.getCell(4).value = reviewer.confidentialitySigned ? "Yes" : "No";
+    row.getCell(4).value =
+      reviewer.confidentialitySigned === null
+        ? "Not recorded"
+        : reviewer.confidentialitySigned
+          ? "Yes"
+          : "No";
     zebraRow(sheet, r, headerLabels.length, i);
   });
 }

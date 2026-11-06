@@ -67,7 +67,7 @@ function CompletionStatusBanner({ scored, expected }: { scored: number; expected
  * is what gets printed/exported for the procurement record, so it shouldn't read as clean
  * while a reviewer's scores are in it without one. Warning only; nothing is blocked. */
 function UnsignedReviewersBanner({ project }: { project: Project }) {
-  const unsigned = project.reviewers.filter((r) => !r.confidentialitySigned);
+  const unsigned = project.reviewers.filter((r) => r.confidentialitySigned === false);
   if (unsigned.length === 0) return null;
   return (
     <div className="banner banner-warning completion-status-banner" role="status">

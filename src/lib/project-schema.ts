@@ -58,12 +58,12 @@ export function validateAndMigrateProject(raw: unknown): ValidationResult {
     );
 
     // confidentialitySigned addition (Reviewer, types/project.ts). Also not a schemaVersion
-    // bump. Every reviewer in a file saved before this was tracked was already taking part,
-    // so a missing value is migrated to true (signed) rather than flagging all of an old
-    // project's reviewers as unsigned on load.
+    // bump. A file saved before this was tracked has no answer, so a missing value becomes
+    // null ("not recorded") — neither assumed signed nor flagged unsigned just for opening it
+    // (see Reviewer.confidentialitySigned for what happens once Configuration is opened).
     migrated.reviewers = (migrated.reviewers as unknown[]).map((r) =>
       isPlainObject(r) && r.confidentialitySigned === undefined
-        ? { ...r, confidentialitySigned: true }
+        ? { ...r, confidentialitySigned: null }
         : r,
     );
   }
@@ -174,7 +174,7 @@ function describeStructuralError(obj: Record<string, unknown>): string | null {
       !isStringField(r, "name") ||
       (r.type !== "applicant" && r.type !== "wfrc") ||
       !isStringField(r, "email") ||
-      typeof r.confidentialitySigned !== "boolean"
+      (typeof r.confidentialitySigned !== "boolean" && r.confidentialitySigned !== null)
     ) {
       return 'Every reviewer needs an id, name, type ("applicant" or "wfrc"), email, and confidentialitySigned field.';
     }

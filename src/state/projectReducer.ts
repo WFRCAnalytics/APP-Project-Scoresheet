@@ -29,6 +29,10 @@ export type ProjectAction =
   | { type: "ADD_REVIEWER"; reviewer: Reviewer }
   | { type: "UPDATE_REVIEWER"; reviewerId: string; patch: Partial<Omit<Reviewer, "id">> }
   | { type: "REMOVE_REVIEWER"; reviewerId: string }
+  /** Reviewers whose confidentiality status was never recorded (null — an old project file)
+   * become unsigned (false); already-answered reviewers are untouched. Dispatched when
+   * Configuration opens. */
+  | { type: "MARK_UNRECORDED_CONFIDENTIALITY_UNSIGNED" }
   | { type: "ADD_CRITERION"; criterion: Criterion }
   | { type: "UPDATE_CRITERION"; criterionId: string; patch: Partial<Omit<Criterion, "id">> }
   | { type: "REMOVE_CRITERION"; criterionId: string }
@@ -102,6 +106,17 @@ export function projectReducer(state: ProjectState, action: ProjectAction): Proj
           r.id === action.reviewerId ? { ...r, ...action.patch } : r,
         ),
       };
+    case "MARK_UNRECORDED_CONFIDENTIALITY_UNSIGNED":
+      // Returns the same state object when there is nothing to change, so re-running this
+      // (e.g. every time Configuration mounts) never triggers a pointless re-render.
+      return state.reviewers.some((r) => r.confidentialitySigned === null)
+        ? {
+            ...state,
+            reviewers: state.reviewers.map((r) =>
+              r.confidentialitySigned === null ? { ...r, confidentialitySigned: false } : r,
+            ),
+          }
+        : state;
     case "REMOVE_REVIEWER":
       // FR-041: same confirm-then-orphan pattern as firms/criteria.
       return { ...state, reviewers: state.reviewers.filter((r) => r.id !== action.reviewerId) };

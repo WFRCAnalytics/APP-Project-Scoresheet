@@ -62,10 +62,13 @@ export interface Reviewer {
   /** Optional; "" if unset. Handler's own reference only — the app never sends email. */
   email: string;
   /** Whether this reviewer has signed the confidentiality form. Tracked and surfaced as a
-   * warning (Reviewer Forms, Dashboard) but never blocks anything. New reviewers start
-   * false; a saved file with no value for it is migrated to true (project-schema.ts) —
-   * every reviewer in an old file was already working before this was tracked. */
-  confidentialitySigned: boolean;
+   * warning (Reviewer Forms, Dashboard) but never blocks anything. Three states: true
+   * (signed), false (not signed — warns), and null ("not recorded": a saved file from before
+   * this was tracked, project-schema.ts). null stays quiet while an old project is just being
+   * viewed, but opening Configuration turns it into false (MARK_UNRECORDED_CONFIDENTIALITY_
+   * UNSIGNED) — reconfiguring is a new round of setup, so each reviewer gets confirmed again.
+   * New reviewers start false. */
+  confidentialitySigned: boolean | null;
 }
 
 export interface Score {

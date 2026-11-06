@@ -69,7 +69,9 @@ function AppShell() {
     <>
       <AppHeader onOpenHelp={() => setHelpOpen(true)} />
       <HelpGuideModal open={helpOpen} onClose={() => setHelpOpen(false)} />
-      <div className="app-shell">
+      {/* Every screen but the landing page is an app-style workspace that fills the window
+          (see .app-shell--workspace); Load keeps its centered, scrolling page. */}
+      <div className={area === "load" ? "app-shell" : "app-shell app-shell--workspace"}>
         <main>{renderArea()}</main>
       </div>
     </>

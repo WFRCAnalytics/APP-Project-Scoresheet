@@ -1,9 +1,6 @@
-// Coverage for ExportProjectJsonButton's two variants (components/ExportProjectJsonButton.tsx):
-// "inline" (Configuration's toolbar — the original always-visible label+input+button,
-// deliberately UNCHANGED by the Dashboard toolbar redesign) and "compact" (Dashboard only —
-// clicking "Export JSON" opens a confirm panel, "Save As"-style, instead of exporting
-// directly). Both variants share the same underlying filename/export logic; only the
-// markup differs.
+// Coverage for ExportProjectJsonButton (components/ExportProjectJsonButton.tsx): the same
+// toolbar control on the Dashboard, Reviewer Forms and Configuration — clicking "Export JSON"
+// opens a confirm panel, "Save As"-style, instead of exporting directly.
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -56,35 +53,31 @@ async function goToDashboard() {
   await screen.findByRole("heading", { name: "Dashboard" });
 }
 
-describe("ExportProjectJsonButton — inline variant (Configuration, unchanged)", () => {
-  it("shows the filename field and export button always, with no confirm panel to open first", () => {
+describe("ExportProjectJsonButton — Configuration toolbar", () => {
+  it("opens the same confirm panel as the Dashboard, with nothing exported until confirmed", () => {
     goToConfiguration();
+    const downloadSpy = vi.spyOn(downloadBlobModule, "downloadBlob").mockImplementation(() => {});
 
-    expect(screen.getByLabelText("Export filename")).toBeInTheDocument();
-    expect(screen.queryByRole("dialog", { name: "Export project JSON" })).not.toBeInTheDocument();
-  });
+    expect(screen.queryByLabelText("Filename")).not.toBeInTheDocument(); // closed by default
+    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
 
-  it("is button-primary, not the Dashboard compact variant's secondary trigger styling", () => {
-    goToConfiguration();
-    expect(screen.getByRole("button", { name: "Export project JSON" }).className).toContain(
-      "button-primary",
-    );
+    expect(screen.getByRole("dialog", { name: "Export project JSON" })).toBeInTheDocument();
+    expect(downloadSpy).not.toHaveBeenCalled();
   });
 
   it("exports using the (editable, never forced) filename field's current value", () => {
     goToConfiguration();
     const downloadSpy = vi.spyOn(downloadBlobModule, "downloadBlob").mockImplementation(() => {});
 
-    fireEvent.change(screen.getByLabelText("Export filename"), {
-      target: { value: "inline_custom.json" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Export project JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    fireEvent.change(screen.getByLabelText("Filename"), { target: { value: "config_custom.json" } });
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
 
-    expect(downloadSpy.mock.calls[0][1]).toBe("inline_custom.json");
+    expect(downloadSpy.mock.calls[0][1]).toBe("config_custom.json");
   });
 });
 
-describe("ExportProjectJsonButton — compact variant (Dashboard toolbar only)", () => {
+describe("ExportProjectJsonButton — confirm panel (Dashboard)", () => {
   it("clicking 'Export JSON' opens a confirm panel instead of exporting directly", async () => {
     await goToDashboard();
     const downloadSpy = vi.spyOn(downloadBlobModule, "downloadBlob").mockImplementation(() => {});

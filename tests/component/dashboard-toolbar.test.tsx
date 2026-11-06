@@ -1,7 +1,7 @@
-// Coverage for the Dashboard toolbar's hierarchy redesign: Edit project / Show calculations
-// render icon-only (no visible text, accessible name via aria-label alone), the two export
-// actions keep an icon + visible label, and "Show calculations" reflects its open/closed
-// state via aria-expanded and the .is-active styling hook.
+// Coverage for the Dashboard toolbar's hierarchy: every control has an icon and a visible label
+// (Configure project, Export JSON, Excel, PDF Report), and PDF is the one primary action. The old
+// "Show calculations" dialog is gone — its content lives in the Reviewer scores tab, Reviewer
+// Forms and the Excel export.
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
@@ -41,24 +41,32 @@ async function goToDashboard() {
 }
 
 describe("Dashboard toolbar hierarchy", () => {
-  it("Edit project and Show calculations render icon-only — accessible name via aria-label, no visible text", async () => {
+  it("Configure project has a visible label alongside its icon", async () => {
     await goToDashboard();
 
-    const editButton = screen.getByRole("button", { name: "Edit project" });
-    const calcButton = screen.getByRole("button", { name: "Show calculations" });
-    expect(editButton.textContent).toBe("");
-    expect(calcButton.textContent).toBe("");
+    const button = screen.getByRole("button", { name: "Configure project" });
+    expect(button.textContent).toContain("Configure project");
+    expect(button.querySelector("svg")).not.toBeNull();
   });
 
-  it("the two export actions keep a visible label alongside their icon", async () => {
+  it("the three export actions keep a visible label alongside their icon", async () => {
     await goToDashboard();
 
     expect(screen.getByRole("button", { name: "Export JSON" }).textContent).toContain(
       "Export JSON",
     );
+    expect(screen.getByRole("button", { name: "Export Excel workbook" }).textContent).toContain(
+      "Excel",
+    );
     expect(screen.getByRole("button", { name: "Export PDF report" }).textContent).toContain(
       "PDF Report",
     );
+  });
+
+  it("has no Calculations dialog any more", async () => {
+    await goToDashboard();
+
+    expect(screen.queryByRole("button", { name: /calculations/i })).not.toBeInTheDocument();
   });
 
   it("PDF report is the only primary-styled action in the toolbar itself (Export JSON's confirm panel has its own primary button once opened)", async () => {
@@ -70,18 +78,5 @@ describe("Dashboard toolbar hierarchy", () => {
     expect(screen.getByRole("button", { name: "Export JSON" }).className).not.toContain(
       "button-primary",
     );
-  });
-
-  it("Show calculations reflects open/closed state via aria-expanded and .is-active", async () => {
-    await goToDashboard();
-    const calcButton = screen.getByRole("button", { name: "Show calculations" });
-
-    expect(calcButton).toHaveAttribute("aria-expanded", "false");
-    expect(calcButton.className).not.toContain("is-active");
-
-    fireEvent.click(calcButton);
-    const hideButton = screen.getByRole("button", { name: "Hide calculations" });
-    expect(hideButton).toHaveAttribute("aria-expanded", "true");
-    expect(hideButton.className).toContain("is-active");
   });
 });

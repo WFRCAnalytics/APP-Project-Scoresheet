@@ -56,7 +56,7 @@ describe("User Story 4 — Reopen a Project File", () => {
     });
     await screen.findByRole("heading", { name: "Dashboard" });
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit project" }));
+    fireEvent.click(screen.getByRole("button", { name: "Configure project" }));
 
     await screen.findByRole("heading", { name: "Configuration" });
     // Every field that was loaded must still be present — nothing reset to empty.

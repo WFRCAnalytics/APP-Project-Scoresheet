@@ -1,11 +1,10 @@
-// Regression coverage: two spots (Manual Entry's reviewer picker, the Calculations
-// Heatmap's column headers) used to interpolate the raw internal Reviewer.type value
+// Regression coverage: spots that used to interpolate the raw internal Reviewer.type value
 // ("applicant"/"wfrc") straight into displayed text instead of the "TLC Applicant"/"WFRC"
-// labels used everywhere else in the app (ReviewerFormsScreen, CalculationsFullTable,
-// ReviewerScoreSpreadChart) — caught by inspection, not a test, the first time, so this
-// locks in the fix.
+// labels used everywhere else in the app — caught by inspection, not a test, the first time, so
+// this locks in the fix. Now covers the Reviewer Forms roster and the Dashboard's Reviewer
+// scores heatmap.
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import App from "../../src/App";
 import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
@@ -33,6 +32,7 @@ function buildScoredProject() {
     ],
     scores: [
       { reviewerId: "rev-1", firmId: "firm-1", criterionId: "crit-1", value: 5, comment: "", updatedAt: "" },
+      { reviewerId: "rev-2", firmId: "firm-1", criterionId: "crit-1", value: 1, comment: "", updatedAt: "" },
     ],
   };
 }
@@ -48,26 +48,26 @@ async function goToDashboard() {
 }
 
 describe("Reviewer type display labels — never the raw internal value", () => {
-  it("Manual Entry's reviewer picker shows 'TLC Applicant'/'WFRC', not 'applicant'/'wfrc'", async () => {
+  it("the Reviewer Forms roster shows 'TLC Applicant'/'WFRC' badges, not 'applicant'/'wfrc'", async () => {
     await goToDashboard();
-    fireEvent.click(screen.getByRole("button", { name: "Show calculations" }));
-    fireEvent.click(screen.getByRole("tab", { name: "Manual Entry" }));
-    await screen.findByLabelText("Manual Score Entry");
+    fireEvent.click(screen.getByRole("button", { name: "Configure project" }));
+    goToConfigStep("Export / Review");
+    fireEvent.click(screen.getByRole("button", { name: "Generate reviewer forms" }));
+    await screen.findByRole("heading", { name: "Reviewer Forms" });
 
-    expect(screen.getByRole("option", { name: "Alice (TLC Applicant)" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Bob (WFRC)" })).toBeInTheDocument();
-    expect(screen.queryByText(/\(applicant\)/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/\(wfrc\)/)).not.toBeInTheDocument();
+    expect(within(screen.getByRole("row", { name: /Alice/ })).getByText("TLC Applicant")).toBeInTheDocument();
+    expect(within(screen.getByRole("row", { name: /Bob/ })).getByText("WFRC")).toBeInTheDocument();
+    expect(screen.queryByText(/^applicant$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^wfrc$/)).not.toBeInTheDocument();
   });
 
-  it("the Calculations Heatmap's reviewer column headers show 'TLC Applicant'/'WFRC'", async () => {
+  it("the Dashboard's Reviewer scores heatmap groups reviewers as 'TLC Applicant'/'WFRC'", async () => {
     await goToDashboard();
-    fireEvent.click(screen.getByRole("button", { name: "Show calculations" }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Reviewer scores/ }));
 
-    expect(
-      screen.getByRole("columnheader", { name: "Alice (TLC Applicant)" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Bob (WFRC)" })).toBeInTheDocument();
+    expect(screen.getByText(/TLC Applicant reviewers/)).toBeInTheDocument();
+    expect(screen.getByText(/WFRC reviewers/)).toBeInTheDocument();
+    expect(screen.queryByText(/\bapplicant reviewers\b/)).not.toBeInTheDocument();
   });
 
   it("Reviewer Forms' type badge shows 'TLC Applicant'/'WFRC' too (existing coverage, still true)", async () => {

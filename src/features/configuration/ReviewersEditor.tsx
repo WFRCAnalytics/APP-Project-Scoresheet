@@ -40,8 +40,25 @@ export function ReviewersEditor() {
           {[...duplicateReviewerNames.entries()]
             .map(([name, count]) => `"${name}" is used by ${count} reviewers`)
             .join("; ")}{" "}
-          — rename so results stay unambiguous on the Dashboard and in exports (this does not
-          block saving or generating forms).
+          — rename so results stay unambiguous on the Dashboard and in exports (this does not block
+          saving or generating forms).
+        </div>
+      )}
+
+      {project.reviewers.length > 0 && (
+        <div className="config-strip">
+          <span className="config-tag">
+            {project.reviewers.filter((r) => r.type === "applicant").length} TLC Applicant
+          </span>
+          <span className="config-tag">
+            {project.reviewers.filter((r) => r.type === "wfrc").length} WFRC
+          </span>
+          {project.reviewers.some((r) => r.confidentialitySigned === false) && (
+            <span className="config-tag is-warn">
+              {project.reviewers.filter((r) => r.confidentialitySigned === false).length} not signed
+              the confidentiality form
+            </span>
+          )}
         </div>
       )}
 
@@ -52,12 +69,8 @@ export function ReviewersEditor() {
               <th className="col-name">Name</th>
               <th className="col-type">Type</th>
               <th>Email</th>
-              {/* Spans the checkbox column AND the (header-less) Remove column, so the long
-                  header text can run over the buttons instead of forcing the checkbox column
-                  wide — which is what leaves Email room to be the wide column. */}
-              <th colSpan={2} className="col-signed">
-                Signed Confidentiality
-              </th>
+              <th className="col-signed">Signed Confidentiality</th>
+              <th aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -108,18 +121,23 @@ export function ReviewersEditor() {
                   />
                 </td>
                 <td className="col-signed">
-                  <input
-                    type="checkbox"
-                    aria-label={`Signed Confidentiality: ${reviewer.name || "unnamed reviewer"}`}
-                    checked={reviewer.confidentialitySigned === true}
-                    onChange={(e) =>
-                      dispatch({
-                        type: "UPDATE_REVIEWER",
-                        reviewerId: reviewer.id,
-                        patch: { confidentialitySigned: e.target.checked },
-                      })
-                    }
-                  />
+                  <span className="check-cell">
+                    <input
+                      type="checkbox"
+                      aria-label={`Signed Confidentiality: ${reviewer.name || "unnamed reviewer"}`}
+                      checked={reviewer.confidentialitySigned === true}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "UPDATE_REVIEWER",
+                          reviewerId: reviewer.id,
+                          patch: { confidentialitySigned: e.target.checked },
+                        })
+                      }
+                    />
+                    <span className="check-cell-state" aria-hidden="true">
+                      {reviewer.confidentialitySigned === true ? "Signed" : "Not signed"}
+                    </span>
+                  </span>
                 </td>
                 <td>
                   <button

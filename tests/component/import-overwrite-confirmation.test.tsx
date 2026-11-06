@@ -13,7 +13,7 @@ import App from "../../src/App";
 import { generateWorkbookForReviewer } from "../../src/lib/excel/generateWorkbook";
 import { readFileArrayBuffer } from "../../src/lib/excel/parseWorkbook";
 import { createEmptyProject, type Project } from "../../src/types/project";
-import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
+import { goToConfigStep, openGetStartedModal, rankedFirm } from "../helpers/appNav";
 
 function buildProject(): Project {
   const project = createEmptyProject();
@@ -61,7 +61,7 @@ async function navigateToReviewerForms(project: Project) {
 
   if (project.scores.length > 0) {
     await screen.findByRole("heading", { name: "Dashboard" });
-    fireEvent.click(screen.getByRole("button", { name: "Edit project" }));
+    fireEvent.click(screen.getByRole("button", { name: "Configure project" }));
   }
   await screen.findByRole("heading", { name: "Configuration" });
   goToConfigStep("Export / Review");
@@ -238,9 +238,7 @@ describe("Import overwrite confirmation", () => {
     // Confirm the score genuinely wasn't committed: the Dashboard's Overall Weighted Total
     // must still reflect the original value (1), not the imported-but-uncommitted one (5).
     fireEvent.click(screen.getByRole("button", { name: "View Dashboard" }));
-    const rankedTable = await screen.findByRole("table", { name: "Ranked firms" });
-    const dataRow = within(rankedTable).getAllByRole("row")[1];
-    const cells = within(dataRow).getAllByRole("cell");
-    expect(cells[3].textContent).toBe("1"); // Overall Weighted Total, unchanged
+    await screen.findByRole("listbox", { name: "Ranked firms" });
+    expect(rankedFirm("Alpha Co").overall).toBe("1"); // Overall Weighted Total, unchanged
   });
 });

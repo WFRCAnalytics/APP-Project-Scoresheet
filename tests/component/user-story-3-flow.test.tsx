@@ -12,7 +12,7 @@ import App from "../../src/App";
 import { generateWorkbookForReviewer } from "../../src/lib/excel/generateWorkbook";
 import { readFileArrayBuffer } from "../../src/lib/excel/parseWorkbook";
 import { createEmptyProject, type Project } from "../../src/types/project";
-import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
+import { goToConfigStep, openGetStartedModal, rankedFirm } from "../helpers/appNav";
 
 function buildUnscoredProject(): Project {
   const project = createEmptyProject();
@@ -114,54 +114,33 @@ describe("User Story 3 — Import Returned Scores and View Ranked Results", () =
     // Overall Avg: Alpha = (5+1)/2 = 3, Beta = (1+5)/2 = 3 -> TIE, both rank 1.
     // TLC Applicant Avg (Alice only): Alpha = 5, Beta = 1 -> Alpha ranks 1, Beta ranks 2.
     // WFRC Avg (Bob only): Alpha = 1, Beta = 5 -> Beta ranks 1, Alpha ranks 2.
-    // Queried by accessible name (aria-label="Ranked firms") rather than DOM
-    // position/order — robust to other <table> elements an expanded row's comments table
-    // may add to the tree.
-    const rankedTable = screen.getByRole("table", { name: "Ranked firms" });
-    const rows = within(rankedTable).getAllByRole("row").slice(1); // skip header
-    // Cell 0 is the row-expand toggle, 1 is Rank, 2 is Firm, 3 is Overall Weighted Total,
-    // 4 is TLC Applicant Weighted Total, 5 is WFRC Weighted Total, 6 is Completion.
-    const cellsByFirm = Object.fromEntries(
-      rows.map((row) => {
-        const cells = within(row).getAllByRole("cell");
-        return [cells[2].textContent, cells];
-      }),
-    );
+    // The ranked-firms list: one option per firm, with its rank badge and the three totals.
+    const alpha = rankedFirm("Alpha Co");
+    const beta = rankedFirm("Beta Co");
 
     // Alpha: overall rank 1 (a viewer wanting the TLC Applicant/WFRC rank lenses sorts by
     // those columns directly rather than reading an inline divergence note in the Rank cell).
-    expect(within(cellsByFirm["Alpha Co"][1]).getByText("1")).toBeInTheDocument();
-    expect(cellsByFirm["Alpha Co"][3].textContent).toBe("3"); // Overall Weighted Total
-    expect(cellsByFirm["Alpha Co"][4].textContent).toBe("5"); // TLC Applicant Weighted Total
-    expect(cellsByFirm["Alpha Co"][5].textContent).toBe("1"); // WFRC Weighted Total
+    expect(alpha.rank).toBe("1");
+    expect(alpha.overall).toBe("3"); // Overall Weighted Total
+    expect(alpha.applicant).toBe("5"); // TLC Applicant Weighted Total
+    expect(alpha.wfrc).toBe("1"); // WFRC Weighted Total
 
     // Beta: tied overall rank 1.
-    expect(within(cellsByFirm["Beta Co"][1]).getByText("1")).toBeInTheDocument();
-    expect(cellsByFirm["Beta Co"][3].textContent).toBe("3");
-    expect(cellsByFirm["Beta Co"][4].textContent).toBe("1");
-    expect(cellsByFirm["Beta Co"][5].textContent).toBe("5"); // WFRC Weighted Total
+    expect(beta.rank).toBe("1");
+    expect(beta.overall).toBe("3");
+    expect(beta.applicant).toBe("1");
+    expect(beta.wfrc).toBe("5"); // WFRC Weighted Total
 
     // Completion: both firms fully scored by both reviewers (1 criterion * 2 reviewers).
-    expect(cellsByFirm["Alpha Co"][6].textContent).toContain("2/2");
+    expect(alpha.completion).toContain("2/2");
 
-    // Toggle "show calculations" and confirm the raw per-reviewer scores are traceable.
-    // (Since Phase 7, the Calculations view also hosts the manual entry grid, which
-    // repeats each firm's name in its own table — so this must target the per-firm
-    // heading specifically, not just any text match.)
-    fireEvent.click(screen.getByRole("button", { name: "Show calculations" }));
-    fireEvent.click(screen.getByRole("tab", { name: "Full Table" }));
-    const calcView = screen.getByRole("tabpanel");
-    expect(within(calcView).getByRole("heading", { name: "Alpha Co" })).toBeInTheDocument();
-    // Raw scores: Alice=5, Bob=1 for Alpha's single criterion row.
-    const calcTable = within(calcView).getAllByRole("table")[0];
-    const dataRow = within(calcTable).getAllByRole("row")[1];
-    const dataCells = within(dataRow).getAllByRole("cell");
-    // Columns: Criterion, Weight, Alice(applicant), Bob(wfrc), Overall Avg,
-    // TLC Applicant Avg, WFRC Avg, ...
-    expect(dataCells[2].textContent).toBe("5"); // Alice's raw score
-    expect(dataCells[3].textContent).toBe("1"); // Bob's raw score
-    expect(dataCells[4].textContent).toBe("3"); // Overall Avg
-    expect(dataCells[5].textContent).toBe("5"); // TLC Applicant Avg
-    expect(dataCells[6].textContent).toBe("1"); // WFRC Avg
+    // The raw per-reviewer scores stay traceable: Alpha's Reviewer scores tab lists every
+    // reviewer's own score per criterion, plus the all-reviewer average. (The same numbers, with
+    // each criterion's weighted contribution, are in the Excel export's Calculations tab.)
+    fireEvent.click(screen.getByRole("tab", { name: /^Reviewer scores/ }));
+    expect(screen.getByRole("button", { name: /^Alice, Approach: 5\./ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Bob, Approach: 1\./ })).toBeInTheDocument();
+    const allReviewers = screen.getByRole("row", { name: /All reviewers/ });
+    expect(within(allReviewers).getAllByRole("cell")[0].textContent).toBe("3"); // Overall Avg
   });
 });

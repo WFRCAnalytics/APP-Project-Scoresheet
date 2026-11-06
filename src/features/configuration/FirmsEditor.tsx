@@ -46,18 +46,33 @@ export function FirmsEditor() {
           {[...duplicateFirmNames.entries()]
             .map(([name, count]) => `"${name}" is used by ${count} firms`)
             .join("; ")}{" "}
-          — rename so results stay unambiguous on the Dashboard and in exports (this does not
-          block saving or generating forms).
+          — rename so results stay unambiguous on the Dashboard and in exports (this does not block
+          saving or generating forms).
+        </div>
+      )}
+
+      {project.firms.length > 0 && (
+        <div className="config-strip">
+          <span className="config-tag">
+            {project.firms.filter((f) => f.invited).length} invited
+          </span>
+          <span className="config-tag is-ok">
+            {project.firms.filter((f) => f.submitted).length} submitted
+          </span>
+          <span className="config-tag">
+            {project.firms.filter((f) => !f.submitted).length} not submitted
+          </span>
+          <span className="field-hint">Only submitted firms are scored and ranked.</span>
         </div>
       )}
 
       <div className="table-wrap">
-        <table className="data-table">
+        <table className="data-table firms-table">
           <thead>
             <tr>
               <th>Name</th>
-              <th>Invited</th>
-              <th>Submitted</th>
+              <th className="col-check">Invited</th>
+              <th className="col-check">Submitted</th>
               <th>Notes</th>
               <th aria-label="Actions" />
             </tr>
@@ -79,33 +94,43 @@ export function FirmsEditor() {
                     }
                   />
                 </td>
-                <td>
-                  <input
-                    type="checkbox"
-                    aria-label="Invited"
-                    checked={firm.invited}
-                    onChange={(e) =>
-                      dispatch({
-                        type: "UPDATE_FIRM",
-                        firmId: firm.id,
-                        patch: { invited: e.target.checked },
-                      })
-                    }
-                  />
+                <td className="col-check">
+                  <span className="check-cell">
+                    <input
+                      type="checkbox"
+                      aria-label="Invited"
+                      checked={firm.invited}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "UPDATE_FIRM",
+                          firmId: firm.id,
+                          patch: { invited: e.target.checked },
+                        })
+                      }
+                    />
+                    <span className="check-cell-state" aria-hidden="true">
+                      {firm.invited ? "Invited" : "Not invited"}
+                    </span>
+                  </span>
                 </td>
-                <td>
-                  <input
-                    type="checkbox"
-                    aria-label="Submitted"
-                    checked={firm.submitted}
-                    onChange={(e) =>
-                      dispatch({
-                        type: "UPDATE_FIRM",
-                        firmId: firm.id,
-                        patch: { submitted: e.target.checked },
-                      })
-                    }
-                  />
+                <td className="col-check">
+                  <span className="check-cell">
+                    <input
+                      type="checkbox"
+                      aria-label="Submitted"
+                      checked={firm.submitted}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "UPDATE_FIRM",
+                          firmId: firm.id,
+                          patch: { submitted: e.target.checked },
+                        })
+                      }
+                    />
+                    <span className="check-cell-state" aria-hidden="true">
+                      {firm.submitted ? "Submitted" : "Not submitted"}
+                    </span>
+                  </span>
                 </td>
                 <td>
                   <input

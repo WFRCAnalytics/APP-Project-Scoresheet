@@ -38,7 +38,7 @@ export function reviewerWorkbookFilename(projectName: string, reviewerName: stri
   return `${reviewerPart}_${projectPart}.xlsx`;
 }
 
-/** Default filename for the Calculations modal's "Export as .xlsx" audit download —
+/** Default filename for the Dashboard's "Excel" audit download —
  * same sanitization rule as the other two filename functions here. */
 export function calculationsWorkbookFilename(projectName: string): string {
   const projectPart = sanitizeProjectName(projectName) || "untitled-project";

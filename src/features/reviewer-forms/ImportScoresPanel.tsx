@@ -13,11 +13,17 @@
 // destructive action in this app already uses (FirmsEditor/ReviewersEditor/CriteriaEditor's
 // delete gates), requiring a distinct, explicit second click before anything is written.
 // An import with zero overwrites is completely unaffected — one click, same as before.
+//
+// Compact-layout pass: this is a small card in the Reviewer Forms screen's left column. The
+// per-file review table (which can be wide and long) opens in a dialog as soon as the files are
+// read; closing it with Escape keeps the files staged — the card then shows a one-line summary
+// with "Review and import" / "Discard", so nothing is lost and nothing is imported by accident.
 
 import { useRef, useState } from "react";
 import { Badge } from "../../components/Badge";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { FilePickerField, type FilePickerFieldHandle } from "../../components/FilePickerField";
+import { Modal } from "../../components/Modal";
 import {
   collectScoresToCommit,
   parseWorkbookFiles,
@@ -41,11 +47,12 @@ function describeOverwriteChange(overwrites: OverwriteDetail, newScore: Score): 
   return parts.join(", ");
 }
 
-export function ImportScoresPanel() {
+export function ImportScoresPanel({ onImported }: { onImported?: () => void } = {}) {
   const { project, dispatch } = useLoadedProject();
   const [pendingResults, setPendingResults] = useState<ParsedFileResult[] | null>(null);
   const [parsing, setParsing] = useState(false);
   const [committed, setCommitted] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [overwriteConfirmOpen, setOverwriteConfirmOpen] = useState(false);
   const filePickerRef = useRef<FilePickerFieldHandle>(null);
 
@@ -55,6 +62,7 @@ export function ImportScoresPanel() {
     try {
       const results = await parseWorkbookFiles(project, Array.from(files));
       setPendingResults(results);
+      setReviewOpen(true);
     } finally {
       setParsing(false);
     }
@@ -65,7 +73,9 @@ export function ImportScoresPanel() {
     const scores = collectScoresToCommit(pendingResults);
     dispatch({ type: "UPSERT_SCORES", scores });
     setCommitted(true);
+    setReviewOpen(false);
     setOverwriteConfirmOpen(false);
+    onImported?.();
   }
 
   function handleConfirmImportClick() {
@@ -79,6 +89,7 @@ export function ImportScoresPanel() {
   function handleDiscard() {
     setPendingResults(null);
     setCommitted(false);
+    setReviewOpen(false);
     setOverwriteConfirmOpen(false);
     filePickerRef.current?.reset();
   }
@@ -87,7 +98,7 @@ export function ImportScoresPanel() {
   const totalOverwrites = pendingResults?.reduce((sum, r) => sum + r.overwriteCount, 0) ?? 0;
 
   return (
-    <div className="card">
+    <div className="card forms-import">
       <h2>Import Completed Reviewer Workbook(s)</h2>
       <div className="field">
         <label htmlFor="import-workbooks">
@@ -108,88 +119,20 @@ export function ImportScoresPanel() {
 
       {parsing && <p className="field-hint">Reading file(s)…</p>}
 
-      {pendingResults && !committed && (
-        <div>
-          <h3>Review before importing</h3>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Reviewer</th>
-                  <th>Added</th>
-                  <th>Not yet scored</th>
-                  <th>Failed validation</th>
-                  <th>Overwrites existing score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pendingResults.map((result) => (
-                  <tr key={result.filename}>
-                    <td>{result.reviewerName ?? result.filename}</td>
-                    <td>
-                      <Badge variant="success">{result.addedCount}</Badge>
-                    </td>
-                    <td>
-                      {result.skippedCount > 0 ? (
-                        <Badge variant="neutral">{result.skippedCount}</Badge>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td>
-                      {result.failedCount > 0 ? (
-                        <>
-                          <Badge variant="danger">{result.failedCount}</Badge>
-                          <ul className="import-failed-rows">
-                            {result.rows
-                              .filter((r) => r.status === "failed")
-                              .map((r, i) => (
-                                <li key={i}>
-                                  Row {r.row}: {r.reason}
-                                </li>
-                              ))}
-                          </ul>
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td>
-                      {result.alreadyRecordedCount > 0 ? (
-                        <>
-                          <Badge variant={result.overwriteCount > 0 ? "warning" : "neutral"}>
-                            {result.overwriteCount}/{result.alreadyRecordedCount} changed
-                          </Badge>
-                          {result.overwriteCount > 0 && (
-                            <ul className="import-overwrite-rows">
-                              {result.rows
-                                .filter((r) => r.status === "added" && r.overwrites)
-                                .map((r, i) => (
-                                  <li key={i}>
-                                    Row {r.row}: {r.overwrites!.firmName} / {r.overwrites!.criterionName}:{" "}
-                                    {describeOverwriteChange(r.overwrites!, r.score!)}
-                                  </li>
-                                ))}
-                            </ul>
-                          )}
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      {pendingResults && !committed && !reviewOpen && (
+        <div className="forms-import-staged">
+          <span>
+            {pendingResults.length} file{pendingResults.length === 1 ? "" : "s"} ready, {totalAdded}{" "}
+            score{totalAdded === 1 ? "" : "s"}
+            {totalOverwrites > 0 ? `, ${totalOverwrites} replacing existing` : ""}
+          </span>
           <div className="actions-row">
             <button
               type="button"
               className="button button-primary"
-              onClick={handleConfirmImportClick}
-              disabled={totalAdded === 0}
+              onClick={() => setReviewOpen(true)}
             >
-              Confirm import ({totalAdded} score{totalAdded === 1 ? "" : "s"})
+              Review and import
             </button>
             <button type="button" className="button button-secondary" onClick={handleDiscard}>
               Discard
@@ -209,6 +152,107 @@ export function ImportScoresPanel() {
         </div>
       )}
 
+      <Modal
+        open={reviewOpen && pendingResults !== null && !committed}
+        onClose={() => {
+          // The overwrite confirmation sits on top of this dialog and owns Escape while open.
+          if (!overwriteConfirmOpen) setReviewOpen(false);
+        }}
+        ariaLabelledBy="import-review-title"
+        size="xl"
+      >
+        <h2 id="import-review-title">Review before importing</h2>
+        <p className="field-hint">
+          Nothing is saved until you confirm. Each file is matched to a reviewer by the hidden IDs
+          in the workbook.
+        </p>
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Reviewer</th>
+                <th>Added</th>
+                <th>Not yet scored</th>
+                <th>Failed validation</th>
+                <th>Overwrites existing score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(pendingResults ?? []).map((result) => (
+                <tr key={result.filename}>
+                  <td>{result.reviewerName ?? result.filename}</td>
+                  <td>
+                    <Badge variant="success">{result.addedCount}</Badge>
+                  </td>
+                  <td>
+                    {result.skippedCount > 0 ? (
+                      <Badge variant="neutral">{result.skippedCount}</Badge>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td>
+                    {result.failedCount > 0 ? (
+                      <>
+                        <Badge variant="danger">{result.failedCount}</Badge>
+                        <ul className="import-failed-rows">
+                          {result.rows
+                            .filter((r) => r.status === "failed")
+                            .map((r, i) => (
+                              <li key={i}>
+                                Row {r.row}: {r.reason}
+                              </li>
+                            ))}
+                        </ul>
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td>
+                    {result.alreadyRecordedCount > 0 ? (
+                      <>
+                        <Badge variant={result.overwriteCount > 0 ? "warning" : "neutral"}>
+                          {result.overwriteCount}/{result.alreadyRecordedCount} changed
+                        </Badge>
+                        {result.overwriteCount > 0 && (
+                          <ul className="import-overwrite-rows">
+                            {result.rows
+                              .filter((r) => r.status === "added" && r.overwrites)
+                              .map((r, i) => (
+                                <li key={i}>
+                                  Row {r.row}: {r.overwrites!.firmName} /{" "}
+                                  {r.overwrites!.criterionName}:{" "}
+                                  {describeOverwriteChange(r.overwrites!, r.score!)}
+                                </li>
+                              ))}
+                          </ul>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="actions-row">
+          <button
+            type="button"
+            className="button button-primary"
+            onClick={handleConfirmImportClick}
+            disabled={totalAdded === 0}
+          >
+            Confirm import ({totalAdded} score{totalAdded === 1 ? "" : "s"})
+          </button>
+          <button type="button" className="button button-secondary" onClick={handleDiscard}>
+            Discard
+          </button>
+        </div>
+      </Modal>
+
       <ConfirmDialog
         open={overwriteConfirmOpen}
         title="Overwrite existing scores?"
@@ -217,8 +261,8 @@ export function ImportScoresPanel() {
             This import will overwrite {totalOverwrites} existing score
             {totalOverwrites === 1 ? "" : "s"} with new values from the imported file
             {pendingResults && pendingResults.length === 1 ? "" : "s"} — see the "Overwrites
-            existing score" column above for exactly which ones. This cannot be undone within
-            the app. Continue?
+            existing score" column above for exactly which ones. This cannot be undone within the
+            app. Continue?
           </>
         }
         confirmLabel={`Yes, overwrite ${totalOverwrites} existing score${totalOverwrites === 1 ? "" : "s"}`}

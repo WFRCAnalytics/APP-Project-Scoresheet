@@ -28,7 +28,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import App from "../../src/App";
-import { openGetStartedModal } from "../helpers/appNav";
+import { openGetStartedModal, rankedFirmNames } from "../helpers/appNav";
 
 async function goToDashboard() {
   render(<App />);
@@ -108,30 +108,25 @@ describe("Dashboard — PDF export's light-mode chart copy", () => {
     expect(printCopy).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("wraps the on-screen chart in .no-print so only the print copy appears in the exported PDF", async () => {
+  it("keeps the print copy inside the print-only region and the on-screen chart outside it", async () => {
     await goToDashboard();
 
-    const heading = screen.getByRole("heading", { name: "Overall vs. TLC Applicant vs. WFRC Weighted Totals" });
-    const card = heading.closest(".card");
-    expect(card).not.toBeNull();
+    // The PDF prints only the print-only region (PrintableDashboard), so the on-screen chart —
+    // which lives in the workspace, outside it — can never end up in the exported file.
+    const printCopy = document.querySelector(".chart-print-safe-scope.print-chart-copy");
+    expect(printCopy!.closest(".print-only-block")).not.toBeNull();
 
-    const noPrintChartWrapper = card!.querySelector(":scope > .no-print");
-    const printCopy = card!.querySelector(".chart-print-safe-scope.print-chart-copy");
-    expect(noPrintChartWrapper).not.toBeNull();
-    expect(printCopy).not.toBeNull();
-    // The print copy must live outside the .no-print wrapper, or `@media print`'s
-    // `.no-print { display: none !important }` would hide it too.
-    expect(noPrintChartWrapper!.contains(printCopy)).toBe(false);
+    const onScreenChartCard = screen.getByRole("region", { name: "Weighted totals chart section" });
+    expect(onScreenChartCard.closest(".print-only-block")).toBeNull();
+    expect(onScreenChartCard.querySelector(".chart-print-safe-scope")).toBeNull();
   });
 
-  it("expanding a firm row also mounts print-safe copies of the radar and scatter charts (not just the bar chart)", async () => {
+  it("mounts print-safe copies of the bar, radar and scatter charts with no interaction at all", async () => {
     await goToDashboard();
-    fireEvent.click(screen.getByRole("button", { name: /Expand Alpha Co/ }));
 
     const printCopies = document.querySelectorAll(".chart-print-safe-scope.print-chart-copy");
-    // One for the dashboard-level bar chart, plus radar+scatter for this project's one firm
-    // — always present via RankedFirmsTablePrintCopy regardless of on-screen expand state
-    // (see next test), so expanding the row on screen doesn't change this count.
+    // One for the dashboard-level bar chart, plus radar+scatter for this project's one firm —
+    // always present via RankedFirmsTablePrintCopy, whatever a viewer has selected on screen.
     expect(printCopies.length).toBe(3);
     printCopies.forEach((el) => expect(el).toHaveAttribute("aria-hidden", "true"));
   });
@@ -162,19 +157,13 @@ describe("Dashboard — PDF export's light-mode chart copy", () => {
     expect(firstBodyRow.children).toHaveLength(6);
   });
 
-  it("the print-only table's row order stays canonical rank order even after the on-screen table is sorted differently", async () => {
+  it("the print-only table's row order stays canonical rank order whichever firm is selected on screen", async () => {
     await goToDashboardWithTwoFirms();
 
-    // Sort the interactive, on-screen table alphabetically by firm name (Alpha, Zeta) —
-    // the opposite of canonical rank order (Zeta ranks 1st; see goToDashboardWithTwoFirms's
-    // own comment on why the names were chosen to diverge).
-    fireEvent.click(screen.getByRole("button", { name: "Firm" }));
-
-    const onScreenTable = screen.getByRole("table", { name: "Ranked firms" });
-    const onScreenNames = Array.from(onScreenTable.querySelectorAll("tbody > tr:not(.firm-detail-row)")).map(
-      (tr) => tr.children[2]!.textContent,
-    );
-    expect(onScreenNames).toEqual(["Alpha Co", "Zeta Co"]);
+    // The on-screen list is in rank order too (Zeta ranks 1st — see goToDashboardWithTwoFirms's
+    // note on why the names diverge from alphabetical). Select the lower-ranked firm.
+    expect(rankedFirmNames()).toEqual(["Zeta Co", "Alpha Co"]);
+    fireEvent.click(screen.getByRole("option", { name: /Alpha Co/ }));
 
     // Index 1, not 2: the print-only table has no row-expand-header column (nothing to
     // toggle in a fixed print record) — see RankedFirmsTable.tsx's RankedFirmsTablePrintCopy.

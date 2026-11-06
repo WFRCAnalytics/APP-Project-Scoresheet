@@ -6,26 +6,13 @@
 // export" beyond where the button is placed — one implementation, not two independently
 // maintained copies of the same filename/download logic (see also downloadBlob.ts).
 //
-// Two rendering variants, picked by the caller (`variant` prop), NOT two separate
-// components — the filename/export logic below is identical either way, only the markup
-// differs:
-//   - "inline" (default, Configuration's toolbar): the original always-visible
-//     label+input+button block, completely unchanged from before the Dashboard toolbar
-//     redesign — explicitly kept as-is per feedback that redesign was Dashboard-only, not
-//     an app-wide change to this component.
-//   - "compact" (Dashboard toolbar only): clicking "Export JSON" doesn't export directly —
-//     it opens a small confirm panel right underneath showing the filename (editable) and
-//     a Cancel/Export button pair — just "Export," not "Export project JSON," since the
-//     panel's own context (the filename field right above it, the dialog's own
-//     aria-label) already makes what's being exported obvious. This is deliberately the
-//     same shape as a native "Save As" dialog (you always see/can-edit the name before it
-//     commits, never a
-//     silent save-under-whatever-the-default-was), not a novel pattern — see this file's
-//     git history for the split-button version this replaced and why: a separate
-//     always-icon-only rename control next to the export button had no visual link to what
-//     it renamed, no matter how tightly the two were welded together. One button that
-//     always opens the same confirm step removes the ambiguity outright instead of trying
-//     to clarify it.
+// One form everywhere (Dashboard, Reviewer Forms and Configuration toolbars): clicking "Export JSON"
+// doesn't export directly — it opens a small confirm panel right underneath showing the filename
+// (editable) and a Cancel/Export button pair. This is deliberately the same shape as a native
+// "Save As" dialog (you always see/can-edit the name before it commits, never a silent
+// save-under-whatever-the-default-was), not a novel pattern. Configuration used to keep an
+// always-visible label+input+button block instead; it moved to this once the three screens'
+// toolbars were made to look alike.
 
 import { FileJson } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -33,11 +20,7 @@ import { downloadBlob } from "../lib/downloadBlob";
 import { defaultProjectFilename } from "../lib/filenames";
 import { useLoadedProject } from "../state/ProjectContext";
 
-export interface ExportProjectJsonButtonProps {
-  variant?: "inline" | "compact";
-}
-
-export function ExportProjectJsonButton({ variant = "inline" }: ExportProjectJsonButtonProps) {
+export function ExportProjectJsonButton() {
   const { project } = useLoadedProject();
   const [filename, setFilename] = useState(() =>
     defaultProjectFilename(project.project.projectName),
@@ -56,12 +39,12 @@ export function ExportProjectJsonButton({ variant = "inline" }: ExportProjectJso
     }
   }, [project.project.projectName, touched]);
 
-  // "compact" only: focus + select-all the field the moment the confirm panel opens (so
+  // Focus + select-all the field the moment the confirm panel opens (so
   // either typing replaces the default outright, or a bare Enter confirms it unchanged —
   // the same affordance a native Save As dialog gives its own filename field), and close
   // it on Escape or a click anywhere outside without exporting.
   useEffect(() => {
-    if (variant !== "compact" || !confirmOpen) return;
+    if (!confirmOpen) return;
     inputRef.current?.focus();
     inputRef.current?.select();
     function handleOutsideClick(e: MouseEvent) {
@@ -78,35 +61,13 @@ export function ExportProjectJsonButton({ variant = "inline" }: ExportProjectJso
       document.removeEventListener("mousedown", handleOutsideClick);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [variant, confirmOpen]);
+  }, [confirmOpen]);
 
   function handleExport() {
     const finalName = filename.trim() || defaultProjectFilename("");
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
     downloadBlob(blob, finalName);
     setConfirmOpen(false);
-  }
-
-  if (variant === "inline") {
-    return (
-      <div className="field export-filename-field no-print">
-        <label htmlFor="export-filename">Export filename</label>
-        <div className="export-filename-row">
-          <input
-            id="export-filename"
-            type="text"
-            value={filename}
-            onChange={(e) => {
-              setTouched(true);
-              setFilename(e.target.value);
-            }}
-          />
-          <button type="button" className="button button-primary" onClick={handleExport}>
-            Export project JSON
-          </button>
-        </div>
-      </div>
-    );
   }
 
   return (

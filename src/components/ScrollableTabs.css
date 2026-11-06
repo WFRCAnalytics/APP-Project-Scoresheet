@@ -1,6 +1,6 @@
 /* ScrollableTabs: one row of tabs that scrolls sideways (with ‹ › buttons) instead of wrapping.
-   The tab look (weight, size, colors, active underline) deliberately matches .calc-tab, the
-   Calculations modal's tabs, so every tab bar in the app reads the same. */
+   The tab look (weight, size, colors, active underline) deliberately matches the app's
+   other tab bars, so every tab bar in the app reads the same. */
 
 /* A grid, not a flex row, on purpose: the middle track is minmax(0, 1fr), so the strip's
    minimum width is ~0 however many tabs it holds. Inside a table cell (the Dashboard's

@@ -50,7 +50,8 @@ async function openFirm() {
   const file = new File([JSON.stringify(project())], "scored.json", { type: "application/json" });
   fireEvent.change(screen.getByLabelText("Upload a project file"), { target: { files: [file] } });
   await screen.findByRole("heading", { name: "Dashboard" });
-  fireEvent.click(screen.getByRole("button", { name: "Expand Alpha Co" }));
+  // The top-ranked firm (Alpha Co) is selected already; its Comments are one tab of its panel.
+  fireEvent.click(screen.getByRole("tab", { name: /^Comments/ }));
 }
 
 const tab = (name: RegExp) => screen.getByRole("tab", { name });

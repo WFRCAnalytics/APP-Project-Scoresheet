@@ -15,7 +15,7 @@ export interface ModalProps {
   /** "alertdialog" for a confirm/warn interaction (ConfirmDialog's own case); "dialog"
    * (default) for ordinary content like the Get Started or Help panels. */
   role?: "dialog" | "alertdialog";
-  /** "xl" is for dense, wide content (the Calculations modal's tables) — everything else
+  /** "xl" is for dense, wide content (the import review's per-file table) — everything else
    * fits sm/md/lg. */
   size?: "sm" | "md" | "lg" | "xl";
   children: ReactNode;

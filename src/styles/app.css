@@ -1065,6 +1065,13 @@ table.data-table tbody tr:last-child td {
   border-right: 1px solid var(--color-border);
 }
 
+/* Heavier rule between criteria than between reviewers within one criterion (collapsed
+   borders: the wider one wins over the 1px row line). The first group is skipped — it
+   already sits directly under the header row. */
+.comments-table tbody tr.comments-group-start:not(:first-child) td {
+  border-top: 2px solid var(--color-border);
+}
+
 .comments-table th:nth-child(2),
 .comments-table td:nth-child(2) {
   width: 9rem;

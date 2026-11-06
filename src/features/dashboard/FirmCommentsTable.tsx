@@ -51,7 +51,7 @@ export function FirmCommentsTable({ project, firmId }: { project: Project; firmI
           <tbody>
             {groups.flatMap((group, gi) =>
               group.items.map((item, ii) => (
-                <tr key={`${gi}-${ii}`}>
+                <tr key={`${gi}-${ii}`} className={ii === 0 ? "comments-group-start" : undefined}>
                   {ii === 0 && (
                     <td rowSpan={group.items.length} className="comments-criterion-cell">
                       {group.criterion}

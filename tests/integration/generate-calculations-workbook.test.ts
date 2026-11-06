@@ -1,5 +1,5 @@
 // Real ExcelJS round-trip for the Calculations modal's "Export as .xlsx" button — now a
-// multi-tab workbook (Results, Calculations, Project Info, Firms, Reviewers, Criteria,
+// multi-tab workbook (Results, Calculations, Comments, Project Info, Firms, Reviewers, Criteria,
 // Scoring Scale), not a single sheet.
 //
 // Every derived cell (Overall/TLC Applicant/WFRC Avg/Wtd, Completion, and every cell on
@@ -88,7 +88,7 @@ async function reloadWorkbook(blob: Blob): Promise<ExcelJS.Workbook> {
 }
 
 describe("generateCalculationsWorkbook — workbook structure", () => {
-  it("has all seven tabs, in order, with Results first and active", async () => {
+  it("has all eight tabs, in order, with Results first and active", async () => {
     const project = buildFixture();
     const { blob } = await generateCalculationsWorkbook(project);
     const workbook = await reloadWorkbook(blob);
@@ -96,6 +96,7 @@ describe("generateCalculationsWorkbook — workbook structure", () => {
     expect(workbook.worksheets.map((s) => s.name)).toEqual([
       "Results",
       "Calculations",
+      "Comments",
       "Project Info",
       "Firms",
       "Reviewers",

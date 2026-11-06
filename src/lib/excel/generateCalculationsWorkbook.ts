@@ -6,7 +6,10 @@
 //   2. Calculations  — the full per-reviewer audit trail (every raw score, every
 //                       intermediate Avg/Wtd figure) the Results tab's formulas trace back
 //                       to.
-//   3-7. Project Info, Firms, Reviewers, Criteria, Scoring Scale — the project's own
+//   3. Comments      — every recorded score with the reviewer's comment beside it (blank if
+//                       none), one flat row each, so the written feedback is in the export
+//                       and filterable in Excel.
+//   4-8. Project Info, Firms, Reviewers, Criteria, Scoring Scale — the project's own
 //                       configuration, mirroring the Configuration screen's step order, so
 //                       this workbook is a self-contained record of the whole project, not
 //                       just its numbers.
@@ -38,6 +41,7 @@
 import ExcelJS from "exceljs";
 import { calculationsWorkbookFilename } from "../filenames";
 import { buildCalculationsSheet } from "./calculationsWorkbook/calculationsSheet";
+import { buildCommentsSheet } from "./calculationsWorkbook/commentsSheet";
 import { buildConfigSheets } from "./calculationsWorkbook/configSheets";
 import { buildResultsSheet } from "./calculationsWorkbook/resultsSheet";
 import type { Project } from "../../types/project";
@@ -53,7 +57,8 @@ export async function generateCalculationsWorkbook(
   const calc = buildCalculationsSheet(workbook, project); // tab position 1; creates the
   // cell references Results needs
   buildResultsSheet(resultsSheet, project, calc); // now safe to populate
-  buildConfigSheets(workbook, project); // tab positions 2-6
+  buildCommentsSheet(workbook, project); // tab position 2
+  buildConfigSheets(workbook, project); // tab positions 3-7
 
   // Results is the headline deliverable — make it the tab a handler sees on open.
   workbook.views = [

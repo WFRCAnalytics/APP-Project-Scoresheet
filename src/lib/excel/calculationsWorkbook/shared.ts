@@ -1,5 +1,5 @@
 // Shared visual language for every sheet in the Calculations .xlsx export (generateCalculationsWorkbook.ts
-// and its sibling sheet builders in this folder) — one consistent "look" across all seven
+// and its sibling sheet builders in this folder) — one consistent "look" across all
 // tabs (title/subtitle banner, header-row styling, brand colors) instead of each sheet
 // inventing its own layout. Colors are the same raw WFRC brand hexes generateWorkbook.ts
 // (the reviewer workbook) already uses — sourced from theme/tokens.css, never invented

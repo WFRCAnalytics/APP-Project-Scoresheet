@@ -351,20 +351,6 @@ input[type="radio"]:disabled {
   margin-bottom: var(--space-2);
 }
 
-.scale-mode-toggle-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-}
-
-.scale-mode-toggle label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-
 /* CriteriaEditor's weight cell: the text input plus its live "= 60%" confirmation readout,
    side by side. The input already picks up the shared `.data-table td input[type="text"]`
    treatment above (it's a descendant, not a direct child, of that selector) — this only
@@ -3035,7 +3021,7 @@ table.forms-roster-table .button {
 
 .scale-modecard {
   display: grid;
-  grid-template-columns: 3.75rem minmax(0, 1fr);
+  grid-template-columns: 4rem minmax(0, 1fr);
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
@@ -3058,6 +3044,18 @@ table.forms-roster-table .button {
   box-shadow: var(--focus-ring);
 }
 
+/* Same fixed box in both cards, so the two titles and descriptions start at the same x. */
+.scale-modecard-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+}
+
+.scale-modecard-text {
+  min-width: 0;
+}
+
 .scale-modecard-text b {
   display: block;
   font-family: var(--font-heading);
@@ -3068,6 +3066,9 @@ table.forms-roster-table .button {
   display: block;
   font-size: var(--text-xs);
   color: var(--color-wfrc-gray);
+  white-space: nowrap; /* one line in both cards, so they stay the same compact height */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .scale-ruler {
@@ -3131,6 +3132,11 @@ table.forms-roster-table .button {
   color: var(--color-wfrc-gray);
 }
 
+/* The values table and the preview box start on the same line. */
+.scale-body-main .table-wrap {
+  margin-top: 0;
+}
+
 .scale-body {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
@@ -3139,8 +3145,12 @@ table.forms-roster-table .button {
   align-items: start;
 }
 
-.scale-preview .field-hint {
-  margin: 0 0 var(--space-1);
+/* The caption is the box's header row, the same height and tint as the values table's header. */
+.scale-sheet-caption {
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-wfrc-gray);
+  background: color-mix(in srgb, var(--color-foreground) 4%, transparent);
 }
 
 .scale-sheet {
@@ -3197,13 +3207,13 @@ table.forms-roster-table .button {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
   gap: var(--space-5);
-  margin-top: var(--space-3);
-  align-items: start;
+  margin-top: var(--space-2);
+  align-items: stretch; /* the checklist and the Generate box share a top and a bottom edge */
 }
 
 .config-checklist {
   list-style: none;
-  margin: var(--space-2) 0 0;
+  margin: 0;
   padding: 0;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -3239,14 +3249,38 @@ table.forms-roster-table .button {
 }
 
 .config-export-next {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
   padding: var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--color-primary) 4%, var(--color-background));
 }
 
+.config-export-next h3 {
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--color-heading);
+}
+
 .config-export-next p {
-  margin-top: 0;
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-wfrc-gray);
+}
+
+.config-export-next .config-export-note {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-wfrc-yellow) 30%, var(--color-background));
+  color: var(--color-foreground);
+}
+
+/* The action sits at the bottom of the card, full width, level with the checklist's last row. */
+.config-export-button {
+  margin-top: auto;
+  justify-content: center;
 }
 
 @media (max-width: 1100px), (max-height: 640px) {

@@ -65,8 +65,9 @@
 // still begin "Discrete" / "Continuous"), a ruler beside them draws the listed points where they
 // sit along the scale, and a preview shows how the scale reads at the top of a reviewer
 // workbook. Both are decorative echoes of the table below (aria-hidden); the table stays the
-// editor.
+// editor. The two cards' icons are lucide-react ones, like every other icon in the app.
 
+import { Ellipsis, MoveHorizontal } from "lucide-react";
 import { useState } from "react";
 import { findDuplicateNames } from "../../lib/duplicateNames";
 import { roundToOneDecimal } from "../../lib/scoreScale";
@@ -160,8 +161,10 @@ function ScalePreview({
         : `Any value between ${min} and ${max} is allowed`;
   return (
     <div className="scale-preview" aria-hidden="true">
-      <p className="field-hint">What reviewers see at the top of their workbook</p>
       <div className="scale-sheet">
+        <div className="scale-sheet-row scale-sheet-caption">
+          What reviewers see at the top of their workbook
+        </div>
         <div className="scale-sheet-row scale-sheet-title">
           <b>Proposal Evaluation Scoresheet</b>
           <span>{reviewerName}</span>
@@ -247,16 +250,13 @@ export function ScoringScaleEditor() {
                 checked={mode === "discrete"}
                 onChange={() => setMode("discrete")}
               />
-              <svg width="60" height="22" viewBox="0 0 84 28" aria-hidden="true">
-                <line x1="6" x2="78" y1="14" y2="14" stroke="var(--color-border)" strokeWidth="2" />
-                <circle cx="8" cy="14" r="5" fill="var(--color-primary)" />
-                <circle cx="42" cy="14" r="5" fill="var(--color-primary)" />
-                <circle cx="76" cy="14" r="5" fill="var(--color-primary)" />
-              </svg>
+              <span className="scale-modecard-icon" aria-hidden="true">
+                <Ellipsis size={32} strokeWidth={1.75} />
+              </span>
               <span className="scale-modecard-text">
                 <b>Discrete</b>
                 <span className="visually-hidden"> — </span>
-                <small>reviewers pick one of the listed values</small>
+                <small>pick from listed values</small>
               </span>
             </label>
             <label className={`scale-modecard${mode === "continuous" ? " is-on" : ""}`}>
@@ -268,22 +268,13 @@ export function ScoringScaleEditor() {
                 checked={mode === "continuous"}
                 onChange={() => setMode("continuous")}
               />
-              <svg width="60" height="22" viewBox="0 0 84 28" aria-hidden="true">
-                <defs>
-                  <linearGradient id="scale-card-gradient">
-                    <stop offset="0" stopColor="var(--color-primary)" stopOpacity="0.25" />
-                    <stop offset="1" stopColor="var(--color-primary)" />
-                  </linearGradient>
-                </defs>
-                <rect x="4" y="9" width="76" height="10" rx="5" fill="url(#scale-card-gradient)" />
-              </svg>
+              <span className="scale-modecard-icon" aria-hidden="true">
+                <MoveHorizontal size={32} strokeWidth={1.75} />
+              </span>
               <span className="scale-modecard-text">
                 <b>Continuous</b>
                 <span className="visually-hidden"> — </span>
-                <small>
-                  reviewers may enter any value between the lowest and highest listed values, in
-                  steps of 0.1
-                </small>
+                <small>any values within the range</small>
               </span>
             </label>
           </div>
@@ -291,20 +282,20 @@ export function ScoringScaleEditor() {
         </div>
       </fieldset>
 
+      {mode === "continuous" && project.scoringScale.length >= MIN_SCALE_POINTS && (
+        <p className="field-hint">
+          The listed values below are labeled reference points, not the only choices — reviewers may
+          enter anything from {scaleMin} to {scaleMax} (e.g. {scaleMin + 0.1}
+          ), rounded to one decimal place.
+        </p>
+      )}
+
+      {project.scoringScale.length <= MIN_SCALE_POINTS && (
+        <p className="field-hint">At least {MIN_SCALE_POINTS} points are required.</p>
+      )}
+
       <div className="scale-body">
         <div className="scale-body-main">
-          {mode === "continuous" && project.scoringScale.length >= MIN_SCALE_POINTS && (
-            <p className="field-hint">
-              The listed values below are labeled reference points, not the only choices — reviewers
-              may enter anything from {scaleMin} to {scaleMax} (e.g. {scaleMin + 0.1}
-              ), rounded to one decimal place.
-            </p>
-          )}
-
-          {project.scoringScale.length <= MIN_SCALE_POINTS && (
-            <p className="field-hint">At least {MIN_SCALE_POINTS} points are required.</p>
-          )}
-
           <div className="table-wrap">
             <table className="data-table">
               <thead>

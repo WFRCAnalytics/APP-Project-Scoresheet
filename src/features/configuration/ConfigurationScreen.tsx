@@ -244,15 +244,15 @@ export function ConfigurationScreen({
             {currentStep === "export" && (
               <div className="card">
                 <h2>Export &amp; Next Step</h2>
+                <p className="field-hint">
+                  {project.firms.length} firm{project.firms.length === 1 ? "" : "s"} ·{" "}
+                  {project.reviewers.length} reviewer{project.reviewers.length === 1 ? "" : "s"} ·{" "}
+                  {project.criteria.length} criteri
+                  {project.criteria.length === 1 ? "on" : "a"} · {project.scoringScale.length}
+                  -point scale
+                </p>
                 <div className="config-export">
                   <div>
-                    <p className="field-hint">
-                      {project.firms.length} firm{project.firms.length === 1 ? "" : "s"} ·{" "}
-                      {project.reviewers.length} reviewer{project.reviewers.length === 1 ? "" : "s"}{" "}
-                      · {project.criteria.length} criteri
-                      {project.criteria.length === 1 ? "on" : "a"} · {project.scoringScale.length}
-                      -point scale
-                    </p>
                     <ul className="config-checklist" aria-label="Setup checklist">
                       {steps
                         .filter((step) => step.id !== "export")
@@ -271,13 +271,24 @@ export function ConfigurationScreen({
                     </ul>
                   </div>
                   <div className="config-export-next">
+                    <h3>Next: reviewer forms</h3>
                     <p>
                       Once your firms, reviewers, criteria, and scale are set up, generate the
                       reviewer scoring forms.
                     </p>
+                    {steps.some((step) => step.state === "attention") && (
+                      <p className="config-export-note">
+                        Needs attention:{" "}
+                        {steps
+                          .filter((step) => step.state === "attention")
+                          .map((step) => step.label)
+                          .join(", ")}
+                        . You can generate the forms now; this is only a reminder.
+                      </p>
+                    )}
                     <button
                       type="button"
-                      className="button button-primary"
+                      className="button button-primary config-export-button"
                       onClick={onGenerateForms}
                     >
                       Generate reviewer forms

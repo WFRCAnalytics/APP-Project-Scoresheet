@@ -4,6 +4,7 @@
 
 import { LayoutDashboard, Settings } from "lucide-react";
 import { Badge } from "../../components/Badge";
+import { ExportProjectJsonButton } from "../../components/ExportProjectJsonButton";
 import { useLoadedProject } from "../../state/ProjectContext";
 import { GenerateAllFormsButton } from "./GenerateAllFormsButton";
 import { GenerateFormButton } from "./GenerateFormButton";
@@ -26,13 +27,31 @@ export function ReviewerFormsScreen({
       <div className="dashboard-page-header config-page-header">
         <h1>Reviewer Forms</h1>
         <div className="page-header-actions">
-          <button type="button" className="button button-secondary" onClick={onBackToConfiguration}>
+          {/* The same shared export Configuration and the Dashboard use. A project manager who
+              has just set everything up and generated the forms can save the project file
+              from here instead of going back to Configuration just to find the button. */}
+          <ExportProjectJsonButton variant="compact" />
+          {/* Short visible labels so the three buttons fit on the title's row; the icon plus
+              the full aria-label/title keep the "go back to / view" meaning. */}
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={onBackToConfiguration}
+            aria-label="Back to Configuration"
+            title="Back to Configuration"
+          >
             <Settings size={16} strokeWidth={1.75} aria-hidden="true" />
-            Back to Configuration
+            Configuration
           </button>
-          <button type="button" className="button button-primary" onClick={onGoToDashboard}>
+          <button
+            type="button"
+            className="button button-primary"
+            onClick={onGoToDashboard}
+            aria-label="View Dashboard"
+            title="View Dashboard"
+          >
             <LayoutDashboard size={16} strokeWidth={1.75} aria-hidden="true" />
-            View Dashboard
+            Dashboard
           </button>
         </div>
       </div>

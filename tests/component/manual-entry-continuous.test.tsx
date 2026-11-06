@@ -36,11 +36,8 @@ async function navigateToManualEntryGrid(project: Project) {
   fireEvent.click(screen.getByRole("button", { name: "Generate reviewer forms" }));
   await screen.findByRole("heading", { name: "Reviewer Forms" });
 
-  fireEvent.click(screen.getByRole("button", { name: "View Dashboard" }));
-  await screen.findByRole("heading", { name: "Dashboard" });
-
-  fireEvent.click(screen.getByRole("button", { name: "Show calculations" }));
-  fireEvent.click(screen.getByRole("tab", { name: "Manual Entry" }));
+  // Manual entry is the work area of the Reviewer Forms screen (Alice, the first reviewer, is
+  // selected already).
   await screen.findByLabelText("Manual Score Entry");
 }
 

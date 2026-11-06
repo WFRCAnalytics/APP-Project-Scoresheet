@@ -46,8 +46,23 @@ export function FirmsEditor() {
           {[...duplicateFirmNames.entries()]
             .map(([name, count]) => `"${name}" is used by ${count} firms`)
             .join("; ")}{" "}
-          — rename so results stay unambiguous on the Dashboard and in exports (this does not
-          block saving or generating forms).
+          — rename so results stay unambiguous on the Dashboard and in exports (this does not block
+          saving or generating forms).
+        </div>
+      )}
+
+      {project.firms.length > 0 && (
+        <div className="config-strip">
+          <span className="config-tag">
+            {project.firms.filter((f) => f.invited).length} invited
+          </span>
+          <span className="config-tag is-ok">
+            {project.firms.filter((f) => f.submitted).length} submitted
+          </span>
+          <span className="config-tag">
+            {project.firms.filter((f) => !f.submitted).length} not submitted
+          </span>
+          <span className="field-hint">Only submitted firms are scored and ranked.</span>
         </div>
       )}
 

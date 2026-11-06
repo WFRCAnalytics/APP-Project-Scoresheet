@@ -25,12 +25,23 @@ export function FirmCommentsTabs({
   project,
   firmId,
   onEdit,
+  criterionId,
+  onCriterionChange,
+  hideHeading = false,
 }: {
   project: Project;
   firmId: string;
   onEdit: (target: ScoreTarget) => void;
+  /** Optional controlled selection (the Reviewer scores heatmap jumps to a criterion). When
+   * omitted the component keeps its own. */
+  criterionId?: string | null;
+  onCriterionChange?: (criterionId: string) => void;
+  /** The Dashboard's firm panel already labels this tab (with the same count badge). */
+  hideHeading?: boolean;
 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [ownSelectedId, setOwnSelectedId] = useState<string | null>(null);
+  const selectedId = criterionId !== undefined ? criterionId : ownSelectedId;
+  const setSelectedId = onCriterionChange ?? setOwnSelectedId;
 
   const tabs = project.criteria.map((criterion) => {
     const rows = project.reviewers.flatMap((reviewer) => {
@@ -56,9 +67,11 @@ export function FirmCommentsTabs({
 
   return (
     <div className="firm-comments">
-      <h4 className="firm-comments-heading">
-        Comments <Badge variant="neutral">{totalComments}</Badge>
-      </h4>
+      {!hideHeading && (
+        <h4 className="firm-comments-heading">
+          Comments <Badge variant="neutral">{totalComments}</Badge>
+        </h4>
+      )}
 
       {/* One row however many criteria there are: it scrolls (‹ ›) rather than wrapping. */}
       <ScrollableTabs

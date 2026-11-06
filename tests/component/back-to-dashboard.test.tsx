@@ -45,7 +45,7 @@ async function loadScoredProject() {
 describe("Configuration toolbar — Back to Dashboard", () => {
   it("returns straight to the Dashboard from Configuration", async () => {
     await loadScoredProject();
-    fireEvent.click(screen.getByRole("button", { name: "Edit project" }));
+    fireEvent.click(screen.getByRole("button", { name: "Configure project" }));
     expect(screen.getByRole("heading", { name: "Configuration" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Back to Dashboard" }));
@@ -54,7 +54,7 @@ describe("Configuration toolbar — Back to Dashboard", () => {
 
   it("carries over edits made in Configuration", async () => {
     await loadScoredProject();
-    fireEvent.click(screen.getByRole("button", { name: "Edit project" }));
+    fireEvent.click(screen.getByRole("button", { name: "Configure project" }));
     fireEvent.change(screen.getByLabelText("Project Name:"), { target: { value: "Renamed" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Back to Dashboard" }));

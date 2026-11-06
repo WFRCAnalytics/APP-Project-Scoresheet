@@ -22,8 +22,15 @@
 // overwrite rule and spec Story 5 Acceptance Scenario 2. There is no separate "save"
 // step here (unlike import's review-then-confirm flow, FR-022) — direct entry commits
 // immediately, matching the Configuration editors' own direct-dispatch pattern.
+//
+// Two layouts share all of that: "table" (every firm's rows in one table, with its own reviewer
+// picker — the Calculations dialog's Manual Entry tab) and "tabs" (the Reviewer Forms work area:
+// the reviewer comes from the roster, one firm at a time, a score and a roomy comment box per
+// criterion).
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { ScrollableTabs } from "../../components/ScrollableTabs";
+import { scrollableTabId } from "../../components/scrollableTabId";
 import { SelectField } from "../../components/SelectField";
 import { normalizeScoreValue, scaleRange } from "../../lib/scoreScale";
 import { useLoadedProject } from "../../state/ProjectContext";
@@ -85,14 +92,58 @@ function ContinuousScoreCell({
   );
 }
 
-export function ManualEntryGrid() {
-  const { project, dispatch } = useLoadedProject();
-  const [reviewerId, setReviewerId] = useState(project.reviewers[0]?.id ?? "");
-  const submittedFirms = project.firms.filter((f) => f.submitted);
+export interface ManualEntryGridProps {
+  /** The reviewer whose scores this grid edits — the Reviewer Forms roster picks them. Remount
+   * with a new `key` to load another reviewer's scores into it. */
+  reviewerId: string;
+}
 
-  /** Seeds cell drafts from a given reviewer's existing scores — used both for the
-   * initial render and whenever the reviewer selection changes, so there's one
-   * implementation of "what does this grid show for reviewer X" rather than two. */
+/** One Score control for a (reviewer, firm, criterion): a dropdown of the scale in discrete
+ * mode, a free-text field in continuous mode. */
+function ScoreControl({
+  project,
+  value,
+  ariaLabel,
+  onChange,
+}: {
+  project: Project;
+  value: number | "";
+  ariaLabel: string;
+  onChange: (value: number | "") => void;
+}) {
+  const scaleOptions = [...project.scoringScale].sort((a, b) => a.value - b.value);
+  if (project.scoringScaleMode === "discrete") {
+    return (
+      <SelectField
+        aria-label={ariaLabel}
+        value={value}
+        onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}
+      >
+        <option value="">—</option>
+        {scaleOptions.map((point) => (
+          <option key={point.value} value={point.value}>
+            {point.value} — {point.label}
+          </option>
+        ))}
+      </SelectField>
+    );
+  }
+  return (
+    <ContinuousScoreCell
+      project={project}
+      value={value}
+      ariaLabel={ariaLabel}
+      onCommit={onChange}
+    />
+  );
+}
+
+export function ManualEntryGrid({ reviewerId }: ManualEntryGridProps) {
+  const { project, dispatch } = useLoadedProject();
+  const submittedFirms = project.firms.filter((f) => f.submitted);
+  const [activeFirmId, setActiveFirmId] = useState<string | null>(null);
+
+  /** Seeds cell drafts from a given reviewer's existing scores. */
   function buildDraftsFor(forReviewerId: string): Record<string, CellDraft> {
     const drafts: Record<string, CellDraft> = {};
     for (const firm of submittedFirms) {
@@ -113,13 +164,8 @@ export function ManualEntryGrid() {
   }
 
   // Local draft state, keyed by "firmId:criterionId", initialized from whatever this
-  // reviewer has already scored — re-derived whenever the selected reviewer changes.
+  // reviewer has already scored (a new reviewer remounts the grid — see ManualEntryGridProps).
   const [drafts, setDrafts] = useState<Record<string, CellDraft>>(() => buildDraftsFor(reviewerId));
-
-  function handleReviewerChange(newReviewerId: string) {
-    setReviewerId(newReviewerId);
-    setDrafts(buildDraftsFor(newReviewerId));
-  }
 
   function commitCell(firmId: string, criterionId: string, draft: CellDraft) {
     if (draft.value === "") return; // nothing to commit until a score is chosen
@@ -143,10 +189,6 @@ export function ManualEntryGrid() {
     });
   }
 
-  const scaleOptions = useMemo(
-    () => [...project.scoringScale].sort((a, b) => a.value - b.value),
-    [project.scoringScale],
-  );
   const { min: scaleMin, max: scaleMax } = scaleRange(project);
 
   if (project.reviewers.length === 0) {
@@ -160,95 +202,75 @@ export function ManualEntryGrid() {
     );
   }
 
-  return (
-    <div className="card" aria-label="Manual Score Entry">
-      <h2>Manually Enter Reviewer Scores</h2>
+  const scaleHint =
+    project.scoringScaleMode === "continuous" ? (
       <p className="field-hint">
-        For scores reported back by phone, email, or paper instead of a returned workbook.
+        Continuous scale — enter any value from {scaleMin} to {scaleMax}, rounded to one decimal
+        place.
       </p>
-      {project.scoringScaleMode === "continuous" && (
-        <p className="field-hint">
-          Continuous scale — enter any value from {scaleMin} to {scaleMax}, rounded to one
-          decimal place.
-        </p>
-      )}
+    ) : null;
 
-      <div className="field" style={{ maxWidth: "20rem" }}>
-        <label htmlFor="manual-entry-reviewer">Reviewer</label>
-        <SelectField
-          id="manual-entry-reviewer"
-          value={reviewerId}
-          onChange={(e) => handleReviewerChange(e.target.value)}
-        >
-          {project.reviewers.map((reviewer) => (
-            <option key={reviewer.id} value={reviewer.id}>
-              {reviewer.name} ({reviewer.type === "wfrc" ? "WFRC" : "TLC Applicant"})
-            </option>
-          ))}
-        </SelectField>
+  // Falls back to the first firm if the active one was since un-submitted or removed.
+  const firm = submittedFirms.find((f) => f.id === activeFirmId) ?? submittedFirms[0];
+  const filledFor = (firmId: string) =>
+    project.criteria.filter(
+      (c) =>
+        drafts[cellKey(firmId, c.id)]?.value !== "" && drafts[cellKey(firmId, c.id)] !== undefined,
+    ).length;
+  const idPrefix = "manual-entry-firm";
+  const panelId = `${idPrefix}-panel`;
+  return (
+    <div className="manual-entry manual-entry--tabs" aria-label="Manual Score Entry">
+      {scaleHint}
+      <ScrollableTabs
+        tabs={submittedFirms.map((f) => ({ id: f.id, label: f.name, badge: filledFor(f.id) }))}
+        activeId={firm.id}
+        onSelect={setActiveFirmId}
+        ariaLabel="Firms"
+        idPrefix={idPrefix}
+        panelId={panelId}
+      />
+      <div
+        role="tabpanel"
+        id={panelId}
+        aria-labelledby={scrollableTabId(idPrefix, firm.id)}
+        className="entry-rows"
+      >
+        <div className="entry-row entry-row--head" aria-hidden="true">
+          <span>Criterion</span>
+          <span>Score</span>
+          <span>Comment</span>
+        </div>
+        {project.criteria.map((criterion) => {
+          const key = cellKey(firm.id, criterion.id);
+          const draft = drafts[key] ?? { value: "", comment: "" };
+          return (
+            <div className="entry-row" key={key}>
+              <div className="entry-criterion">
+                <span className="entry-criterion-name">{criterion.name}</span>
+                <span className="entry-criterion-weight">
+                  {Math.round(criterion.weight * 10000) / 100}% of total
+                </span>
+              </div>
+              <div className="entry-score">
+                <ScoreControl
+                  project={project}
+                  value={draft.value}
+                  ariaLabel={`Score for ${firm.name} / ${criterion.name}`}
+                  onChange={(value) => updateDraft(firm.id, criterion.id, { value })}
+                />
+              </div>
+              <textarea
+                className="entry-comment"
+                placeholder="Comment (optional)"
+                aria-label={`Comments for ${firm.name} / ${criterion.name}`}
+                value={draft.comment}
+                onChange={(e) => updateDraft(firm.id, criterion.id, { comment: e.target.value })}
+              />
+            </div>
+          );
+        })}
       </div>
-
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Firm</th>
-            <th>Criterion</th>
-            <th>Score</th>
-            <th>Comments</th>
-          </tr>
-        </thead>
-        <tbody>
-          {submittedFirms.map((firm) =>
-            project.criteria.map((criterion) => {
-              const key = cellKey(firm.id, criterion.id);
-              const draft = drafts[key] ?? { value: "", comment: "" };
-              return (
-                <tr key={key}>
-                  <td>{firm.name}</td>
-                  <td>{criterion.name}</td>
-                  <td>
-                    {project.scoringScaleMode === "discrete" ? (
-                      <SelectField
-                        aria-label={`Score for ${firm.name} / ${criterion.name}`}
-                        value={draft.value}
-                        onChange={(e) =>
-                          updateDraft(firm.id, criterion.id, {
-                            value: e.target.value === "" ? "" : Number(e.target.value),
-                          })
-                        }
-                      >
-                        <option value="">—</option>
-                        {scaleOptions.map((point) => (
-                          <option key={point.value} value={point.value}>
-                            {point.value} — {point.label}
-                          </option>
-                        ))}
-                      </SelectField>
-                    ) : (
-                      <ContinuousScoreCell
-                        project={project}
-                        value={draft.value}
-                        ariaLabel={`Score for ${firm.name} / ${criterion.name}`}
-                        onCommit={(value) => updateDraft(firm.id, criterion.id, { value })}
-                      />
-                    )}
-                  </td>
-                  <td>
-                    <input
-                      type="text"
-                      aria-label={`Comments for ${firm.name} / ${criterion.name}`}
-                      value={draft.comment}
-                      onChange={(e) =>
-                        updateDraft(firm.id, criterion.id, { comment: e.target.value })
-                      }
-                    />
-                  </td>
-                </tr>
-              );
-            }),
-          )}
-        </tbody>
-      </table>
     </div>
   );
 }

@@ -5,7 +5,7 @@
 // user-story-N-flow tests) through a 15-firm/1-criterion/7-point-scale project —
 // deliberately nothing like the small fixtures every other flow test uses.
 
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 import App from "../../src/App";
@@ -15,7 +15,7 @@ import {
 } from "../../src/lib/excel/generateWorkbook";
 import { readFileArrayBuffer } from "../../src/lib/excel/parseWorkbook";
 import { createEmptyProject, type Project } from "../../src/types/project";
-import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
+import { goToConfigStep, openGetStartedModal, rankedFirm, rankedFirmNames } from "../helpers/appNav";
 
 function buildLargeProject(): Project {
   const project = createEmptyProject();
@@ -124,27 +124,16 @@ describe("Scenario 5 — Flexibility check: a materially different-shaped projec
     fireEvent.click(screen.getByRole("button", { name: "View Dashboard" }));
     await screen.findByRole("heading", { name: "Dashboard" });
 
-    // Given an accessible name (aria-label="Ranked firms") rather than relying on DOM
-    // order/position — robust to the 003 redesign's per-row expanded-detail rows, which
-    // (like the old comments accordion before it) also render <table> elements jsdom's
-    // accessibility tree doesn't hide the way a real browser would.
-    const rankedTable = screen.getByRole("table", { name: "Ranked firms" });
-    // Header row + 13 data rows -> exactly 13 ranked firm cards, not 15.
-    expect(within(rankedTable).getAllByRole("row")).toHaveLength(14);
+    // 13 submitted firms -> exactly 13 ranked firm options, not 15.
+    expect(rankedFirmNames()).toHaveLength(13);
 
-    // firm-6 (row index 6 -> score 7, the highest) must be ranked 1st. Cell 0 is the
-    // row-expand toggle; cell 1 is the rank column.
-    const firm6Row = within(rankedTable).getByText("Firm 6").closest("tr")!;
-    expect(within(firm6Row).getAllByRole("cell")[1].textContent).toBe("1");
+    // firm-6 (row index 6 -> score 7, the highest) must be ranked 1st.
+    expect(rankedFirm("Firm 6").rank).toBe("1");
 
-    // "show calculations" surfaces the raw 7-point values without truncation.
-    fireEvent.click(screen.getByRole("button", { name: "Show calculations" }));
-    fireEvent.click(screen.getByRole("tab", { name: "Full Table" }));
-    const calcView = screen.getByRole("tabpanel");
-    expect(within(calcView).getByRole("heading", { name: "Firm 6" })).toBeInTheDocument();
-    const calcTables = within(calcView).getAllByRole("table");
-    // 13 submitted firms -> exactly 13 per-firm calculation tables. Tabs now isolate the
-    // Full Table view from Manual Entry's own table, so this is an exact count.
-    expect(calcTables.length).toBe(13);
+    // Firm 6's Reviewer scores tab surfaces the raw 7-point value without truncation: the
+    // reviewer whose workbook was filled in scored it 7 (the top of the scale).
+    fireEvent.click(rankedFirm("Firm 6").option);
+    fireEvent.click(screen.getByRole("tab", { name: /^Reviewer scores/ }));
+    expect(screen.getAllByRole("button", { name: /: 7\. Show comments$/ })).toHaveLength(1);
   });
 });

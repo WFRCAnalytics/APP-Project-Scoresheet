@@ -49,7 +49,7 @@ async function openFirmComments(mode: "discrete" | "continuous" = "discrete") {
   });
   fireEvent.change(screen.getByLabelText("Upload a project file"), { target: { files: [file] } });
   await screen.findByRole("heading", { name: "Dashboard" });
-  fireEvent.click(screen.getByRole("button", { name: "Expand Alpha Co" }));
+  fireEvent.click(screen.getByRole("tab", { name: /^Comments/ }));
 }
 
 const pencil = (reviewer: string, criterion: string) =>

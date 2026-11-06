@@ -40,8 +40,25 @@ export function ReviewersEditor() {
           {[...duplicateReviewerNames.entries()]
             .map(([name, count]) => `"${name}" is used by ${count} reviewers`)
             .join("; ")}{" "}
-          — rename so results stay unambiguous on the Dashboard and in exports (this does not
-          block saving or generating forms).
+          — rename so results stay unambiguous on the Dashboard and in exports (this does not block
+          saving or generating forms).
+        </div>
+      )}
+
+      {project.reviewers.length > 0 && (
+        <div className="config-strip">
+          <span className="config-tag">
+            {project.reviewers.filter((r) => r.type === "applicant").length} TLC Applicant
+          </span>
+          <span className="config-tag">
+            {project.reviewers.filter((r) => r.type === "wfrc").length} WFRC
+          </span>
+          {project.reviewers.some((r) => r.confidentialitySigned === false) && (
+            <span className="config-tag is-warn">
+              {project.reviewers.filter((r) => r.confidentialitySigned === false).length} not signed
+              the confidentiality form
+            </span>
+          )}
         </div>
       )}
 

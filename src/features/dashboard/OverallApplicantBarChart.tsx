@@ -34,6 +34,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
   ResponsiveContainer,
   Tooltip,
@@ -62,9 +63,15 @@ import { wrapAxisLabel } from "./wrapAxisLabel";
 // than wrapping them, which is worse: a bar with no name under it at all.
 const CHART_MARGIN = { top: 8, right: 16, left: 8, bottom: 8 };
 const Y_AXIS_WIDTH = 44;
+const COMPACT_CHART_MARGIN = { top: 8, right: 8, left: 0, bottom: 0 };
+const COMPACT_Y_AXIS_WIDTH = 30;
 const TICK_FONT_SIZE = 12;
 const TICK_LINE_HEIGHT = 14;
 const TICK_LABEL_WIDTH_SAFETY = 0.85;
+// Compact mode (the Dashboard's side-column chart): past this many firms there's no room to
+// print names under the bars, so the axis shows each firm's rank number instead — the same
+// number as the rank badge in the ranked list right above the chart.
+const COMPACT_NAME_LABEL_MAX_FIRMS = 4;
 
 interface ChartColorProps {
   overallColor: string;
@@ -84,6 +91,12 @@ interface OverallApplicantBarChartViewProps extends ChartColorProps {
    * on-screen instance's caller needs this; the print-only copy has no export buttons of
    * its own. */
   containerRef?: RefObject<HTMLDivElement>;
+  /** Fills its parent's height (instead of the fixed 320px), drops the rotated y-axis title,
+   * and switches the x-axis to rank numbers when there are many firms. */
+  compact?: boolean;
+  /** Emphasises one firm's bars (the rest dim) and makes bars clickable to select a firm. */
+  selectedFirmId?: string | null;
+  onSelectFirm?: (firmId: string) => void;
 }
 
 function OverallApplicantBarChartView({
@@ -95,6 +108,9 @@ function OverallApplicantBarChartView({
   foregroundColor,
   borderColor,
   backgroundColor,
+  compact = false,
+  selectedFirmId = null,
+  onSelectFirm,
 }: OverallApplicantBarChartViewProps) {
   // Separate from the caller-supplied containerRef (DashboardScreen reads that imperatively
   // for its own PNG/SVG export buttons) — this one exists purely to re-run the
@@ -116,6 +132,7 @@ function OverallApplicantBarChartView({
   const data = project.firms
     .filter((f) => f.submitted)
     .map((firm) => ({
+      firmId: firm.id,
       name: firm.name,
       Overall: round2(overallWeightedTotal(project, firm.id)),
       "TLC Applicant": round2(applicantWeightedTotal(project, firm.id)),
@@ -142,6 +159,13 @@ function OverallApplicantBarChartView({
   // (weightedTotalRange also rounds off floating-point noise in that weight sum — see there.)
   const { min: axisMin, max: axisMax } = weightedTotalRange(project);
 
+  // The compact chart is short, and Recharts rounds its own tick choice to "nice" numbers outside
+  // the domain (a 1-5 axis came out labelled 0, 2, 5). Evenly spaced ticks across the real range
+  // keep the labels honest at any height.
+  const compactTicks = compact
+    ? Array.from({ length: 5 }, (_, i) => round2(axisMin + ((axisMax - axisMin) * i) / 4))
+    : undefined;
+
   const plotWidth = containerWidth > 0
     ? Math.max(0, containerWidth - CHART_MARGIN.left - CHART_MARGIN.right - Y_AXIS_WIDTH)
     : 0;
@@ -152,9 +176,29 @@ function OverallApplicantBarChartView({
   // with ReviewerScoreSpreadChart's x-axis and CriterionBreakdownChart's radar labels),
   // falling back to an ellipsis-truncated second line + a native SVG <title> hover tooltip
   // only when two lines still isn't enough room.
-  const renderFirmTick = (props: { x: number; y: number; payload: { value: string } }) => {
+  const useRankLabels = compact && data.length > COMPACT_NAME_LABEL_MAX_FIRMS;
+  const renderFirmTick = (props: { x: number; y: number; index?: number; payload: { value: string } }) => {
     const { x, y, payload } = props;
     const name = payload.value ?? "";
+    if (useRankLabels) {
+      const index = props.index ?? 0;
+      const selected = data[index]?.firmId === selectedFirmId;
+      return (
+        <g transform={`translate(${x},${y})`}>
+          <text
+            textAnchor="middle"
+            fontSize={TICK_FONT_SIZE}
+            fontWeight={selected ? 700 : 400}
+            fill={foregroundColor}
+          >
+            <title>{name}</title>
+            <tspan x={0} dy={12}>
+              {index + 1}
+            </tspan>
+          </text>
+        </g>
+      );
+    }
     const { lines, truncated, fullText } = wrapAxisLabel(name, tickMaxWidth, TICK_FONT_SIZE);
     return (
       <g transform={`translate(${x},${y})`}>
@@ -180,23 +224,28 @@ function OverallApplicantBarChartView({
         if (containerRef) (containerRef as MutableRefObject<HTMLDivElement | null>).current = el;
         setMeasureEl(el);
       }}
-      style={{ width: "100%", height: 320 }}
+      style={{ width: "100%", height: compact ? "100%" : 320 }}
     >
       <ResponsiveContainer>
-        <BarChart data={data} margin={CHART_MARGIN}>
+        <BarChart data={data} margin={compact ? COMPACT_CHART_MARGIN : CHART_MARGIN}>
           <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
-          <XAxis dataKey="name" tick={renderFirmTick} interval={0} height={44} />
+          <XAxis dataKey="name" tick={renderFirmTick} interval={0} height={compact && useRankLabels ? 26 : 44} />
           <YAxis
             domain={[axisMin, axisMax]}
-            width={Y_AXIS_WIDTH}
+            ticks={compactTicks}
+            width={compact ? COMPACT_Y_AXIS_WIDTH : Y_AXIS_WIDTH}
             tick={{ fill: foregroundColor, fontSize: 12 }}
-            label={{
-              value: "Weighted Total",
-              angle: -90,
-              position: "insideLeft",
-              fill: foregroundColor,
-              style: { textAnchor: "middle" },
-            }}
+            label={
+              compact
+                ? undefined
+                : {
+                    value: "Weighted Total",
+                    angle: -90,
+                    position: "insideLeft",
+                    fill: foregroundColor,
+                    style: { textAnchor: "middle" },
+                  }
+            }
           />
           {/* Custom content (ChartTooltip.tsx), not contentStyle/itemStyle/labelStyle — gives
               each row a bold VALUE colored to match its own bar (Overall=orange, TLC
@@ -216,9 +265,27 @@ function OverallApplicantBarChartView({
             )}
           />
           <Legend />
-          <Bar dataKey="Overall" fill={overallColor} />
-          <Bar dataKey="TLC Applicant" fill={applicantColor} />
-          <Bar dataKey="WFRC" fill={wfrcColor} />
+          {(
+            [
+              ["Overall", overallColor],
+              ["TLC Applicant", applicantColor],
+              ["WFRC", wfrcColor],
+            ] as const
+          ).map(([key, color]) => (
+            <Bar
+              key={key}
+              dataKey={key}
+              fill={color}
+              cursor={onSelectFirm ? "pointer" : undefined}
+              onClick={onSelectFirm ? (entry) => onSelectFirm((entry as { firmId: string }).firmId) : undefined}
+            >
+              {selectedFirmId
+                ? data.map((d) => (
+                    <Cell key={d.firmId} fillOpacity={d.firmId === selectedFirmId ? 1 : 0.5} />
+                  ))
+                : null}
+            </Bar>
+          ))}
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -228,11 +295,29 @@ function OverallApplicantBarChartView({
 export interface OverallApplicantBarChartProps {
   project: Project;
   containerRef?: RefObject<HTMLDivElement>;
+  compact?: boolean;
+  selectedFirmId?: string | null;
+  onSelectFirm?: (firmId: string) => void;
 }
 
-export function OverallApplicantBarChart({ project, containerRef }: OverallApplicantBarChartProps) {
+export function OverallApplicantBarChart({
+  project,
+  containerRef,
+  compact,
+  selectedFirmId,
+  onSelectFirm,
+}: OverallApplicantBarChartProps) {
   const colors = useChartColors();
-  return <OverallApplicantBarChartView project={project} containerRef={containerRef} {...colors} />;
+  return (
+    <OverallApplicantBarChartView
+      project={project}
+      containerRef={containerRef}
+      compact={compact}
+      selectedFirmId={selectedFirmId}
+      onSelectFirm={onSelectFirm}
+      {...colors}
+    />
+  );
 }
 
 /** The permanently off-screen, permanently light-colored copy the PDF export actually

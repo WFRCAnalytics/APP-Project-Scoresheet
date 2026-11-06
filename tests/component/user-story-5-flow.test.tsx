@@ -4,7 +4,7 @@
 // workbook import for the same reviewer/firm/criterion cell overwrites a manually
 // entered value (both paths funnel through the same UPSERT_SCORES action).
 
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 import App from "../../src/App";
@@ -14,7 +14,7 @@ import {
 } from "../../src/lib/excel/generateWorkbook";
 import { readFileArrayBuffer } from "../../src/lib/excel/parseWorkbook";
 import { createEmptyProject, type Project } from "../../src/types/project";
-import { goToConfigStep, openGetStartedModal } from "../helpers/appNav";
+import { goToConfigStep, openGetStartedModal, rankedFirm } from "../helpers/appNav";
 
 function buildProject(): Project {
   const project = createEmptyProject();
@@ -33,9 +33,9 @@ function buildProject(): Project {
   return project;
 }
 
-/** Navigates a freshly rendered App from Load -> Configuration -> Reviewer Forms ->
- * Dashboard -> "Show calculations" (where the manual entry grid lives), landing with
- * zero imported scores — exactly the Independent Test's starting state. */
+/** Navigates a freshly rendered App from Load -> Configuration -> Reviewer Forms, where the
+ * manual entry grid is the work area, landing with zero imported scores — exactly the
+ * Independent Test's starting state. */
 async function navigateToManualEntryGrid(project: Project) {
   openGetStartedModal();
   const file = new File([JSON.stringify(project)], "us5.json", { type: "application/json" });
@@ -45,12 +45,6 @@ async function navigateToManualEntryGrid(project: Project) {
   goToConfigStep("Export / Review");
   fireEvent.click(screen.getByRole("button", { name: "Generate reviewer forms" }));
   await screen.findByRole("heading", { name: "Reviewer Forms" });
-
-  fireEvent.click(screen.getByRole("button", { name: "View Dashboard" }));
-  await screen.findByRole("heading", { name: "Dashboard" });
-
-  fireEvent.click(screen.getByRole("button", { name: "Show calculations" }));
-  fireEvent.click(screen.getByRole("tab", { name: "Manual Entry" }));
   await screen.findByLabelText("Manual Score Entry");
 }
 
@@ -76,16 +70,10 @@ describe("User Story 5 — Manually Enter Reviewer Scores", () => {
       target: { value: "Entered by phone" },
     });
 
-    // Hide/show calculations to force a re-render from the committed project state, then
-    // check the Dashboard's ranked table reflects the manually entered score. Queried by
-    // its accessible name (aria-label="Ranked firms") rather than DOM position/order.
-    fireEvent.click(screen.getByRole("button", { name: "Hide calculations" }));
-    const rankedTable = screen.getByRole("table", { name: "Ranked firms" });
-    const dataRow = within(rankedTable).getAllByRole("row")[1];
-    const cells = within(dataRow).getAllByRole("cell");
-    // Cell 0 is the row-expand toggle, cell 1 is Rank, cell 2 is Firm, cell 3 is Overall
-    // Weighted Total.
-    expect(cells[3].textContent).toBe("5"); // Overall Weighted Total (1 criterion, weight 1)
+    // The Dashboard's ranked-firms list reflects the manually entered score.
+    fireEvent.click(screen.getByRole("button", { name: "View Dashboard" }));
+    await screen.findByRole("listbox", { name: "Ranked firms" });
+    expect(rankedFirm("Alpha Co").overall).toBe("5"); // Overall Weighted Total (1 criterion, weight 1)
   });
 
   it("Acceptance Scenario 2: a later workbook import for the same cell overwrites the manually entered value", async () => {
@@ -113,15 +101,7 @@ describe("User Story 5 — Manually Enter Reviewer Scores", () => {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
 
-    // Already on the Dashboard (that's where the manual entry grid lives) — navigate to
-    // Reviewer Forms, where ImportScoresPanel lives, via Edit project -> Configuration.
-    fireEvent.click(screen.getByRole("button", { name: "Hide calculations" }));
-    fireEvent.click(screen.getByRole("button", { name: "Edit project" }));
-    await screen.findByRole("heading", { name: "Configuration" });
-    goToConfigStep("Export / Review");
-    fireEvent.click(screen.getByRole("button", { name: "Generate reviewer forms" }));
-    await screen.findByRole("heading", { name: "Reviewer Forms" });
-
+    // Still on Reviewer Forms, where both the manual entry and the import live.
     fireEvent.change(screen.getByLabelText("Select one or more completed .xlsx files"), {
       target: { files: [importFile] },
     });
@@ -137,20 +117,12 @@ describe("User Story 5 — Manually Enter Reviewer Scores", () => {
     fireEvent.click(screen.getByRole("button", { name: /Yes, overwrite 1 existing score/ }));
     await screen.findByText(/Import complete/);
 
-    fireEvent.click(screen.getByRole("button", { name: "View Dashboard" }));
-    // Queried by accessible name (aria-label="Ranked firms") rather than DOM position —
-    // robust regardless of how many other <table> elements (e.g. an expanded row's
-    // comments table) happen to be in the tree at once.
-    const rankedTable = await screen.findByRole("table", { name: "Ranked firms" });
-    const dataRow = within(rankedTable).getAllByRole("row")[1];
-    const cells = within(dataRow).getAllByRole("cell");
-    // Cell 0 is the row-expand toggle, cell 1 is Rank, cell 2 is Firm, cell 3 is Overall
-    // Weighted Total. The import's value (5) must have overwritten the manual entry's
-    // value (1).
-    expect(cells[3].textContent).toBe("5");
+    // The manual entry grid reloads what the import just committed (5, not its stale 1)...
+    expect(screen.getByLabelText("Score for Alpha Co / Approach")).toHaveValue("5");
 
-    fireEvent.click(screen.getByRole("button", { name: "Show calculations" }));
-    fireEvent.click(screen.getByRole("tab", { name: "Manual Entry" }));
-    expect(await screen.findByLabelText("Score for Alpha Co / Approach")).toHaveValue("5");
+    // ...and the Dashboard agrees: the import's value overwrote the manual entry's.
+    fireEvent.click(screen.getByRole("button", { name: "View Dashboard" }));
+    await screen.findByRole("listbox", { name: "Ranked firms" });
+    expect(rankedFirm("Alpha Co").overall).toBe("5");
   });
 });

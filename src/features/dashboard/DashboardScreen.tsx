@@ -1,41 +1,37 @@
-// T039 (003 redesign): Dashboard — project header, a persistent completion-status banner
-// (FR-030 promoted from a stat tile to an unmissable signal, so partial results are never
-// mistaken for final), an orientation strip (FR-032/FR-033), and RankedFirmsTable — a
-// sortable, per-row-expandable comparison table that now hosts the ranking, the per-
-// criterion "why" breakdown, and reviewer comments in one place (previously three separate,
-// disconnected sections). Also hosts the printable region T043's PDF export captures
-// (header, banner, ranking + full per-firm detail — FR-035), the "show calculations" toggle
-// (FR-031, reachable in one click), the Dashboard's own Export PDF / Export JSON actions
-// (T043/T044), and T045's "Edit project" transition back into Configuration.
+// T039: Dashboard — the project header with a compact toolbar and status pills, and the
+// on-screen workspace (DashboardWorkspace.tsx: ranked list + comparison chart on the left, one
+// firm's detail on the right). Also hosts the printable region T043's PDF export captures
+// (header, status banners, ranking + full per-firm detail — FR-035), the Dashboard's own export
+// actions (Export JSON T044, Excel, PDF T043), and T045's "Configure project" transition back into
+// Configuration.
 //
-// Toolbar hierarchy pass (post-launch): the four header controls used to be identically
-// styled buttons in a flat row — two of them both `button-primary`, one an inline label+
-// input+button form control breaking the row's shared baseline, no visual cue distinguishing
-// "opens a view," "downloads a file," and "navigates away." Now grouped by actual
-// consequence inside one bordered toolbar (.dashboard-toolbar, same chrome language
-// .config-toolbar already uses): Edit project and Show calculations are low-stakes/
-// reversible (nothing downloads, easy to back out of) and render icon-only, exactly the
-// pattern AppHeader's own Help/theme-toggle buttons already use; Export PDF and Export JSON
-// produce a real file, so they keep an icon **and** a label — a bare icon can't
-// disambiguate "which file am I about to get" the way it safely can for a view toggle. PDF
-// is the only `button-primary`: it's the actual procurement-record deliverable this tool
-// exists to produce, so it's the one control that should visually outrank the rest.
+// Toolbar: one bordered container (.dashboard-toolbar) grouping controls by what they do — where to
+// go (Configure project) on the left, the files you can produce (Export JSON, Excel, PDF) on the
+// right. Every control keeps an icon **and** a label: a bare icon can't say "which file am I about
+// to get". PDF is the only `button-primary`: it's the actual procurement-record deliverable this
+// tool exists to produce, so it's the one control that should visually outrank the rest. The
+// Reviewer Forms and Configuration headers use this same toolbar so the three screens read alike.
+//
+// Compact-layout pass: the on-screen Dashboard is an app-style workspace that fits the window,
+// not a long page. The page header carries the project's contact details and the status
+// messages as compact pills. Everything the PDF needs lives in PrintableDashboard below, which
+// is print-only (off-screen on screen, swapped into flow by tokens.css's `.print-only-block`
+// when printing) and uses the existing always-canonical print copies of the table and charts.
 //
 // Must work purely as a viewer (FR-037): rendering this requires no configuration step —
 // everything here reads from the already-loaded project.
 
-import { forwardRef, useRef, useState } from "react";
-import { Calculator, CircleCheck, TriangleAlert } from "lucide-react";
+import { forwardRef, useRef } from "react";
+import { CircleCheck, TriangleAlert } from "lucide-react";
 import { formatIsoDate } from "../../lib/formatDate";
 import { useLoadedProject } from "../../state/ProjectContext";
-import { useChartColors } from "../../theme/chartColors";
-import { CalculationsModal } from "../calculations-view/CalculationsModal";
-import { ChartExportButtons } from "./ChartExportButtons";
+import { DashboardWorkspace } from "./DashboardWorkspace";
 import { EditProjectButton } from "./EditProjectButton";
+import { ExportExcelButton } from "./ExportExcelButton";
 import { ExportPdfButton } from "./ExportPdfButton";
 import { ExportProjectButton } from "./ExportProjectButton";
-import { OverallApplicantBarChart, OverallApplicantBarChartPrintCopy } from "./OverallApplicantBarChart";
-import { RankedFirmsTable, RankedFirmsTablePrintCopy } from "./RankedFirmsTable";
+import { OverallApplicantBarChartPrintCopy } from "./OverallApplicantBarChart";
+import { RankedFirmsTablePrintCopy } from "./RankedFirmsTable";
 import { buildRankedRows } from "./rankedRows";
 import type { Project } from "../../types/project";
 
@@ -117,12 +113,10 @@ function DashboardSummary({ project }: { project: Project }) {
 }
 
 /** The printable region — everything FR-035's PDF export must capture. Forwards its ref
- * so ExportPdfButton (react-to-print) can target this exact DOM node. */
+ * so ExportPdfButton (react-to-print) can target this exact DOM node. Print-only: on screen it
+ * sits off-screen (`.print-only-block`), and the on-screen Dashboard is DashboardWorkspace. */
 export const PrintableDashboard = forwardRef<HTMLDivElement, { project: Project }>(
   function PrintableDashboard({ project }, ref) {
-    const { backgroundColor, foregroundColor, overallColor, applicantColor, wfrcColor } =
-      useChartColors();
-    const barChartContainerRef = useRef<HTMLDivElement>(null);
     const rows = buildRankedRows(project);
     const totals = rows.reduce(
       (acc, r) => ({ scored: acc.scored + r.comp.scored, expected: acc.expected + r.comp.expected }),
@@ -130,7 +124,7 @@ export const PrintableDashboard = forwardRef<HTMLDivElement, { project: Project 
     );
 
     return (
-      <div ref={ref}>
+      <div ref={ref} className="print-only-block" aria-hidden="true">
         <div className="card card--subtle">
           <h2>{project.project.projectName || "Untitled Project"}</h2>
           <dl className="project-info-grid">
@@ -166,42 +160,11 @@ export const PrintableDashboard = forwardRef<HTMLDivElement, { project: Project 
 
         <div className="card">
           <h2>Ranked Firms</h2>
-          {/* .no-print: the printed/exported table comes from the always-off-screen,
-              always-canonical-order, always-fully-expanded RankedFirmsTablePrintCopy below
-              instead — see RankedFirmsTable.tsx's header comment for why. */}
-          <div className="no-print">
-            <p className="field-hint ranked-firms-hint">
-              Sort any column to compare firms; expand a row to see its per-criterion
-              breakdown and reviewer comments.
-            </p>
-            <RankedFirmsTable project={project} />
-          </div>
           <RankedFirmsTablePrintCopy project={project} />
         </div>
 
         <div className="card">
-          <div className="chart-controls-row">
-            <h2>Overall vs. TLC Applicant vs. WFRC Weighted Totals</h2>
-            <ChartExportButtons
-              getSvg={() => barChartContainerRef.current?.querySelector("svg") ?? null}
-              projectName={project.project.projectName}
-              chartLabel="Overall vs TLC Applicant vs WFRC Weighted Totals"
-              backgroundColor={backgroundColor}
-              foregroundColor={foregroundColor}
-              legendItems={[
-                { label: "Overall", color: overallColor },
-                { label: "TLC Applicant", color: applicantColor },
-                { label: "WFRC", color: wfrcColor },
-              ]}
-            />
-          </div>
-          {/* .no-print: the printed/exported chart comes from the always-off-screen,
-              always-light OverallApplicantBarChartPrintCopy below instead — see
-              OverallApplicantBarChart.tsx's header comment for why a second instance exists
-              at all (avoiding a whole-dashboard light-mode flash on export). */}
-          <div className="no-print">
-            <OverallApplicantBarChart project={project} containerRef={barChartContainerRef} />
-          </div>
+          <h2>Overall vs. TLC Applicant vs. WFRC Weighted Totals</h2>
           <OverallApplicantBarChartPrintCopy project={project} />
         </div>
       </div>
@@ -209,52 +172,123 @@ export const PrintableDashboard = forwardRef<HTMLDivElement, { project: Project 
   },
 );
 
+/** Compact status messages for the page header: whether the results are final or partial, and
+ * which reviewers haven't signed the confidentiality form. The same facts the print report's
+ * banners carry, shortened to fit a pill; the full sentence stays in the tooltip. */
+function StatusPills({ project }: { project: Project }) {
+  const rows = buildRankedRows(project);
+  const unsigned = project.reviewers.filter((r) => r.confidentialitySigned === false);
+  if (rows.length === 0 && unsigned.length === 0) return null;
+  const totals = rows.reduce(
+    (acc, r) => ({ scored: acc.scored + r.comp.scored, expected: acc.expected + r.comp.expected }),
+    { scored: 0, expected: 0 },
+  );
+  const complete = totals.expected > 0 && totals.scored === totals.expected;
+  const pct = totals.expected > 0 ? Math.round((totals.scored / totals.expected) * 100) : 0;
+  const Icon = complete ? CircleCheck : TriangleAlert;
+  const unsignedNames = unsigned.map((r) => r.name || "Unnamed reviewer").join(", ");
+  // The pill names up to two reviewers and counts the rest, so a long list can't stretch the
+  // header; the tooltip (and the printed report) carry every name. The text truncates with an
+  // ellipsis as space runs out and, on a narrower header, is replaced by a generic message
+  // (dash-pill--collapsible, app.css); the tooltip always shows the full list.
+  const unsignedShort =
+    unsigned.length <= 2
+      ? unsignedNames
+      : `${unsigned
+          .slice(0, 2)
+          .map((r) => r.name || "Unnamed reviewer")
+          .join(", ")} and ${unsigned.length - 2} more`;
+
+  return (
+    <div className="dash-pills no-print">
+      {rows.length > 0 && (
+        <div
+          className={`banner dash-pill ${complete ? "banner-success" : "banner-warning"}`}
+          role={complete ? undefined : "status"}
+          title={
+            complete
+              ? "All reviewers have responded — these results are final."
+              : "Rankings may still change as more reviewers respond."
+          }
+        >
+          <Icon size={16} aria-hidden="true" />
+          <span>
+            {complete
+              ? "All reviewers responded"
+              : `Partial results: ${totals.scored}/${totals.expected} scores (${pct}%)`}
+          </span>
+        </div>
+      )}
+      {unsigned.length > 0 && (
+        <div
+          className="banner banner-warning dash-pill dash-pill--collapsible"
+          role="status"
+          title={`Confidentiality form not signed: ${unsignedNames}.`}
+        >
+          <TriangleAlert size={16} aria-hidden="true" />
+          <span className="dash-pill-text dash-pill-names">Not signed: {unsignedShort}</span>
+          <span className="dash-pill-text dash-pill-generic">Not all reviewers have signed</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export interface DashboardScreenProps {
   onEditProject: () => void;
 }
 
 export function DashboardScreen({ onEditProject }: DashboardScreenProps) {
   const { project } = useLoadedProject();
-  const [calculationsOpen, setCalculationsOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const info = project.project;
 
   return (
-    <section aria-label="Dashboard">
-      <div className="dashboard-page-header">
-        <div>
-          <h1>Dashboard</h1>
-          <p className="page-subtitle">{project.project.projectName || "Untitled Project"}</p>
-        </div>
-        <div className="dashboard-toolbar no-print">
-          <div className="dashboard-toolbar-group">
-            <EditProjectButton onEditProject={onEditProject} />
-            <button
-              type="button"
-              className={`button-link icon-button${calculationsOpen ? " is-active" : ""}`}
-              onClick={() => setCalculationsOpen((s) => !s)}
-              aria-label={calculationsOpen ? "Hide calculations" : "Show calculations"}
-              title={calculationsOpen ? "Hide calculations" : "Show calculations"}
-              aria-haspopup="dialog"
-              aria-expanded={calculationsOpen}
-            >
-              <Calculator size={18} strokeWidth={1.75} aria-hidden="true" />
-            </button>
+    <section aria-label="Dashboard" className="dash-screen">
+      <div className="dash-header no-print">
+        <div className="dash-header-main">
+          <div className="dash-titlerow">
+            <h1>Dashboard</h1>
+            <h2 className="dash-project-name">{info.projectName || "Untitled Project"}</h2>
+            <StatusPills project={project} />
           </div>
-          <div className="dashboard-toolbar-divider" aria-hidden="true" />
-          <div className="dashboard-toolbar-group">
-            <ExportProjectButton />
-            <ExportPdfButton printRef={printRef} />
+          <div className="dash-subline">
+            {info.localGovContact && (
+              <span className="dash-meta" title="Local government contact">
+                Contact <b>{info.localGovContact}</b>
+              </span>
+            )}
+            {info.procurementAgent && (
+              <span className="dash-meta" title="Procurement agent (WFRC PM)">
+                Procurement agent <b>{info.procurementAgent}</b>
+              </span>
+            )}
+            {info.committeeMeetingDate && (
+              <span className="dash-meta" title="Selection committee meeting">
+                Meeting <b>{formatIsoDate(info.committeeMeetingDate)}</b>
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="dash-header-actions">
+          <div className="dashboard-toolbar no-print">
+            <div className="dashboard-toolbar-group">
+              <EditProjectButton onEditProject={onEditProject} />
+            </div>
+            <div className="dashboard-toolbar-divider" aria-hidden="true" />
+            <div className="dashboard-toolbar-group">
+              <ExportProjectButton />
+              <ExportExcelButton />
+              <ExportPdfButton printRef={printRef} />
+            </div>
           </div>
         </div>
       </div>
 
+      <DashboardWorkspace project={project} />
+
       <PrintableDashboard ref={printRef} project={project} />
 
-      <CalculationsModal
-        open={calculationsOpen}
-        onClose={() => setCalculationsOpen(false)}
-        project={project}
-      />
     </section>
   );
 }

@@ -3,12 +3,8 @@
 // action — it never touches project state, so "no data loss" holds trivially: the
 // in-memory Project object is untouched, only which screen renders it changes.
 //
-// Icon-only (Dashboard toolbar redesign): grouped with "Show calculations" as a
-// low-stakes, reversible action — navigating away or opening a view has no real
-// consequence, unlike the two export actions next to them, which is exactly why those
-// two stay icon+label (DashboardScreen.tsx's own header comment has the full rationale).
-// Accessible name is carried by aria-label alone (no visible text), same convention
-// AppHeader's own icon buttons already use.
+// Icon + label, like every other control in the Dashboard toolbar: a bare gear read as a
+// mystery button next to labelled ones. The visible text is its accessible name.
 //
 // Gear, not a pencil: this navigates to the Configuration area (firms/reviewers/criteria/
 // scale — the project's whole setup), so a settings glyph reads as "go configure this"
@@ -20,12 +16,12 @@ export function EditProjectButton({ onEditProject }: { onEditProject: () => void
   return (
     <button
       type="button"
-      className="button-link icon-button no-print"
+      className="button button-secondary no-print"
       onClick={onEditProject}
-      aria-label="Edit project"
-      title="Edit project"
+      title="Open Configuration to change the project's setup"
     >
-      <Settings size={18} strokeWidth={1.75} aria-hidden="true" />
+      <Settings size={16} strokeWidth={1.75} aria-hidden="true" />
+      Configure project
     </button>
   );
 }

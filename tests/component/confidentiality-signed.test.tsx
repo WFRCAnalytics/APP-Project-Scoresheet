@@ -70,7 +70,7 @@ describe("old project files without the field", () => {
 
   it("become unsigned once Configuration is opened, and the warnings start", async () => {
     await loadToDashboard([undefined, undefined]);
-    fireEvent.click(screen.getByRole("button", { name: "Edit project" }));
+    fireEvent.click(screen.getByRole("button", { name: "Configure project" }));
     goToConfigStep("Reviewers");
     for (const box of screen.getAllByRole("checkbox", { name: /Signed Confidentiality/ })) {
       expect(box).not.toBeChecked();
@@ -85,7 +85,7 @@ describe("old project files without the field", () => {
 
   it("only flip reviewers with no recorded answer — an explicit signed stays signed", async () => {
     await loadToDashboard([true, undefined]);
-    fireEvent.click(screen.getByRole("button", { name: "Edit project" }));
+    fireEvent.click(screen.getByRole("button", { name: "Configure project" }));
     goToConfigStep("Reviewers");
     const [alice, bob] = screen.getAllByRole("checkbox", { name: /Signed Confidentiality/ });
     expect(alice).toBeChecked();
@@ -103,7 +103,7 @@ describe("unsigned reviewers", () => {
 
   it("get a warning and a badge on Reviewer Forms, but can still download their workbook", async () => {
     await loadToDashboard([true, false]);
-    fireEvent.click(screen.getByRole("button", { name: "Edit project" }));
+    fireEvent.click(screen.getByRole("button", { name: "Configure project" }));
     goToConfigStep("Export / Review");
     fireEvent.click(screen.getByRole("button", { name: "Generate reviewer forms" }));
 

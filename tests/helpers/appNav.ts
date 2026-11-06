@@ -3,7 +3,7 @@
 // UI shares one place to fix if the Get Started button or step labels ever change, instead
 // of N independent copies of the same two clicks.
 
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 
 /** Opens the Load screen's "Get Started" modal, exposing the "Start a new project" /
  * "Upload a project file" actions that used to be directly on the page. */
@@ -36,4 +36,30 @@ export function setScaleValues(values: number[]): void {
     fireEvent.change(input, { target: { value: String(value) } });
     fireEvent.blur(input);
   });
+}
+
+/** What the Dashboard's ranked-firms list shows for one firm: the option itself plus the rank
+ * badge and the three weighted totals as displayed text. */
+export function rankedFirm(name: string) {
+  const list = screen.getByRole("listbox", { name: "Ranked firms" });
+  const option = within(list)
+    .getAllByRole("option")
+    .find((o) => o.querySelector(".dash-ranked-firm")?.textContent === name);
+  if (!option) throw new Error(`No ranked-firms option for "${name}"`);
+  const totals = Array.from(option.querySelectorAll(".dash-ranked-num")).map((n) => n.textContent);
+  return {
+    option,
+    rank: option.querySelector(".badge")?.textContent,
+    overall: totals[0],
+    applicant: totals[1],
+    wfrc: totals[2],
+    completion: option.querySelector(".dash-ranked-progress")?.textContent,
+  };
+}
+
+/** Every option of the Dashboard's ranked-firms list, in the order shown. */
+export function rankedFirmNames(): (string | null | undefined)[] {
+  return within(screen.getByRole("listbox", { name: "Ranked firms" }))
+    .getAllByRole("option")
+    .map((o) => o.querySelector(".dash-ranked-firm")?.textContent);
 }

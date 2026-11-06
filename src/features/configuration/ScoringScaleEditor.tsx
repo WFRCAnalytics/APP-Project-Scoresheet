@@ -60,12 +60,18 @@
 // restrictive list, not a different data shape. Only the mode toggle above the table, the
 // value-precision display rule above, and how downstream consumers (generateWorkbook.ts,
 // parseWorkbook.ts, ManualEntryGrid.tsx) validate a Score against it, differ.
+//
+// Compact-layout pass: the two scale types are cards (still the same two radios — their labels
+// still begin "Discrete" / "Continuous"), a ruler beside them draws the listed points where they
+// sit along the scale, and a preview shows how the scale reads at the top of a reviewer
+// workbook. Both are decorative echoes of the table below (aria-hidden); the table stays the
+// editor.
 
 import { useState } from "react";
 import { findDuplicateNames } from "../../lib/duplicateNames";
 import { roundToOneDecimal } from "../../lib/scoreScale";
 import { useLoadedProject } from "../../state/ProjectContext";
-import type { ScoringScaleMode } from "../../types/project";
+import type { ScoringScaleMode, ScoringScalePoint } from "../../types/project";
 
 const MIN_SCALE_POINTS = 2;
 
@@ -103,6 +109,81 @@ function ScalePointValueCell({
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
     />
+  );
+}
+
+/** The listed points drawn where they sit along the scale: a row of dots for a discrete scale,
+ * a continuous bar for a range. */
+function ScaleRuler({ points, mode }: { points: ScoringScalePoint[]; mode: ScoringScaleMode }) {
+  const sorted = [...points].sort((a, b) => a.value - b.value);
+  if (sorted.length === 0) return null;
+  const min = sorted[0].value;
+  const max = sorted[sorted.length - 1].value;
+  const span = max - min || 1;
+  return (
+    <div className="scale-ruler" aria-hidden="true">
+      <div className={`scale-ruler-line is-${mode}`} />
+      {sorted.map((point, i) => (
+        <div
+          key={i}
+          className="scale-ruler-stop"
+          style={{ left: `${((point.value - min) / span) * 100}%` }}
+        >
+          <b>{point.value}</b>
+          <i />
+          <span>{point.label || "No label"}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** How the scale reads at the top of a reviewer's workbook (mirrors generateWorkbook.ts's
+ * legend and its "allowed values" statement). */
+function ScalePreview({
+  points,
+  mode,
+  reviewerName,
+}: {
+  points: ScoringScalePoint[];
+  mode: ScoringScaleMode;
+  reviewerName: string;
+}) {
+  const sorted = [...points].sort((a, b) => a.value - b.value);
+  const min = sorted[0]?.value;
+  const max = sorted[sorted.length - 1]?.value;
+  const statement =
+    sorted.length === 0
+      ? ""
+      : mode === "discrete"
+        ? `Only these values are allowed: ${sorted.map((p) => p.value).join(", ")}`
+        : `Any value between ${min} and ${max} is allowed`;
+  return (
+    <div className="scale-preview" aria-hidden="true">
+      <p className="field-hint">What reviewers see at the top of their workbook</p>
+      <div className="scale-sheet">
+        <div className="scale-sheet-row scale-sheet-title">
+          <b>Proposal Evaluation Scoresheet</b>
+          <span>{reviewerName}</span>
+        </div>
+        <div className="scale-sheet-row scale-sheet-legend">
+          <div>
+            {sorted.map((p, i) => (
+              <div key={i}>
+                {p.value} = {p.label || "No label"}
+              </div>
+            ))}
+          </div>
+          <b>{statement}</b>
+        </div>
+        <div className="scale-sheet-row scale-sheet-header">
+          <span>Firm</span>
+          <span>Criterion</span>
+          <span>Score</span>
+          <span>Comments</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -148,114 +229,157 @@ export function ScoringScaleEditor() {
           {[...duplicateValues.entries()]
             .map(([value, count]) => `"${value}" is used by ${count} points`)
             .join("; ")}{" "}
-          — give each point a distinct value so a score of that number always means one
-          specific label (this does not block saving).
+          — give each point a distinct value so a score of that number always means one specific
+          label (this does not block saving).
         </div>
       )}
 
       <fieldset className="scale-mode-toggle">
         <legend>Scale type</legend>
-        <div className="scale-mode-toggle-options">
-          <label>
-            <input
-              type="radio"
-              name="scoringScaleMode"
-              value="discrete"
-              checked={mode === "discrete"}
-              onChange={() => setMode("discrete")}
-            />
-            Discrete — reviewers pick one of the listed values
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="scoringScaleMode"
-              value="continuous"
-              checked={mode === "continuous"}
-              onChange={() => setMode("continuous")}
-            />
-            Continuous — reviewers may enter any value between the lowest and highest listed
-            values, in steps of 0.1
-          </label>
+        <div className="scalehead">
+          <div className="scale-modecards">
+            <label className={`scale-modecard${mode === "discrete" ? " is-on" : ""}`}>
+              <input
+                type="radio"
+                name="scoringScaleMode"
+                value="discrete"
+                className="visually-hidden"
+                checked={mode === "discrete"}
+                onChange={() => setMode("discrete")}
+              />
+              <svg width="60" height="22" viewBox="0 0 84 28" aria-hidden="true">
+                <line x1="6" x2="78" y1="14" y2="14" stroke="var(--color-border)" strokeWidth="2" />
+                <circle cx="8" cy="14" r="5" fill="var(--color-primary)" />
+                <circle cx="42" cy="14" r="5" fill="var(--color-primary)" />
+                <circle cx="76" cy="14" r="5" fill="var(--color-primary)" />
+              </svg>
+              <span className="scale-modecard-text">
+                <b>Discrete</b>
+                <span className="visually-hidden"> — </span>
+                <small>reviewers pick one of the listed values</small>
+              </span>
+            </label>
+            <label className={`scale-modecard${mode === "continuous" ? " is-on" : ""}`}>
+              <input
+                type="radio"
+                name="scoringScaleMode"
+                value="continuous"
+                className="visually-hidden"
+                checked={mode === "continuous"}
+                onChange={() => setMode("continuous")}
+              />
+              <svg width="60" height="22" viewBox="0 0 84 28" aria-hidden="true">
+                <defs>
+                  <linearGradient id="scale-card-gradient">
+                    <stop offset="0" stopColor="var(--color-primary)" stopOpacity="0.25" />
+                    <stop offset="1" stopColor="var(--color-primary)" />
+                  </linearGradient>
+                </defs>
+                <rect x="4" y="9" width="76" height="10" rx="5" fill="url(#scale-card-gradient)" />
+              </svg>
+              <span className="scale-modecard-text">
+                <b>Continuous</b>
+                <span className="visually-hidden"> — </span>
+                <small>
+                  reviewers may enter any value between the lowest and highest listed values, in
+                  steps of 0.1
+                </small>
+              </span>
+            </label>
+          </div>
+          <ScaleRuler points={project.scoringScale} mode={mode} />
         </div>
       </fieldset>
 
-      {mode === "continuous" && project.scoringScale.length >= MIN_SCALE_POINTS && (
-        <p className="field-hint">
-          The listed values below are labeled reference points, not the only choices —
-          reviewers may enter anything from {scaleMin} to {scaleMax} (e.g. {scaleMin + 0.1}
-          ), rounded to one decimal place.
-        </p>
-      )}
+      <div className="scale-body">
+        <div className="scale-body-main">
+          {mode === "continuous" && project.scoringScale.length >= MIN_SCALE_POINTS && (
+            <p className="field-hint">
+              The listed values below are labeled reference points, not the only choices — reviewers
+              may enter anything from {scaleMin} to {scaleMax} (e.g. {scaleMin + 0.1}
+              ), rounded to one decimal place.
+            </p>
+          )}
 
-      {project.scoringScale.length <= MIN_SCALE_POINTS && (
-        <p className="field-hint">At least {MIN_SCALE_POINTS} points are required.</p>
-      )}
+          {project.scoringScale.length <= MIN_SCALE_POINTS && (
+            <p className="field-hint">At least {MIN_SCALE_POINTS} points are required.</p>
+          )}
 
-      <div className="table-wrap">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Value</th>
-              <th>Label</th>
-              <th aria-label="Actions" />
-            </tr>
-          </thead>
-          <tbody>
-            {project.scoringScale.map((point, index) => (
-              <tr key={index}>
-                <td>
-                  <ScalePointValueCell
-                    value={point.value}
-                    forceOneDecimal={forceOneDecimal}
-                    onCommit={(value) =>
-                      dispatch({ type: "UPDATE_SCALE_POINT", index, patch: { value } })
-                    }
-                  />
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    aria-label="Scale point label"
-                    value={point.label}
-                    onChange={(e) =>
-                      dispatch({
-                        type: "UPDATE_SCALE_POINT",
-                        index,
-                        patch: { label: e.target.value },
-                      })
-                    }
-                  />
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    className="button button-danger"
-                    disabled={!canRemove}
-                    title={
-                      canRemove ? undefined : `At least ${MIN_SCALE_POINTS} points are required`
-                    }
-                    onClick={() => dispatch({ type: "REMOVE_SCALE_POINT", index })}
-                  >
-                    Remove
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Value</th>
+                  <th>Label</th>
+                  <th aria-label="Actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {project.scoringScale.map((point, index) => (
+                  <tr key={index}>
+                    <td>
+                      <ScalePointValueCell
+                        value={point.value}
+                        forceOneDecimal={forceOneDecimal}
+                        onCommit={(value) =>
+                          dispatch({ type: "UPDATE_SCALE_POINT", index, patch: { value } })
+                        }
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        aria-label="Scale point label"
+                        value={point.label}
+                        onChange={(e) =>
+                          dispatch({
+                            type: "UPDATE_SCALE_POINT",
+                            index,
+                            patch: { label: e.target.value },
+                          })
+                        }
+                      />
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="button button-danger"
+                        disabled={!canRemove}
+                        title={
+                          canRemove ? undefined : `At least ${MIN_SCALE_POINTS} points are required`
+                        }
+                        onClick={() => dispatch({ type: "REMOVE_SCALE_POINT", index })}
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-      <div className="actions-row">
-        <button
-          type="button"
-          className="button button-secondary"
-          onClick={() =>
-            dispatch({ type: "ADD_SCALE_POINT", point: { value: nextDefaultValue(), label: "" } })
-          }
-        >
-          Add scale point
-        </button>
+          <div className="actions-row">
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() =>
+                dispatch({
+                  type: "ADD_SCALE_POINT",
+                  point: { value: nextDefaultValue(), label: "" },
+                })
+              }
+            >
+              Add scale point
+            </button>
+          </div>
+        </div>
+
+        <ScalePreview
+          points={project.scoringScale}
+          mode={mode}
+          reviewerName={project.reviewers[0]?.name.trim() || "Reviewer name"}
+        />
       </div>
     </div>
   );

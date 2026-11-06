@@ -12,12 +12,11 @@
 // than once on screen at once. Queried with getAllByText + a length check rather than the
 // usual getByText/findByText (which require exactly one match) for that reason.
 //
-// Every assertion in this file uses the ...AllByText form for the same underlying reason,
-// even where the app-wide convention above doesn't independently apply: RankedFirmsTable
-// mounts both the visible ReviewerScoreSpreadChart and its off-screen, always-light
-// ReviewerScoreSpreadChartPrintCopy side by side for every expanded row (the PDF export's
-// light-mode fix — see OverallApplicantBarChart.tsx's header comment), so any text this
-// chart renders legitimately appears twice in the DOM at once, not just its guard clauses.
+// Every assertion in this file uses the ...AllByText form for the same underlying reason.
+// On screen the Dashboard now shows reviewer scores as a heatmap (ReviewerScoreHeatmap), so this
+// dot chart only renders as the off-screen, always-light ReviewerScoreSpreadChartPrintCopy the
+// PDF report uses (see OverallApplicantBarChart.tsx's header comment). It is mounted for every
+// submitted firm without any interaction, which is what these tests read.
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
@@ -39,11 +38,10 @@ async function loadAndExpand(project: Project) {
   const file = new File([JSON.stringify(project)], "p.json", { type: "application/json" });
   fireEvent.change(screen.getByLabelText("Upload a project file"), { target: { files: [file] } });
   await screen.findByRole("heading", { name: "Dashboard" });
-  fireEvent.click(screen.getByRole("button", { name: /Expand Alpha Co/ }));
 }
 
 describe("ReviewerScoreSpreadChart", () => {
-  it("renders its title naming the expanded firm", async () => {
+  it("renders its title naming the firm", async () => {
     const project = baseProject();
     project.scoringScale = [
       { value: 1, label: "No" },

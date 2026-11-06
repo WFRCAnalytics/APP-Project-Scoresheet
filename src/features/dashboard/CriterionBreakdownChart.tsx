@@ -46,6 +46,9 @@ import { wrapAxisLabel } from "./wrapAxisLabel";
 const RADAR_HEIGHT = 380; // matches the container div's fixed height below
 const RADAR_MARGIN = 5; // RadarChart's own default margin on every side
 const RADAR_OUTER_RADIUS_FRACTION = 0.7; // matches outerRadius="70%" on <RadarChart> below
+// A chart that fills a box (the Dashboard's detail panel) is wider than tall, so the side labels
+// need more room than the 70% ring leaves them.
+const RADAR_FILL_OUTER_RADIUS_FRACTION = 0.5;
 const POLAR_TICK_SIZE = 8; // PolarAngleAxis's default tickSize — label distance past the polygon
 const TICK_FONT_SIZE = 12;
 const TICK_LINE_HEIGHT = 14;
@@ -82,6 +85,9 @@ interface CriterionBreakdownChartViewProps extends ChartColorProps {
   /** Off for the print-only copy — its export buttons would be unreachable (permanently
    * off-screen) and are meaningless anyway: they're already `.no-print` themselves. */
   showExportButtons?: boolean;
+  /** Size the chart to its parent's height (the Dashboard's detail panel gives it a box)
+   * instead of the fixed RADAR_HEIGHT. */
+  fill?: boolean;
 }
 
 function CriterionBreakdownChartView({
@@ -94,6 +100,7 @@ function CriterionBreakdownChartView({
   borderColor,
   backgroundColor,
   showExportButtons = true,
+  fill = false,
 }: CriterionBreakdownChartViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Separate from containerRef (which ChartExportButtons reads imperatively on click) — this
@@ -101,12 +108,14 @@ function CriterionBreakdownChartView({
   // actually mounts (it doesn't exist yet on the "no data" render path).
   const [measureEl, setMeasureEl] = useState<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(0);
 
   useEffect(() => {
     if (!measureEl) return;
     const observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width;
-      if (width) setContainerWidth(width);
+      const rect = entries[0]?.contentRect;
+      if (rect?.width) setContainerWidth(rect.width);
+      if (rect?.height) setContainerHeight(rect.height);
     });
     observer.observe(measureEl);
     return () => observer.disconnect();
@@ -160,8 +169,10 @@ function CriterionBreakdownChartView({
   // labelRadius mirrors what Recharts computes internally for outerRadius="70%" + the
   // default tickSize=8 — there's no live measurement of a not-yet-rendered tick's position,
   // so this has to be reconstructed from the same inputs Recharts itself uses.
-  const labelRadius = containerWidth > 0
-    ? (Math.max(0, Math.min(containerWidth, RADAR_HEIGHT) / 2 - RADAR_MARGIN) * RADAR_OUTER_RADIUS_FRACTION) +
+  const radarHeight = fill ? containerHeight : RADAR_HEIGHT;
+  const labelRadius = containerWidth > 0 && radarHeight > 0
+    ? (Math.max(0, Math.min(containerWidth, radarHeight) / 2 - RADAR_MARGIN) *
+        (fill ? RADAR_FILL_OUTER_RADIUS_FRACTION : RADAR_OUTER_RADIUS_FRACTION)) +
       POLAR_TICK_SIZE
     : 0;
   const angleStepRad = project.criteria.length > 0 ? (2 * Math.PI) / project.criteria.length : 0;
@@ -170,7 +181,10 @@ function CriterionBreakdownChartView({
   // right next to a lot of unused space out to the chart's edge, but capping them to the same
   // budget top/bottom labels get keeps the whole ring reading as one consistent, evenly
   // wrapped set instead of a few disproportionately long lines next to a bunch of short ones.
-  const neighborMaxWidth = labelRadius * 2 * Math.sin(angleStepRad / 2) * TICK_LABEL_WIDTH_SAFETY;
+  // A chart that fills a box keeps its side labels narrower (wrapped to two lines) so they stay
+  // inside the box instead of running off its edge.
+  const neighborMaxWidth =
+    labelRadius * 2 * Math.sin(angleStepRad / 2) * TICK_LABEL_WIDTH_SAFETY * (fill ? 0.7 : 1);
 
   // Custom angle-axis tick: wraps each criterion name onto up to two lines (wrapAxisLabel,
   // shared with ReviewerScoreSpreadChart's x-axis), truncating with an ellipsis + a native
@@ -183,7 +197,7 @@ function CriterionBreakdownChartView({
   }) => {
     const { x, y, textAnchor, payload } = props;
     const name = payload.value ?? "";
-    if (containerWidth <= 0) {
+    if (containerWidth <= 0 || labelRadius <= 0) {
       // Not measured yet — render unwrapped for this one frame rather than wrapping against
       // a bogus zero-width budget.
       return (
@@ -212,7 +226,7 @@ function CriterionBreakdownChartView({
   };
 
   return (
-    <div>
+    <div className={fill ? "chart-fill" : undefined}>
       <div className="chart-controls-row">
         <h3 className="breakdown-chart-title">Why {firm.name} scored where it did</h3>
         {showExportButtons && (
@@ -235,10 +249,10 @@ function CriterionBreakdownChartView({
           containerRef.current = el;
           setMeasureEl(el);
         }}
-        style={{ width: "100%", height: RADAR_HEIGHT }}
+        style={fill ? { width: "100%", flex: "1 1 0", minHeight: 0 } : { width: "100%", height: RADAR_HEIGHT }}
       >
         <ResponsiveContainer>
-          <RadarChart data={data} outerRadius="70%">
+          <RadarChart data={data} outerRadius={fill ? "50%" : "70%"}>
             <PolarGrid stroke={borderColor} />
             <PolarAngleAxis dataKey="criterion" tick={renderCriterionTick} />
             <PolarRadiusAxis
@@ -302,9 +316,17 @@ function CriterionBreakdownChartView({
   );
 }
 
-export function CriterionBreakdownChart({ project, firmId }: { project: Project; firmId: string }) {
+export function CriterionBreakdownChart({
+  project,
+  firmId,
+  fill = false,
+}: {
+  project: Project;
+  firmId: string;
+  fill?: boolean;
+}) {
   const colors = useChartColors();
-  return <CriterionBreakdownChartView project={project} firmId={firmId} {...colors} />;
+  return <CriterionBreakdownChartView project={project} firmId={firmId} fill={fill} {...colors} />;
 }
 
 /** The permanently off-screen, permanently light-colored copy the PDF export actually

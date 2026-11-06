@@ -7,8 +7,13 @@
 // — see lib/weightInput.ts for the parsing rule and the research behind it. The stored
 // Criterion.weight is unaffected either way — still a plain 0..1 fraction — this only
 // widens what the handler is allowed to type before it gets parsed into that number.
+//
+// Compact-layout pass: a stacked bar shows how the weights split across the criteria (and turns
+// into the warning below when they don't total 100%), each row has a color tag matching its
+// segment and a slider beside the weight field, and "Split evenly" sets every weight equal. The
+// slider and the text field edit the same stored weight; nothing about parsing changed.
 
-import { type Dispatch, useState } from "react";
+import { type CSSProperties, type Dispatch, useState } from "react";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { generateId } from "../../lib/id";
 import { formatWeightPercent, parseWeightInput } from "../../lib/weightInput";
@@ -16,8 +21,10 @@ import { useLoadedProject } from "../../state/ProjectContext";
 import { criterionHasScores } from "../../state/projectReducer";
 import type { ProjectAction } from "../../state/projectReducer";
 import type { Criterion } from "../../types/project";
+import { WEIGHT_TOLERANCE } from "./weightTolerance";
 
-const WEIGHT_TOLERANCE = 0.001;
+/** One color per criterion, cycled — the same categorical palette the Dashboard's charts use. */
+const criterionColor = (index: number) => `var(--chart-${(index % 10) + 1})`;
 
 /** One criterion's weight cell. Needs its own draft state — not just `criterion.weight`
  * reflected straight into the input — so a handler can type transitional text ("0.", "25%")
@@ -26,9 +33,11 @@ const WEIGHT_TOLERANCE = 0.001;
  * spreadsheet settles a percent-formatted cell's typed text into its stored value. */
 function WeightCell({
   criterion,
+  color,
   dispatch,
 }: {
   criterion: Criterion;
+  color: string;
   dispatch: Dispatch<ProjectAction>;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
@@ -36,7 +45,8 @@ function WeightCell({
   // Live percent preview reflects the DRAFT while typing (falling back to the last-committed
   // weight if the draft doesn't parse yet, e.g. mid-keystroke on "0.") so the "= X%" readout
   // updates as the handler types, not just after they tab away.
-  const previewWeight = draft === null ? criterion.weight : (parseWeightInput(draft) ?? criterion.weight);
+  const previewWeight =
+    draft === null ? criterion.weight : (parseWeightInput(draft) ?? criterion.weight);
 
   function commit() {
     if (draft === null) return;
@@ -50,6 +60,28 @@ function WeightCell({
 
   return (
     <div className="weight-cell">
+      <input
+        type="range"
+        className="weight-slider"
+        min={0}
+        max={1}
+        step={0.05}
+        aria-label={`Weight slider for ${criterion.name || "this criterion"}`}
+        value={Math.min(1, Math.max(0, criterion.weight))}
+        style={
+          {
+            "--rc": color,
+            "--p": `${Math.min(1, Math.max(0, criterion.weight)) * 100}%`,
+          } as CSSProperties
+        }
+        onChange={(e) =>
+          dispatch({
+            type: "UPDATE_CRITERION",
+            criterionId: criterion.id,
+            patch: { weight: Math.round(Number(e.target.value) * 100) / 100 },
+          })
+        }
+      />
       <input
         type="text"
         inputMode="decimal"
@@ -83,6 +115,22 @@ export function CriteriaEditor() {
 
   const pendingCriterion = project.criteria.find((c) => c.id === pendingRemoval);
 
+  /** Every weight equal, in whole percents that add up to exactly 100 (the first few criteria
+   * take the leftover points). */
+  function splitEvenly() {
+    const n = project.criteria.length;
+    if (n === 0) return;
+    const base = Math.floor(100 / n);
+    const extra = 100 - base * n;
+    project.criteria.forEach((criterion, i) => {
+      dispatch({
+        type: "UPDATE_CRITERION",
+        criterionId: criterion.id,
+        patch: { weight: (base + (i < extra ? 1 : 0)) / 100 },
+      });
+    });
+  }
+
   return (
     <div className="card">
       <h2>Criteria &amp; Weights</h2>
@@ -91,19 +139,36 @@ export function CriteriaEditor() {
         className={`banner ${weightsInvalid ? "banner-warning" : ""}`}
         role={weightsInvalid ? "alert" : undefined}
       >
-        Running total: <strong>{weightTotal.toFixed(3)}</strong> (
-        {formatWeightPercent(weightTotal)})
+        Running total: <strong>{weightTotal.toFixed(3)}</strong> ({formatWeightPercent(weightTotal)}
+        )
         {weightsInvalid && (
-          <>
-            {" "}
-            — weights must sum to 1.0 (100%) (this does not block saving or generating forms).
-          </>
+          <> — weights must sum to 1.0 (100%) (this does not block saving or generating forms).</>
         )}
       </div>
 
+      {project.criteria.some((c) => c.weight > 0) && (
+        <div
+          className="weight-bar"
+          role="img"
+          aria-label="How the weights split across the criteria"
+        >
+          {project.criteria.map((criterion, i) =>
+            criterion.weight > 0 ? (
+              <span
+                key={criterion.id}
+                style={{ flex: criterion.weight, background: criterionColor(i) }}
+                title={criterion.name || "Unnamed criterion"}
+              >
+                {criterion.name || "Unnamed"} {formatWeightPercent(criterion.weight)}
+              </span>
+            ) : null,
+          )}
+        </div>
+      )}
+
       <p className="field-hint">
-        Enter weight as a decimal fraction of 1.0 (e.g. 0.25) or a percent (e.g. 25 or 25%) —
-        both are accepted.
+        Enter weight as a decimal fraction of 1.0 (e.g. 0.25) or a percent (e.g. 25 or 25%) — both
+        are accepted.
       </p>
 
       <div className="table-wrap">
@@ -117,24 +182,35 @@ export function CriteriaEditor() {
             </tr>
           </thead>
           <tbody>
-            {project.criteria.map((criterion) => (
+            {project.criteria.map((criterion, index) => (
               <tr key={criterion.id}>
                 <td>
-                  <input
-                    type="text"
-                    aria-label="Criterion name"
-                    value={criterion.name}
-                    onChange={(e) =>
-                      dispatch({
-                        type: "UPDATE_CRITERION",
-                        criterionId: criterion.id,
-                        patch: { name: e.target.value },
-                      })
-                    }
-                  />
+                  <div className="criterion-name-cell">
+                    <span
+                      className="criterion-swatch"
+                      style={{ background: criterionColor(index) }}
+                      aria-hidden="true"
+                    />
+                    <input
+                      type="text"
+                      aria-label="Criterion name"
+                      value={criterion.name}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "UPDATE_CRITERION",
+                          criterionId: criterion.id,
+                          patch: { name: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
                 </td>
                 <td>
-                  <WeightCell criterion={criterion} dispatch={dispatch} />
+                  <WeightCell
+                    criterion={criterion}
+                    color={criterionColor(index)}
+                    dispatch={dispatch}
+                  />
                 </td>
                 <td>
                   <input
@@ -173,6 +249,14 @@ export function CriteriaEditor() {
       </div>
 
       <div className="actions-row">
+        <button
+          type="button"
+          className="button button-secondary"
+          onClick={splitEvenly}
+          disabled={project.criteria.length === 0}
+        >
+          Split evenly
+        </button>
         <button
           type="button"
           className="button button-secondary"

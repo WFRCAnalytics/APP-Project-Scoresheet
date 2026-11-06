@@ -33,11 +33,12 @@ import { EmptyState } from "../../components/EmptyState";
 import { round2 } from "../../lib/calculations";
 import type { Project } from "../../types/project";
 import { buildRankedRows, type RankedRow } from "./rankedRows";
-import { CriterionBreakdownChart, CriterionBreakdownChartPrintCopy } from "./CriterionBreakdownChart";
+import { CriterionBreakdownChartPrintCopy } from "./CriterionBreakdownChart";
 import { EditScoreDialog, type ScoreTarget } from "./EditScoreDialog";
 import { FirmCommentsTable } from "./FirmCommentsTable";
+import { FirmChartTabs } from "./FirmChartTabs";
 import { FirmCommentsTabs } from "./FirmCommentsTabs";
-import { ReviewerScoreSpreadChart, ReviewerScoreSpreadChartPrintCopy } from "./ReviewerScoreSpreadChart";
+import { ReviewerScoreSpreadChartPrintCopy } from "./ReviewerScoreSpreadChart";
 
 type SortKey = "rank" | "firm" | "overall" | "applicant" | "wfrc" | "completion";
 type SortDirection = "asc" | "desc";
@@ -252,8 +253,7 @@ export function RankedFirmsTable({ project }: { project: Project }) {
                   <tr id={detailId} className="firm-detail-row">
                     <td colSpan={7}>
                       <div className="firm-detail">
-                        <CriterionBreakdownChart project={project} firmId={row.firm.id} />
-                        <ReviewerScoreSpreadChart project={project} firmId={row.firm.id} />
+                        <FirmChartTabs project={project} firmId={row.firm.id} />
                         <FirmCommentsTabs
                           project={project}
                           firmId={row.firm.id}

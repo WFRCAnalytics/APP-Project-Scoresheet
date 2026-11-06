@@ -54,7 +54,8 @@ async function openFirm() {
 }
 
 const tab = (name: RegExp) => screen.getByRole("tab", { name });
-const panel = () => screen.getByRole("tabpanel");
+// The comments panel inside the firm's Comments tab (there is an outer firm-detail panel too).
+const panel = () => document.getElementById("firm-firm-1-comments-panel") as HTMLElement;
 
 describe("Firm comments — tabbed by criterion", () => {
   it("has a tab per criterion, with the first selected and a comment count on each that has any", async () => {

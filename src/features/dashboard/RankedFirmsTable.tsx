@@ -34,6 +34,7 @@ import { round2 } from "../../lib/calculations";
 import type { Project } from "../../types/project";
 import { buildRankedRows, type RankedRow } from "./rankedRows";
 import { CriterionBreakdownChart, CriterionBreakdownChartPrintCopy } from "./CriterionBreakdownChart";
+import { EditScoreDialog, type ScoreTarget } from "./EditScoreDialog";
 import { FirmCommentsTable } from "./FirmCommentsTable";
 import { ReviewerScoreSpreadChart, ReviewerScoreSpreadChartPrintCopy } from "./ReviewerScoreSpreadChart";
 
@@ -121,6 +122,7 @@ export function RankedFirmsTable({ project }: { project: Project }) {
   const [sortKey, setSortKey] = useState<SortKey>("rank");
   const [direction, setDirection] = useState<SortDirection>("asc");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const [editTarget, setEditTarget] = useState<ScoreTarget | null>(null);
 
   const rows = buildRankedRows(project); // already canonical (ascending overall rank) order
 
@@ -251,7 +253,11 @@ export function RankedFirmsTable({ project }: { project: Project }) {
                       <div className="firm-detail">
                         <CriterionBreakdownChart project={project} firmId={row.firm.id} />
                         <ReviewerScoreSpreadChart project={project} firmId={row.firm.id} />
-                        <FirmCommentsTable project={project} firmId={row.firm.id} />
+                        <FirmCommentsTable
+                          project={project}
+                          firmId={row.firm.id}
+                          onEdit={setEditTarget}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -261,6 +267,9 @@ export function RankedFirmsTable({ project }: { project: Project }) {
           })}
         </tbody>
       </table>
+      {/* Rendered in the wrapper only for convenience — the dialog's backdrop is
+          position: fixed, so it isn't clipped by .table-wrap's overflow. */}
+      {editTarget && <EditScoreDialog target={editTarget} onClose={() => setEditTarget(null)} />}
     </div>
   );
 }

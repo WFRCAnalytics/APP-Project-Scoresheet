@@ -14,6 +14,8 @@ export interface ConfirmDialogProps {
   title: string;
   message: ReactNode;
   confirmLabel?: string;
+  /** "danger" (default) for removals; "primary" for a confirm that is not destructive. */
+  confirmVariant?: "danger" | "primary";
   cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
@@ -24,6 +26,7 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel = "Remove",
+  confirmVariant = "danger",
   cancelLabel = "Cancel",
   onConfirm,
   onCancel,
@@ -43,7 +46,7 @@ export function ConfirmDialog({
         <button type="button" className="button button-secondary" onClick={onCancel}>
           {cancelLabel}
         </button>
-        <button type="button" className="button button-danger" onClick={onConfirm}>
+        <button type="button" className={`button button-${confirmVariant}`} onClick={onConfirm}>
           {confirmLabel}
         </button>
       </div>

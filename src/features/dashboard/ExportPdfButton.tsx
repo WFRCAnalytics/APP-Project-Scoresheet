@@ -1,46 +1,54 @@
-// T043: "Export PDF report" (FR-035) — drives the browser's native print pipeline via
-// react-to-print against DashboardScreen's printable region (real DOM/CSS, real
-// selectable text, Recharts' real SVG vector paths — not a rasterized image; see
-// research.md §4 for why this was chosen over html2canvas+jsPDF).
+// "PDF Report" in the Dashboard toolbar: builds and downloads the formatted PDF report
+// (lib/report/) — a designed document generated from the project's data (cover, results overview,
+// evaluation framework, one profile per firm with its charts, reviewer scores and comments). It is
+// real vector PDF with selectable text, not the browser's print dialog.
 //
-// The one true PRIMARY action in the Dashboard toolbar (post-launch redesign) — the PDF is
-// the actual procurement-record deliverable this whole tool exists to produce, so it's the
-// only button that keeps solid `button-primary` styling; every other toolbar control is
-// secondary/icon-only next to it (DashboardScreen.tsx's own header comment has the full
-// rationale). Visible label shortened to "PDF Report" now that it sits inside a
-// clearly-exported "export" toolbar group with an icon of its own — aria-label keeps the
-// fuller original phrasing for screen-reader clarity.
-//
-// No theme handling needed here: the printed charts come from a dedicated, always-light,
-// always-off-screen chart instance (OverallApplicantBarChart.tsx's PrintCopy export) that
-// tokens.css's `@media print` swaps into view in place of the visible one — see that file's
-// header comment. This button doesn't need to know that happens; it's pure CSS.
+// The one true PRIMARY action in the Dashboard toolbar: the PDF is the procurement-record
+// deliverable this tool exists to produce, so it keeps solid `button-primary` styling while every
+// other toolbar control is secondary. The report code (PDF renderer, fonts, layout) is loaded on
+// the first click, so it never weighs on the app's initial load.
 
 import { FileText } from "lucide-react";
-import { useReactToPrint } from "react-to-print";
+import { useState } from "react";
+import { downloadBlob } from "../../lib/downloadBlob";
 import { useLoadedProject } from "../../state/ProjectContext";
-import { PRINT_PAGE_STYLE, printDocumentTitle } from "../../lib/pdf/printLayout";
-import type { RefObject } from "react";
 
-export function ExportPdfButton({ printRef }: { printRef: RefObject<HTMLDivElement> }) {
+export function ExportPdfButton() {
   const { project } = useLoadedProject();
+  const [generating, setGenerating] = useState(false);
+  const [failed, setFailed] = useState(false);
 
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    documentTitle: printDocumentTitle(project.project.projectName),
-    pageStyle: PRINT_PAGE_STYLE,
-  });
+  async function handleClick() {
+    setGenerating(true);
+    setFailed(false);
+    try {
+      const { generateReport } = await import("../../lib/report/generateReport");
+      const { blob, filename } = await generateReport(project);
+      downloadBlob(blob, filename);
+    } catch (error) {
+      console.error("PDF report generation failed", error);
+      setFailed(true);
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   return (
     <button
       type="button"
       className="button button-primary no-print"
-      onClick={handlePrint}
+      onClick={handleClick}
+      disabled={generating}
+      data-loading={generating}
       aria-label="Export PDF report"
-      title="Export PDF report"
+      title={
+        failed
+          ? "The report could not be generated. Try again."
+          : "Download the formatted PDF report"
+      }
     >
       <FileText size={16} strokeWidth={1.75} aria-hidden="true" />
-      PDF Report
+      {generating ? "Building PDF…" : failed ? "Failed, retry" : "PDF Report"}
     </button>
   );
 }

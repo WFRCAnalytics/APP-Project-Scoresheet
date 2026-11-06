@@ -88,6 +88,9 @@ interface CriterionBreakdownChartViewProps extends ChartColorProps {
   /** Size the chart to its parent's height (the Dashboard's detail panel gives it a box)
    * instead of the fixed RADAR_HEIGHT. */
   fill?: boolean;
+  /** Recharts' grow-in animation. Off for the copies captured into the PDF report, which
+   * must be fully drawn the moment they mount. */
+  animated?: boolean;
 }
 
 function CriterionBreakdownChartView({
@@ -101,6 +104,7 @@ function CriterionBreakdownChartView({
   backgroundColor,
   showExportButtons = true,
   fill = false,
+  animated = true,
 }: CriterionBreakdownChartViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Separate from containerRef (which ChartExportButtons reads imperatively on click) — this
@@ -262,6 +266,7 @@ function CriterionBreakdownChartView({
             />
             <Radar
               name="Overall"
+              isAnimationActive={animated}
               dataKey="Overall"
               stroke={overallColor}
               fill={overallColor}
@@ -269,6 +274,7 @@ function CriterionBreakdownChartView({
             />
             <Radar
               name="TLC Applicant"
+              isAnimationActive={animated}
               dataKey="TLC Applicant"
               stroke={applicantColor}
               fill={applicantColor}
@@ -276,6 +282,7 @@ function CriterionBreakdownChartView({
             />
             <Radar
               name="WFRC"
+              isAnimationActive={animated}
               dataKey="WFRC"
               stroke={wfrcColor}
               fill={wfrcColor}
@@ -342,6 +349,7 @@ export function CriterionBreakdownChartPrintCopy({ project, firmId }: { project:
         project={project}
         firmId={firmId}
         showExportButtons={false}
+        animated={false}
         {...colors}
       />
     </div>

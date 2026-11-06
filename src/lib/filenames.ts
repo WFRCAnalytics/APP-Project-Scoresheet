@@ -65,3 +65,10 @@ export function chartExportFilename(
   const labelPart = sanitizeProjectName(chartLabel) || "chart";
   return `${projectPart}_${labelPart}.${extension}`;
 }
+
+/** Default filename for the formatted PDF report — same sanitization rule as the other export
+ * points here. */
+export function reportPdfFilename(projectName: string): string {
+  const projectPart = sanitizeProjectName(projectName) || "untitled-project";
+  return `${projectPart}_Evaluation_Report.pdf`;
+}

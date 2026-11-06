@@ -279,7 +279,7 @@ export function DashboardScreen({ onEditProject }: DashboardScreenProps) {
             <div className="dashboard-toolbar-group">
               <ExportProjectButton />
               <ExportExcelButton />
-              <ExportPdfButton printRef={printRef} />
+              <ExportPdfButton />
             </div>
           </div>
         </div>

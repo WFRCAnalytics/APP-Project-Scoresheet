@@ -97,6 +97,12 @@ interface OverallApplicantBarChartViewProps extends ChartColorProps {
   /** Emphasises one firm's bars (the rest dim) and makes bars clickable to select a firm. */
   selectedFirmId?: string | null;
   onSelectFirm?: (firmId: string) => void;
+  /** Recharts' grow-in animation. Off for the copies captured into the PDF report, which
+   * must be fully drawn the moment they mount. */
+  animated?: boolean;
+  /** Show each firm's rank number under its bars (instead of its name) once there are more
+   * than this many firms. Compact mode already does this past COMPACT_NAME_LABEL_MAX_FIRMS. */
+  rankLabelsAfter?: number;
 }
 
 function OverallApplicantBarChartView({
@@ -111,6 +117,8 @@ function OverallApplicantBarChartView({
   compact = false,
   selectedFirmId = null,
   onSelectFirm,
+  animated = true,
+  rankLabelsAfter,
 }: OverallApplicantBarChartViewProps) {
   // Separate from the caller-supplied containerRef (DashboardScreen reads that imperatively
   // for its own PNG/SVG export buttons) — this one exists purely to re-run the
@@ -162,9 +170,9 @@ function OverallApplicantBarChartView({
   // The compact chart is short, and Recharts rounds its own tick choice to "nice" numbers outside
   // the domain (a 1-5 axis came out labelled 0, 2, 5). Evenly spaced ticks across the real range
   // keep the labels honest at any height.
-  const compactTicks = compact
-    ? Array.from({ length: 5 }, (_, i) => round2(axisMin + ((axisMax - axisMin) * i) / 4))
-    : undefined;
+  const compactTicks = Array.from({ length: 5 }, (_, i) =>
+    round2(axisMin + ((axisMax - axisMin) * i) / 4),
+  );
 
   const plotWidth = containerWidth > 0
     ? Math.max(0, containerWidth - CHART_MARGIN.left - CHART_MARGIN.right - Y_AXIS_WIDTH)
@@ -176,7 +184,9 @@ function OverallApplicantBarChartView({
   // with ReviewerScoreSpreadChart's x-axis and CriterionBreakdownChart's radar labels),
   // falling back to an ellipsis-truncated second line + a native SVG <title> hover tooltip
   // only when two lines still isn't enough room.
-  const useRankLabels = compact && data.length > COMPACT_NAME_LABEL_MAX_FIRMS;
+  const useRankLabels =
+    (compact && data.length > COMPACT_NAME_LABEL_MAX_FIRMS) ||
+    (rankLabelsAfter !== undefined && data.length > rankLabelsAfter);
   const renderFirmTick = (props: { x: number; y: number; index?: number; payload: { value: string } }) => {
     const { x, y, payload } = props;
     const name = payload.value ?? "";
@@ -229,7 +239,7 @@ function OverallApplicantBarChartView({
       <ResponsiveContainer>
         <BarChart data={data} margin={compact ? COMPACT_CHART_MARGIN : CHART_MARGIN}>
           <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
-          <XAxis dataKey="name" tick={renderFirmTick} interval={0} height={compact && useRankLabels ? 26 : 44} />
+          <XAxis dataKey="name" tick={renderFirmTick} interval={0} height={useRankLabels ? 26 : 44} />
           <YAxis
             domain={[axisMin, axisMax]}
             ticks={compactTicks}
@@ -276,6 +286,7 @@ function OverallApplicantBarChartView({
               key={key}
               dataKey={key}
               fill={color}
+              isAnimationActive={animated}
               cursor={onSelectFirm ? "pointer" : undefined}
               onClick={onSelectFirm ? (entry) => onSelectFirm((entry as { firmId: string }).firmId) : undefined}
             >
@@ -327,12 +338,23 @@ export function OverallApplicantBarChart({
  * normal, visible flow only inside an actual print render. `aria-hidden` because it's a
  * pure duplicate of content already reachable on screen — screen readers should never land
  * on it. */
-export function OverallApplicantBarChartPrintCopy({ project }: { project: Project }) {
+export function OverallApplicantBarChartPrintCopy({
+  project,
+  rankLabelsAfter,
+}: {
+  project: Project;
+  rankLabelsAfter?: number;
+}) {
   const scopeRef = useRef<HTMLDivElement>(null);
   const colors = usePrintSafeChartColors(scopeRef);
   return (
     <div ref={scopeRef} className="chart-print-safe-scope print-chart-copy" aria-hidden="true">
-      <OverallApplicantBarChartView project={project} {...colors} />
+      <OverallApplicantBarChartView
+        project={project}
+        animated={false}
+        rankLabelsAfter={rankLabelsAfter}
+        {...colors}
+      />
     </div>
   );
 }

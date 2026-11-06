@@ -942,6 +942,16 @@ table.reviewers-table td.col-signed {
   margin-bottom: var(--space-1);
 }
 
+/* Configuration has no subtitle under its title, so title and button share a bottom edge
+   instead of the Dashboard header's top alignment. */
+.config-page-header {
+  align-items: flex-end;
+}
+
+.config-page-header h1 {
+  margin-bottom: 0;
+}
+
 /* Dashboard toolbar (post-launch hierarchy pass) — a single bordered/tinted container, same
    "toolbar chrome" language .config-toolbar already established, so the action cluster
    reads as one deliberate group sitting near the title instead of a handful of bare buttons

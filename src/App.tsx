@@ -50,6 +50,7 @@ function AppShell() {
           <ConfigurationScreen
             onProjectReplaced={handleUploadRouting}
             onGenerateForms={() => setArea("reviewer-forms")}
+            onGoToDashboard={() => setArea("dashboard")}
           />
         );
       case "reviewer-forms":

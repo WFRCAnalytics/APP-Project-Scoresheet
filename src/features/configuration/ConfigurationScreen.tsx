@@ -23,12 +23,13 @@
 // behind the same ConfirmDialog every destructive action in this app already uses, rather
 // than routing immediately on a successful parse the way this used to work.
 
+import { LayoutDashboard } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { FilePickerField, type FilePickerFieldHandle } from "../../components/FilePickerField";
 import { useProjectContext } from "../../state/ProjectContext";
 import { routeUploadedFile, type UploadArea } from "../load/uploadProject";
-import type { Project } from "../../types/project";
+import { hasResults, type Project } from "../../types/project";
 import { ConfigurationProgressBar, type ConfigStep } from "./ConfigurationProgressBar";
 import { CriteriaEditor } from "./CriteriaEditor";
 import { ExportProjectButton } from "./ExportProjectButton";
@@ -43,6 +44,10 @@ export interface ConfigurationScreenProps {
    * configuration is far enough along to generate forms from (not gated on "complete,"
    * since the weight-sum warning is non-blocking, FR-010). */
   onGenerateForms: () => void;
+  /** Straight back to the Dashboard, skipping the Generate Forms step — offered only once
+   * the project has scores (there is nothing to show before that). Pure navigation: the
+   * loaded project, including any edits made here, is untouched. */
+  onGoToDashboard: () => void;
 }
 
 const STEPS: ConfigStep[] = [
@@ -57,6 +62,7 @@ const STEPS: ConfigStep[] = [
 export function ConfigurationScreen({
   onProjectReplaced,
   onGenerateForms,
+  onGoToDashboard,
 }: ConfigurationScreenProps) {
   const { project, dispatch } = useProjectContext();
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -118,7 +124,15 @@ export function ConfigurationScreen({
 
   return (
     <section aria-label="Configuration">
-      <h1>Configuration</h1>
+      <div className="dashboard-page-header config-page-header">
+        <h1>Configuration</h1>
+        {hasResults(project) && (
+          <button type="button" className="button button-secondary" onClick={onGoToDashboard}>
+            <LayoutDashboard size={16} strokeWidth={1.75} aria-hidden="true" />
+            Back to Dashboard
+          </button>
+        )}
+      </div>
 
       {uploadError && (
         <div className="banner banner-error" role="alert">

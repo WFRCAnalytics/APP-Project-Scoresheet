@@ -40,7 +40,7 @@ describe("Reviewer Forms — Export JSON", () => {
     goToReviewerForms();
     const downloadSpy = vi.spyOn(downloadBlobModule, "downloadBlob").mockImplementation(() => {});
 
-    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save JSON" }));
 
     expect(screen.getByRole("dialog", { name: "Export project JSON" })).toBeInTheDocument();
     expect(screen.getByLabelText("Filename")).toHaveValue("Forms_Page_Test.json");
@@ -52,7 +52,7 @@ describe("Reviewer Forms — Export JSON", () => {
     goToReviewerForms();
     const downloadSpy = vi.spyOn(downloadBlobModule, "downloadBlob").mockImplementation(() => {});
 
-    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save JSON" }));
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
 
     expect(downloadSpy).toHaveBeenCalledTimes(1);

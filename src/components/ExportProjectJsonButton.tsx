@@ -14,7 +14,7 @@
 // always-visible label+input+button block instead; it moved to this once the three screens'
 // toolbars were made to look alike.
 
-import { FileJson } from "lucide-react";
+import { Save } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { downloadBlob } from "../lib/downloadBlob";
 import { defaultProjectFilename } from "../lib/filenames";
@@ -79,8 +79,8 @@ export function ExportProjectJsonButton() {
         aria-haspopup="dialog"
         aria-expanded={confirmOpen}
       >
-        <FileJson size={16} strokeWidth={1.75} aria-hidden="true" />
-        Export JSON
+        <Save size={16} strokeWidth={1.75} aria-hidden="true" />
+        Save JSON
       </button>
       {confirmOpen && (
         <div className="export-json-popover" role="dialog" aria-label="Export project JSON">

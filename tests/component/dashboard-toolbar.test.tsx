@@ -52,8 +52,8 @@ describe("Dashboard toolbar hierarchy", () => {
   it("the three export actions keep a visible label alongside their icon", async () => {
     await goToDashboard();
 
-    expect(screen.getByRole("button", { name: "Export JSON" }).textContent).toContain(
-      "Export JSON",
+    expect(screen.getByRole("button", { name: "Save JSON" }).textContent).toContain(
+      "Save JSON",
     );
     expect(screen.getByRole("button", { name: "Export Excel workbook" }).textContent).toContain(
       "Excel",
@@ -75,7 +75,7 @@ describe("Dashboard toolbar hierarchy", () => {
     expect(screen.getByRole("button", { name: "Export PDF report" }).className).toContain(
       "button-primary",
     );
-    expect(screen.getByRole("button", { name: "Export JSON" }).className).not.toContain(
+    expect(screen.getByRole("button", { name: "Save JSON" }).className).not.toContain(
       "button-primary",
     );
   });

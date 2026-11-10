@@ -68,7 +68,7 @@ describe("User Story 1 — Configure a New Scoring Project (Load -> Configuratio
     expect(screen.getByRole("alert")).toHaveTextContent(/must sum to 1\.0/);
     // And nothing about that warning disables the export button (non-blocking). Export
     // lives in the persistent Configuration toolbar, visible regardless of step.
-    expect(screen.getByRole("button", { name: "Export JSON" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save JSON" })).toBeEnabled();
   });
 
   it("enforces a minimum of 2 scoring scale points (FR-011) by disabling removal at the floor", () => {

@@ -59,7 +59,7 @@ describe("ExportProjectJsonButton — Configuration toolbar", () => {
     const downloadSpy = vi.spyOn(downloadBlobModule, "downloadBlob").mockImplementation(() => {});
 
     expect(screen.queryByLabelText("Filename")).not.toBeInTheDocument(); // closed by default
-    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save JSON" }));
 
     expect(screen.getByRole("dialog", { name: "Export project JSON" })).toBeInTheDocument();
     expect(downloadSpy).not.toHaveBeenCalled();
@@ -69,7 +69,7 @@ describe("ExportProjectJsonButton — Configuration toolbar", () => {
     goToConfiguration();
     const downloadSpy = vi.spyOn(downloadBlobModule, "downloadBlob").mockImplementation(() => {});
 
-    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save JSON" }));
     fireEvent.change(screen.getByLabelText("Filename"), { target: { value: "config_custom.json" } });
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
 
@@ -83,7 +83,7 @@ describe("ExportProjectJsonButton — confirm panel (Dashboard)", () => {
     const downloadSpy = vi.spyOn(downloadBlobModule, "downloadBlob").mockImplementation(() => {});
 
     expect(screen.queryByLabelText("Filename")).not.toBeInTheDocument(); // closed by default
-    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save JSON" }));
 
     expect(screen.getByRole("dialog", { name: "Export project JSON" })).toBeInTheDocument();
     expect(screen.getByLabelText("Filename")).toHaveValue("Export_Variant_Test.json");
@@ -94,7 +94,7 @@ describe("ExportProjectJsonButton — confirm panel (Dashboard)", () => {
     await goToDashboard();
     const downloadSpy = vi.spyOn(downloadBlobModule, "downloadBlob").mockImplementation(() => {});
 
-    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save JSON" }));
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
 
     expect(downloadSpy).toHaveBeenCalledTimes(1);
@@ -106,7 +106,7 @@ describe("ExportProjectJsonButton — confirm panel (Dashboard)", () => {
     await goToDashboard();
     const downloadSpy = vi.spyOn(downloadBlobModule, "downloadBlob").mockImplementation(() => {});
 
-    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save JSON" }));
     fireEvent.change(screen.getByLabelText("Filename"), {
       target: { value: "custom_export.json" },
     });
@@ -119,7 +119,7 @@ describe("ExportProjectJsonButton — confirm panel (Dashboard)", () => {
     await goToDashboard();
     const downloadSpy = vi.spyOn(downloadBlobModule, "downloadBlob").mockImplementation(() => {});
 
-    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save JSON" }));
     const filenameInput = screen.getByLabelText("Filename");
     fireEvent.change(filenameInput, { target: { value: "enter_confirms.json" } });
     fireEvent.keyDown(filenameInput, { key: "Enter" });
@@ -133,7 +133,7 @@ describe("ExportProjectJsonButton — confirm panel (Dashboard)", () => {
     await goToDashboard();
     const downloadSpy = vi.spyOn(downloadBlobModule, "downloadBlob").mockImplementation(() => {});
 
-    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save JSON" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(downloadSpy).not.toHaveBeenCalled();
@@ -142,14 +142,14 @@ describe("ExportProjectJsonButton — confirm panel (Dashboard)", () => {
 
   it("Escape closes the panel without exporting, but keeps the edited name for next time", async () => {
     await goToDashboard();
-    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save JSON" }));
     fireEvent.change(screen.getByLabelText("Filename"), { target: { value: "still_here.json" } });
     fireEvent.keyDown(screen.getByLabelText("Filename"), { key: "Escape" });
 
     expect(screen.queryByLabelText("Filename")).not.toBeInTheDocument();
 
     // Reopening shows the name is still there, even though nothing was exported yet.
-    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save JSON" }));
     expect(screen.getByLabelText("Filename")).toHaveValue("still_here.json");
   });
 
@@ -157,7 +157,7 @@ describe("ExportProjectJsonButton — confirm panel (Dashboard)", () => {
     await goToDashboard();
     const downloadSpy = vi.spyOn(downloadBlobModule, "downloadBlob").mockImplementation(() => {});
 
-    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save JSON" }));
     expect(screen.getByLabelText("Filename")).toBeInTheDocument();
 
     fireEvent.mouseDown(document.body);
@@ -167,11 +167,11 @@ describe("ExportProjectJsonButton — confirm panel (Dashboard)", () => {
 
   it("the trigger is button-secondary; the panel's confirm button is button-primary", async () => {
     await goToDashboard();
-    expect(screen.getByRole("button", { name: "Export JSON" }).className).toContain(
+    expect(screen.getByRole("button", { name: "Save JSON" }).className).toContain(
       "button-secondary",
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save JSON" }));
     expect(screen.getByRole("button", { name: "Export" }).className).toContain("button-primary");
   });
 });

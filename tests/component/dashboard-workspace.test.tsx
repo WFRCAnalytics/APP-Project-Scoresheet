@@ -183,7 +183,7 @@ describe("Dashboard — header", () => {
     await load(project(2));
     expect(screen.getByRole("button", { name: "Configure project" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Export Excel workbook" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Export project JSON|Export JSON/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Export project JSON|Save JSON/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Export PDF report" })).toBeInTheDocument();
   });
 });
